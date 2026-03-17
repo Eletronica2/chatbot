@@ -27,6 +27,8 @@ class FlowState(BaseModel):
     message: Optional[str] = None
     options: List[FlowOption] = Field(default_factory=list)
     transitions: List[FlowTransition] = Field(default_factory=list)
+    requires_handoff: bool = False
+    hook: Dict[str, Any] = Field(default_factory=dict)
 
 
 class FlowDefinition(BaseModel):

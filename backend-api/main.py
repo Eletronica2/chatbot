@@ -9,7 +9,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import conversations, flows_admin, health, messages
+from app.api.routes import conversations, flows_admin, health, messages, tenant_settings
 from app.api import flow as flow_routes
 from app.config.settings import settings
 from app.middlewares.tenant_middleware import TenantMiddleware
@@ -20,9 +20,11 @@ from app.services.dependencies import (
     set_conversation_service,
     set_flow_service,
     set_session_service,
+    set_tenant_settings_service,
 )
 from app.services.flow_service import FlowService
 from app.services.session_service import SessionService
+from app.services.tenant_settings_service import TenantSettingsService
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -39,14 +41,17 @@ async def lifespan(app: FastAPI):
     session_service = SessionService(session_repository)
     flow_service = FlowService(settings.FLOW_ENGINE_URL, settings.FLOW_ENGINE_TIMEOUT)
     ai_service = AIService(settings.AI_ENGINE_URL, settings.AI_ENGINE_TIMEOUT)
+    tenant_settings_service = TenantSettingsService()
     conversation_service = ConversationService(
         session_service=session_service,
         flow_service=flow_service,
         ai_service=ai_service,
+        tenant_settings_service=tenant_settings_service,
     )
     set_conversation_service(conversation_service)
     set_flow_service(flow_service)
     set_session_service(session_service)
+    set_tenant_settings_service(tenant_settings_service)
 
     yield
 
@@ -76,6 +81,7 @@ app.include_router(health.router)
 app.include_router(messages.router)
 app.include_router(conversations.router)
 app.include_router(flows_admin.router)
+app.include_router(tenant_settings.router)
 app.include_router(flow_routes.router)
 
 

@@ -124,7 +124,7 @@ def _to_legacy_response(result: AIResponsePayload) -> LegacyAIRespondResponse:
     metadata = dict(result.metadata or {})
     error_code = result.error or "ai_unavailable"
     metadata.update({"error": error_code, "retryable": bool(result.retryable)})
-    fallback_reply = "Desculpe, não consigo responder agora."
+    fallback_reply = settings.AI_FALLBACK_REPLY
     return LegacyAIRespondResponse(
         reply_text=fallback_reply,
         session_state=result.session_state,

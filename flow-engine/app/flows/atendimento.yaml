@@ -4,3 +4,4 @@ start_state: waiting
 states:
   waiting:
     message: "Um de nossos especialistas vai assumir a conversa em instantes."
+    requires_handoff: true

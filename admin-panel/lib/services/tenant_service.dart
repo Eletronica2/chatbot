@@ -7,6 +7,18 @@ class TenantService {
   TenantService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
+  static const List<String> _defaultFallbackModels = <String>[
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-1.5-flash',
+    'gemini-1.0-pro',
+    'gemini-pro',
+    'gemini-1.5-pro',
+    'gemini-2.0-pro',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-pro-latest',
+  ];
 
   Future<TenantSettings> fetchTenantSettings(String tenantId) async {
     try {
@@ -22,6 +34,9 @@ class TenantService {
       tenantName: 'Tenant Demo',
       aiEnabled: true,
       flowEditingEnabled: true,
+      geminiModel: 'gemini-1.5-flash-latest',
+      fallbackModels: List<String>.from(_defaultFallbackModels),
+      availableModels: List<String>.from(_defaultFallbackModels),
     );
   }
 
@@ -42,6 +57,40 @@ class TenantService {
       tenantName: 'Tenant Demo',
       aiEnabled: enabled,
       flowEditingEnabled: true,
+      geminiModel: 'gemini-1.5-flash-latest',
+      fallbackModels: List<String>.from(_defaultFallbackModels),
+      availableModels: List<String>.from(_defaultFallbackModels),
+    );
+  }
+
+  Future<TenantSettings> updateAiModels({
+    required String tenantId,
+    required String geminiModel,
+    required List<String> fallbackModels,
+  }) async {
+    try {
+      final data = await _apiClient.patch(
+        '/api/v1/tenants/$tenantId/settings',
+        body: {
+          'gemini_model': geminiModel,
+          'fallback_models': fallbackModels,
+        },
+      );
+      if (data is Map<String, dynamic>) {
+        return TenantSettings.fromJson(data);
+      }
+    } catch (err) {
+      log('updateAiModels fallback: $err');
+    }
+    final available = <String>{geminiModel, ..._defaultFallbackModels, ...fallbackModels}.toList();
+    return TenantSettings(
+      tenantId: tenantId,
+      tenantName: 'Tenant Demo',
+      aiEnabled: true,
+      flowEditingEnabled: true,
+      geminiModel: geminiModel,
+      fallbackModels: List<String>.from(fallbackModels),
+      availableModels: available,
     );
   }
 

@@ -69,7 +69,9 @@ class FlowRunner:
                 "flow": definition.name,
                 "state": state.state,
                 "options": options,
+                "hook": state.hook,
             },
+            requires_handoff=state.requires_handoff,
         )
 
     def _resolve_transition(

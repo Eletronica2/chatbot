@@ -89,12 +89,20 @@ class FlowLoader:
 
         options = self._parse_options(state_name, payload.get("options"))
         transitions = self._parse_transitions(state_name, payload.get("transitions"))
+        requires_handoff = bool(payload.get("requires_handoff", False))
+        hook = payload.get("hook")
+        if hook is None:
+            hook = {}
+        if not isinstance(hook, dict):
+            raise FlowValidationError(f"State '{state_name}' hook must be a mapping")
 
         return FlowState(
             state=state_name,
             message=payload.get("message"),
             options=options,
             transitions=transitions,
+            requires_handoff=requires_handoff,
+            hook=hook,
         )
 
     def _parse_options(self, state_name: str, payload) -> List[FlowOption]:

@@ -23,14 +23,21 @@ class AIService:
         self,
         message: NormalizedMessage,
         session: ConversationSession,
+        metadata_overrides: Dict[str, Any] | None = None,
     ) -> AIResponse:
+        merged_metadata: Dict[str, Any] = {}
+        if isinstance(message.metadata, dict):
+            merged_metadata.update(message.metadata)
+        if isinstance(metadata_overrides, dict):
+            merged_metadata.update(metadata_overrides)
+
         payload: Dict[str, Any] = {
             "tenant_id": message.tenant_id,
             "phone_number": message.phone_number,
             "message": message.content,
             "context": session.context,
             "session_state": session.conversation_state,
-            "metadata": message.metadata,
+            "metadata": merged_metadata,
         }
 
         try:

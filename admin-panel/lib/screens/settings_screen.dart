@@ -104,6 +104,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const String _tenantId = 'default';
   List<FlowSummaryModel> _flows = [];
   bool _loadingFlows = true;
   String? _selectedName;
@@ -111,6 +112,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loadingDraft = false;
   bool _saving = false;
   bool _aiEnabled = false;
+  bool _savingAiConfig = false;
+  String _selectedModel = 'gemini-1.5-flash-latest';
+  List<String> _availableModels = const <String>[];
+  final TextEditingController _fallbackModelsCtrl = TextEditingController();
 
   @override
   void initState() {
@@ -120,14 +125,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _fallbackModelsCtrl.dispose();
     _draft?.dispose();
     super.dispose();
   }
 
   Future<void> _init() async {
     try {
-      final s = await tenantService.fetchTenantSettings('default');
-      if (mounted) setState(() => _aiEnabled = s.aiEnabled);
+      final s = await tenantService.fetchTenantSettings(_tenantId);
+      if (mounted) {
+        setState(() {
+          _aiEnabled = s.aiEnabled;
+          _selectedModel = s.geminiModel;
+          _availableModels = s.availableModels.isNotEmpty
+              ? s.availableModels
+              : <String>[s.geminiModel, ...s.fallbackModels];
+          _fallbackModelsCtrl.text = s.fallbackModels.join(', ');
+        });
+      }
     } catch (_) {}
     await _reloadFlows();
   }
@@ -271,6 +286,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  List<String> _parseModelList(String raw) {
+    final parts = raw
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+    final unique = <String>[];
+    for (final item in parts) {
+      if (!unique.contains(item)) unique.add(item);
+    }
+    return unique;
+  }
+
+  Future<void> _saveAiConfig() async {
+    final fallbackModels = _parseModelList(_fallbackModelsCtrl.text);
+    if (_selectedModel.trim().isEmpty) {
+      _showErr('Selecione um modelo principal');
+      return;
+    }
+
+    setState(() => _savingAiConfig = true);
+    try {
+      final updated = await tenantService.updateAiModels(
+        tenantId: _tenantId,
+        geminiModel: _selectedModel.trim(),
+        fallbackModels: fallbackModels,
+      );
+      if (!mounted) return;
+      setState(() {
+        _selectedModel = updated.geminiModel;
+        _availableModels = updated.availableModels.isNotEmpty
+            ? updated.availableModels
+            : <String>[updated.geminiModel, ...updated.fallbackModels];
+        _fallbackModelsCtrl.text = updated.fallbackModels.join(', ');
+        _aiEnabled = updated.aiEnabled;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Configuracao de IA salva com sucesso'),
+          backgroundColor: _kSuccess,
+        ),
+      );
+    } catch (err) {
+      if (mounted) _showErr('Erro ao salvar configuracao da IA: $err');
+    } finally {
+      if (mounted) setState(() => _savingAiConfig = false);
+    }
+  }
+
   void _showNewFlowDialog() {
     final ctrl = TextEditingController();
     showDialog(
@@ -360,7 +424,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // ── Left panel ────────────────────────────────────────────────────
   Widget _buildLeft() {
     return Container(
-      width: 280,
+      width: 340,
       color: const Color(0xFF0F172A),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -388,49 +452,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          // AI Toggle
+          // AI Settings
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Container(
-              decoration: BoxDecoration(
-                  color: _kCard,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: _kBorder)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                        color: _aiEnabled ? const Color(0xFF064E3B) : _kCard,
-                        borderRadius: BorderRadius.circular(8)),
-                    child: Icon(Icons.smart_toy_rounded,
-                        color: _aiEnabled ? _kSuccess : _kMuted, size: 16),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Inteligência Artificial',
-                            style: TextStyle(color: _kText, fontSize: 13, fontWeight: FontWeight.w500)),
-                        Text(_aiEnabled ? 'Ativada' : 'Desativada',
-                            style: TextStyle(
-                                color: _aiEnabled ? _kSuccess : _kMuted, fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _aiEnabled,
-                    activeTrackColor: _kAccent,
-                    onChanged: (v) async {
-                      setState(() => _aiEnabled = v);
-                      try { await tenantService.toggleAi('default', v); } catch (_) {}
-                    },
-                  ),
-                ],
-              ),
-            ),
+            child: _buildAiConfigCard(),
           ),
           // Flows header
           Padding(
@@ -488,6 +513,176 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+
+  Widget _buildAiConfigCard() {
+    final options = <String>{..._availableModels, _selectedModel}
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
+    options.sort();
+    final modelValue = options.contains(_selectedModel) ? _selectedModel : null;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _kBorder),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: _aiEnabled ? const Color(0xFF064E3B) : _kCard,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.smart_toy_rounded,
+                  color: _aiEnabled ? _kSuccess : _kMuted,
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Inteligencia Artificial',
+                      style: TextStyle(
+                        color: _kText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      _aiEnabled ? 'Ativada' : 'Desativada',
+                      style: TextStyle(
+                        color: _aiEnabled ? _kSuccess : _kMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch(
+                value: _aiEnabled,
+                activeTrackColor: _kAccent,
+                onChanged: (v) async {
+                  setState(() => _aiEnabled = v);
+                  try {
+                    final updated = await tenantService.toggleAi(_tenantId, v);
+                    if (!mounted) return;
+                    setState(() {
+                      _aiEnabled = updated.aiEnabled;
+                      _selectedModel = updated.geminiModel;
+                      _availableModels = updated.availableModels.isNotEmpty
+                          ? updated.availableModels
+                          : <String>[updated.geminiModel, ...updated.fallbackModels];
+                      _fallbackModelsCtrl.text = updated.fallbackModels.join(', ');
+                    });
+                  } catch (_) {}
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Modelo principal',
+            style: TextStyle(color: _kSubtle, fontSize: 11),
+          ),
+          const SizedBox(height: 4),
+          Container(
+            height: 38,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: _kInput,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _kBorder),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: modelValue,
+                isExpanded: true,
+                dropdownColor: _kCard,
+                style: const TextStyle(color: _kText, fontSize: 12),
+                hint: const Text(
+                  'Selecione um modelo',
+                  style: TextStyle(color: _kSubtle, fontSize: 12),
+                ),
+                items: options
+                    .map((model) => DropdownMenuItem(
+                          value: model,
+                          child: Text(model, overflow: TextOverflow.ellipsis),
+                        ))
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _selectedModel = value);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Fallbacks (separados por virgula)',
+            style: TextStyle(color: _kSubtle, fontSize: 11),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _fallbackModelsCtrl,
+            style: const TextStyle(color: _kText, fontSize: 12),
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'gemini-2.5-flash, gemini-2.0-flash, gemini-1.5-flash',
+              hintStyle: const TextStyle(color: _kSubtle, fontSize: 11),
+              filled: true,
+              fillColor: _kInput,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _kBorder),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _kBorder),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: _kAccent),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: _kAccent,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: _savingAiConfig ? null : _saveAiConfig,
+              icon: _savingAiConfig
+                  ? const SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.save_rounded, size: 16),
+              label: Text(_savingAiConfig ? 'Salvando...' : 'Salvar IA'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   // ── Right panel ──────────────────────────────────────────────────
   Widget _buildRight() {
     if (_selectedName == null) return const _EditorEmpty();
@@ -1252,3 +1447,5 @@ class _DarkField extends StatelessWidget {
     );
   }
 }
+
+

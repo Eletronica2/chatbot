@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from app.domain.message import (
     ConversationAction,
-    FlowExecutionResult,
     NormalizedMessage,
 )
 from app.services.ai_service import AIService
 from app.services.flow_service import FlowService
 from app.services.session_service import SessionService
+from app.services.tenant_settings_service import TenantSettingsService
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +25,12 @@ class ConversationService:
         session_service: SessionService,
         flow_service: FlowService,
         ai_service: AIService,
+        tenant_settings_service: TenantSettingsService,
     ):
         self.session_service = session_service
         self.flow_service = flow_service
         self.ai_service = ai_service
+        self.tenant_settings_service = tenant_settings_service
 
     async def handle_incoming_message(self, message: NormalizedMessage) -> ConversationAction:
         logger.info(
@@ -61,7 +63,32 @@ class ConversationService:
             )
 
         logger.info("Flow unresolved, escalating to AI for message %s", message.message_id)
-        ai_response = await self.ai_service.generate_response(message, session)
+        tenant_settings = self.tenant_settings_service.get_or_create(message.tenant_id)
+        if not tenant_settings.ai_enabled:
+            logger.info(
+                "AI disabled for tenant %s; returning deterministic fallback",
+                message.tenant_id,
+            )
+            disabled_reply = (
+                "No momento nao consigo continuar por IA. "
+                "Posso transferir para atendimento humano."
+            )
+            self._append_message(session, role="assistant", content=disabled_reply)
+            return ConversationAction(
+                source="flow",
+                reply_text=disabled_reply,
+                tenant_id=message.tenant_id,
+                phone_number=message.phone_number,
+                metadata={"error": "ai_disabled"},
+                session_state=session.conversation_state,
+                requires_handoff=True,
+            )
+
+        ai_response = await self.ai_service.generate_response(
+            message,
+            session,
+            metadata_overrides=tenant_settings.as_ai_metadata(),
+        )
         await self.session_service.update_session(
             session,
             state_updates=ai_response.session_state,

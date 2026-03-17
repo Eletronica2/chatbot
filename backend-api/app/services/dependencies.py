@@ -8,10 +8,12 @@ from fastapi import Depends
 from app.services.conversation_service import ConversationService
 from app.services.flow_service import FlowService
 from app.services.session_service import SessionService
+from app.services.tenant_settings_service import TenantSettingsService
 
 _conversation_service: Optional[ConversationService] = None
 _flow_service: Optional[FlowService] = None
 _session_service: Optional[SessionService] = None
+_tenant_settings_service: Optional[TenantSettingsService] = None
 
 
 def set_conversation_service(service: ConversationService) -> None:
@@ -63,4 +65,21 @@ def get_session_service() -> SessionService:
 def session_service_dependency(
     service: SessionService = Depends(get_session_service),
 ) -> SessionService:
+    return service
+
+
+def set_tenant_settings_service(service: TenantSettingsService) -> None:
+    global _tenant_settings_service
+    _tenant_settings_service = service
+
+
+def get_tenant_settings_service() -> TenantSettingsService:
+    if _tenant_settings_service is None:  # pragma: no cover
+        raise RuntimeError("TenantSettingsService not configured")
+    return _tenant_settings_service
+
+
+def tenant_settings_service_dependency(
+    service: TenantSettingsService = Depends(get_tenant_settings_service),
+) -> TenantSettingsService:
     return service

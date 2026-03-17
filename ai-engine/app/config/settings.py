@@ -21,12 +21,25 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-1.5-flash-latest"
     GEMINI_TIMEOUT: int = 30
+    AI_FALLBACK_REPLY: str = (
+        "Nao tenho como responder no momento. "
+        "Tente novamente em instantes."
+    )
+    AI_DEBUG_PROMPTS: bool = False
+    BLOCK_REALTIME_FACTS: bool = True
+    REALTIME_GUARD_REPLY: str = (
+        "Nao consigo confirmar eventos ou dados em tempo real agora. "
+        "Posso ajudar com informacoes gerais ou transferir para um atendente."
+    )
 
     MOCK_AI: bool = False
 
     SYSTEM_PROMPT: str = (
         "You are a helpful AI assistant for a WhatsApp chatbot. "
-        "Keep answers concise, empathetic, and always in Brazilian Portuguese."
+        "Keep answers concise, empathetic, and always in Brazilian Portuguese. "
+        "You do not have internet access and cannot verify recent real-world events. "
+        "If the user asks for recent scores, prices, or news, clearly state this limitation "
+        "instead of guessing."
     )
     MAX_HISTORY_MESSAGES: int = 6
 

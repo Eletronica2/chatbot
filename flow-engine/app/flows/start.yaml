@@ -1,9 +1,9 @@
 name: start
-description: Fluxo inicial padrão
+description: Fluxo inicial padrao
 start_state: greeting
 states:
   greeting:
-    message: "Olá! Sou o assistente virtual. Como posso ajudar?"
+    message: "Ola! Sou o assistente virtual. Como posso ajudar?"
     options:
       - label: "Perguntas frequentes"
         value: "faq_prompt"
@@ -15,8 +15,9 @@ states:
       - condition: "contains:atendimento"
         target_state: handoff
   faq_prompt:
-    message: "Legal! Posso te ajudar com dúvidas comuns. Escreva sua pergunta."
+    message: "Legal! Posso te ajudar com duvidas comuns. Escreva sua pergunta."
   handoff:
-    message: "Tudo certo, já estou encaminhando para um especialista humano."
+    message: "Tudo certo, ja estou encaminhando para um especialista humano."
+    requires_handoff: true
   fallback:
-    message: "Não entendi sua solicitação, poderia reformular?"
+    message: "Nao entendi sua solicitacao, poderia reformular?"
