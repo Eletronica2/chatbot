@@ -104,7 +104,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _tenantId = 'default';
+  static const String _tenantId = String.fromEnvironment(
+    'TENANT_ID',
+    defaultValue: 'default',
+  );
   List<FlowSummaryModel> _flows = [];
   bool _loadingFlows = true;
   String? _selectedName;
