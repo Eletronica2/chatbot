@@ -1,0 +1,6 @@
+name: atendimento
+description: Fluxo para direcionar atendimento humano
+start_state: waiting
+states:
+  waiting:
+    message: "Um de nossos especialistas vai assumir a conversa em instantes."

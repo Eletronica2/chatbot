@@ -1,0 +1,31 @@
+name: start
+description: Fluxo de atendimento inicial para WhatsApp Gateway
+start_state: greeting
+states:
+  greeting:
+    message: "Olá! Sou o assistente virtual. Escolha uma opção para começar:"
+    options:
+      - label: "1 - Acompanhar pedido"
+        value: "option_1"
+      - label: "2 - Falar com atendente"
+        value: "option_2"
+      - label: "3 - Outras informações"
+        value: "option_3"
+    transitions:
+      - condition: "contains:1"
+        target_state: option_1
+      - condition: "contains:2"
+        target_state: option_2
+      - condition: "contains:3"
+        target_state: option_3
+  option_1:
+    message: "Para acompanhar seu pedido, envie o número ou CPF do responsável."
+  option_2:
+    message: "Tudo certo! Vou acionar um atendente humano. Aguarde um instante."
+  option_3:
+    message: "Sem problemas! Me conte com o que mais posso te ajudar."
+  fallback:
+    message: "Não reconheci sua opção. Responda com 1, 2 ou 3 para continuar."
+    transitions:
+      - condition: "always"
+        target_state: greeting
