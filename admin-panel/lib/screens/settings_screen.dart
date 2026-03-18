@@ -22,7 +22,8 @@ const _kDanger  = Color(0xFFEF4444);
 class _OptionDraft {
   final TextEditingController labelCtrl;
   final TextEditingController valueCtrl;
-  _OptionDraft({String label = '', String value = ''})
+  String targetState;
+  _OptionDraft({String label = '', String value = '', this.targetState = ''})
       : labelCtrl = TextEditingController(text: label),
         valueCtrl = TextEditingController(text: value);
   void dispose() {
@@ -42,18 +43,23 @@ class _TransitionDraft {
 class _StateDraft {
   final TextEditingController nameCtrl;
   final TextEditingController msgCtrl;
+  final TextEditingController hookActionCtrl;
   final List<_OptionDraft> options;
   final List<_TransitionDraft> transitions;
+  bool requiresHandoff;
   bool expanded;
 
   _StateDraft({
     String name = '',
     String message = '',
+    String hookAction = '',
     List<_OptionDraft>? options,
     List<_TransitionDraft>? transitions,
+    this.requiresHandoff = false,
     this.expanded = false,
   })  : nameCtrl = TextEditingController(text: name),
         msgCtrl = TextEditingController(text: message),
+        hookActionCtrl = TextEditingController(text: hookAction),
         options = options ?? [],
         transitions = transitions ?? [];
 
@@ -63,6 +69,7 @@ class _StateDraft {
   void dispose() {
     nameCtrl.dispose();
     msgCtrl.dispose();
+    hookActionCtrl.dispose();
     for (final o in options) o.dispose();
     for (final t in transitions) t.dispose();
   }
@@ -192,6 +199,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final sName = entry.key.toString();
           final sData = (entry.value is Map) ? entry.value as Map : <dynamic, dynamic>{};
           final msg   = sData['message']?.toString() ?? '';
+          final requiresHandoff = sData['requires_handoff'] == true;
+          final hookData = sData['hook'];
+          final hookAction = (hookData is Map)
+              ? (hookData['action'] ?? hookData['name'])?.toString() ?? ''
+              : '';
           final opts  = <_OptionDraft>[];
           final rawOpts = sData['options'];
           if (rawOpts is List) {
@@ -209,11 +221,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (t is! Map) continue;
               final cond   = t['condition']?.toString() ?? '';
               final target = (t['target_state'] ?? t['target'] ?? t['next_state'] ?? t['next'])?.toString() ?? '';
-              final kw     = cond.startsWith('contains:') ? cond.substring(9) : cond;
-              trans.add(_TransitionDraft(keyword: kw, targetState: target));
+              final kw = cond.startsWith('contains:') ? cond.substring(9).trim() : cond.trim();
+              final normalizedKeyword = kw.toLowerCase();
+              var consumedByOption = false;
+              for (final option in opts) {
+                final optionValue = option.valueCtrl.text.trim().toLowerCase();
+                final optionLabel = option.labelCtrl.text.trim().toLowerCase();
+                if (normalizedKeyword.isNotEmpty &&
+                    (normalizedKeyword == optionValue || normalizedKeyword == optionLabel)) {
+                  option.targetState = target;
+                  consumedByOption = true;
+                  break;
+                }
+              }
+              if (!consumedByOption) {
+                trans.add(_TransitionDraft(keyword: kw, targetState: target));
+              }
             }
           }
-          states.add(_StateDraft(name: sName, message: msg, options: opts, transitions: trans));
+          states.add(_StateDraft(
+            name: sName,
+            message: msg,
+            hookAction: hookAction,
+            options: opts,
+            transitions: trans,
+            requiresHandoff: requiresHandoff,
+          ));
         }
       }
       return _FlowDraft(
@@ -240,21 +273,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (s.name.isEmpty) continue;
       b.writeln('  ${s.name}:');
       if (s.message.isNotEmpty) b.writeln('    message: "${_esc(s.message)}"');
+      if (s.requiresHandoff) b.writeln('    requires_handoff: true');
+      if (s.hookActionCtrl.text.trim().isNotEmpty) {
+        b.writeln('    hook:');
+        b.writeln('      action: "${_esc(s.hookActionCtrl.text.trim())}"');
+      }
       final opts = s.options.where((o) => o.labelCtrl.text.trim().isNotEmpty).toList();
       if (opts.isNotEmpty) {
         b.writeln('    options:');
         for (final o in opts) {
+          final generatedValue = o.labelCtrl.text
+              .trim()
+              .toLowerCase()
+              .replaceAll(' ', '_')
+              .replaceAll(RegExp(r'[^a-z0-9_\\-]'), '');
+          final optionValue = o.valueCtrl.text.trim().isNotEmpty
+              ? o.valueCtrl.text.trim()
+              : generatedValue;
           b.writeln('      - label: "${_esc(o.labelCtrl.text.trim())}"');
-          b.writeln('        value: "${_esc(o.valueCtrl.text.trim())}"');
+          b.writeln('        value: "${_esc(optionValue)}"');
         }
       }
-      final trs = s.transitions
+      final trs = <_TransitionDraft>[];
+      final seen = <String>{};
+
+      for (final option in opts) {
+        final target = option.targetState.trim();
+        final value = option.valueCtrl.text.trim();
+        final label = option.labelCtrl.text.trim();
+        if (target.isEmpty) continue;
+        final token = value.isNotEmpty ? value : label.toLowerCase().replaceAll(' ', '_');
+        if (token.isEmpty) continue;
+        final dedupKey = 'contains:$token->$target';
+        if (seen.contains(dedupKey)) continue;
+        seen.add(dedupKey);
+        trs.add(_TransitionDraft(keyword: token, targetState: target));
+      }
+
+      final freeTextTransitions = s.transitions
           .where((t) => t.keywordCtrl.text.trim().isNotEmpty && t.targetState.isNotEmpty)
           .toList();
+      for (final transition in freeTextTransitions) {
+        final token = transition.keywordCtrl.text.trim();
+        final target = transition.targetState.trim();
+        final dedupKey = 'contains:$token->$target';
+        if (seen.contains(dedupKey)) continue;
+        seen.add(dedupKey);
+        trs.add(_TransitionDraft(keyword: token, targetState: target));
+      }
+
       if (trs.isNotEmpty) {
         b.writeln('    transitions:');
         for (final t in trs) {
-          b.writeln('      - condition: "contains:${t.keywordCtrl.text.trim()}"');
+          b.writeln('      - condition: "contains:${_esc(t.keywordCtrl.text.trim())}"');
           b.writeln('        target_state: ${t.targetState}');
         }
       }
@@ -270,6 +341,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (d == null) return;
     if (d.name.isEmpty)   { _showErr('Nome do fluxo é obrigatório'); return; }
     if (d.states.isEmpty) { _showErr('Adicione pelo menos um estado ao fluxo'); return; }
+    for (final state in d.states) {
+      for (final option in state.options) {
+        final hasLabel = option.labelCtrl.text.trim().isNotEmpty;
+        if (hasLabel && option.targetState.trim().isEmpty) {
+          _showErr(
+            'Defina o próximo passo para o botão "${option.labelCtrl.text.trim()}" no passo "${state.name}".',
+          );
+          return;
+        }
+      }
+    }
 
     setState(() => _saving = true);
     try {
@@ -338,70 +420,185 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _showNewFlowDialog() {
-    final ctrl = TextEditingController();
+  String _normalizeFlowName(String value) {
+    final cleaned = value.trim().toLowerCase().replaceAll(RegExp(r'[^a-z0-9_\- ]'), '');
+    return cleaned.replaceAll(' ', '_');
+  }
+
+  List<_StateDraft> _buildTemplateStates(String template) {
+    if (template == 'faq') {
+      return [
+        _StateDraft(
+          name: 'inicio',
+          message: 'Oi! Escolha um tema para eu te ajudar.',
+          expanded: true,
+          options: [
+            _OptionDraft(label: 'Horario de funcionamento', value: 'horario', targetState: 'faq_horario'),
+            _OptionDraft(label: 'Formas de pagamento', value: 'pagamento', targetState: 'faq_pagamento'),
+            _OptionDraft(label: 'Falar com atendente', value: 'atendente', targetState: 'atendimento_humano'),
+          ],
+        ),
+        _StateDraft(name: 'faq_horario', message: 'Funcionamos de segunda a sabado, das 8h as 18h.'),
+        _StateDraft(name: 'faq_pagamento', message: 'Aceitamos PIX, cartao e dinheiro.'),
+        _StateDraft(
+          name: 'atendimento_humano',
+          message: 'Perfeito! Vou te transferir para nossa equipe agora.',
+          requiresHandoff: true,
+        ),
+      ];
+    }
+
+    if (template == 'vendas') {
+      return [
+        _StateDraft(
+          name: 'inicio',
+          message: 'Bem-vindo! Sobre o que voce quer falar?',
+          expanded: true,
+          options: [
+            _OptionDraft(label: 'Ver produtos', value: 'produtos', targetState: 'catalogo'),
+            _OptionDraft(label: 'Pedir orcamento', value: 'orcamento', targetState: 'orcamento'),
+            _OptionDraft(label: 'Falar com vendedor', value: 'vendedor', targetState: 'vendedor_humano'),
+          ],
+        ),
+        _StateDraft(name: 'catalogo', message: 'Posso te mostrar as categorias e ofertas atuais.'),
+        _StateDraft(name: 'orcamento', message: 'Me diga o produto e a quantidade para eu montar um orcamento.'),
+        _StateDraft(
+          name: 'vendedor_humano',
+          message: 'Certo, vou chamar um vendedor para continuar com voce.',
+          requiresHandoff: true,
+        ),
+      ];
+    }
+
+    return [
+      _StateDraft(
+        name: 'inicio',
+        message: 'Ola! Como posso ajudar voce hoje?',
+        expanded: true,
+        options: [
+          _OptionDraft(label: 'Falar com atendente', value: 'atendente', targetState: 'atendimento_humano'),
+        ],
+      ),
+      _StateDraft(
+        name: 'atendimento_humano',
+        message: 'Perfeito, vou encaminhar para nossa equipe.',
+        requiresHandoff: true,
+      ),
+    ];
+  }
+
+  void _showGuidedFlowDialog() {
+    final nameCtrl = TextEditingController();
+    String selectedTemplate = 'atendimento';
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: _kCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        title: const Text('Novo fluxo', style: TextStyle(color: _kText, fontWeight: FontWeight.w600)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Escolha um nome simples, sem espaços.', style: TextStyle(color: _kMuted, fontSize: 13)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: ctrl,
-              autofocus: true,
-              style: const TextStyle(color: _kText),
-              decoration: InputDecoration(
-                labelText: 'Nome do fluxo',
-                hintText: 'ex: boas_vindas',
-                labelStyle: const TextStyle(color: _kMuted),
-                hintStyle: const TextStyle(color: _kSubtle),
-                enabledBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: _kBorder),
-                    borderRadius: BorderRadius.circular(8)),
-                focusedBorder: OutlineInputBorder(
-                    borderSide: const BorderSide(color: _kAccent),
-                    borderRadius: BorderRadius.circular(8)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: _kCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          title: const Text(
+            'Criar fluxo guiado',
+            style: TextStyle(color: _kText, fontWeight: FontWeight.w600),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Escolha um nome e um modelo pronto. Depois voce so edita os textos.',
+                style: TextStyle(color: _kMuted, fontSize: 13),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: nameCtrl,
+                autofocus: true,
+                style: const TextStyle(color: _kText),
+                decoration: InputDecoration(
+                  labelText: 'Nome do fluxo',
+                  hintText: 'ex: atendimento_loja',
+                  labelStyle: const TextStyle(color: _kMuted),
+                  hintStyle: const TextStyle(color: _kSubtle),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: _kBorder),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: _kAccent),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: _kInput,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _kBorder),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedTemplate,
+                    dropdownColor: _kCard,
+                    style: const TextStyle(color: _kText, fontSize: 13),
+                    isExpanded: true,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'atendimento',
+                        child: Text('Atendimento basico'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'faq',
+                        child: Text('FAQ rapido'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'vendas',
+                        child: Text('Vendas e orcamento'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() => selectedTemplate = value);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: _kMuted)),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: _kAccent),
+              onPressed: () {
+                final name = _normalizeFlowName(nameCtrl.text);
+                if (name.isEmpty) return;
+                final states = _buildTemplateStates(selectedTemplate);
+                Navigator.pop(ctx);
+                setState(() {
+                  _draft?.dispose();
+                  _selectedName = name;
+                  _draft = _FlowDraft(
+                    name: name,
+                    description: 'Fluxo criado com assistente visual',
+                    startState: 'inicio',
+                    states: states,
+                  );
+                });
+              },
+              child: const Text('Criar fluxo'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar', style: TextStyle(color: _kMuted))),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _kAccent),
-            onPressed: () {
-              final name = ctrl.text.trim().replaceAll(' ', '_');
-              if (name.isEmpty) return;
-              Navigator.pop(ctx);
-              setState(() {
-                _draft?.dispose();
-                _selectedName = name;
-                _draft = _FlowDraft(
-                  name: name,
-                  description: '',
-                  startState: 'inicio',
-                  states: [
-                    _StateDraft(
-                        name: 'inicio',
-                        message: 'Olá! Como posso ajudar?',
-                        expanded: true),
-                  ],
-                );
-              });
-            },
-            child: const Text('Criar'),
-          ),
-        ],
       ),
     );
+  }
+
+  void _showNewFlowDialog() {
+    _showGuidedFlowDialog();
   }
 
   void _showErr(String msg) {
@@ -471,7 +668,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Spacer(),
                 _SmallBtn(icon: Icons.refresh_rounded, tooltip: 'Atualizar', onTap: _reloadFlows),
                 const SizedBox(width: 4),
-                _SmallBtn(icon: Icons.add_rounded, tooltip: 'Novo fluxo', onTap: _showNewFlowDialog),
+                _SmallBtn(icon: Icons.add_rounded, tooltip: 'Novo fluxo', onTap: _showGuidedFlowDialog),
               ],
             ),
           ),
@@ -835,7 +1032,7 @@ class _FlowEditorView extends StatefulWidget {
 
 class _FlowEditorViewState extends State<_FlowEditorView> {
   void _addState() {
-    final newName = 'estado_${widget.draft.states.length + 1}';
+    final newName = 'passo_${widget.draft.states.length + 1}';
     setState(() {
       widget.draft.states.add(_StateDraft(name: newName, expanded: true));
       if (widget.draft.startState.isEmpty) widget.draft.startState = newName;
@@ -861,6 +1058,14 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildTopBar(d),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          color: const Color(0xFF101A2D),
+          child: const Text(
+            'Guia rápido: 1) escreva a mensagem do passo, 2) adicione botões, 3) escolha o próximo passo de cada botão.',
+            style: TextStyle(color: _kMuted, fontSize: 12),
+          ),
+        ),
         Expanded(
           child: d.states.isEmpty
               ? _buildEmptyStates()
@@ -873,6 +1078,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: _StateCard(
                         state: d.states[i],
+                        stepNumber: i + 1,
                         stateNames: d.stateNames,
                         onDelete: () => _removeState(i),
                         onChanged: () { setState(() {}); widget.onChanged(); },
@@ -900,7 +1106,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               label: 'Nome do fluxo',
               child: _DarkField(
                 controller: d.nameCtrl,
-                hint: 'meu_fluxo',
+                hint: 'ex: atendimento_loja',
                 onChanged: widget.onChanged,
               ),
             ),
@@ -918,7 +1124,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
           const SizedBox(width: 14),
           // Start state
           _LabeledField(
-            label: 'Estado inicial',
+            label: 'Primeiro passo',
             child: Container(
               height: 36,
               constraints: const BoxConstraints(minWidth: 140),
@@ -981,7 +1187,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               style: TextStyle(color: _kMuted, fontSize: 14)),
           const SizedBox(height: 6),
           const Text(
-              'Estados são as etapas da conversa — cada um envia uma mensagem ao usuário.',
+              'Passos são as etapas da conversa — cada passo envia uma mensagem ao cliente.',
               style: TextStyle(color: _kSubtle, fontSize: 12),
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
@@ -989,7 +1195,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
             style: FilledButton.styleFrom(backgroundColor: _kAccent),
             onPressed: _addState,
             icon: const Icon(Icons.add_rounded, size: 16),
-            label: const Text('Criar primeiro estado'),
+            label: const Text('Criar primeiro passo'),
           ),
         ],
       ),
@@ -1007,7 +1213,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
             padding: const EdgeInsets.symmetric(vertical: 14)),
         onPressed: _addState,
         icon: const Icon(Icons.add_rounded, size: 16),
-        label: const Text('Adicionar estado'),
+        label: const Text('Adicionar passo'),
       ),
     );
   }
@@ -1017,11 +1223,13 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
 class _StateCard extends StatefulWidget {
   const _StateCard({
     required this.state,
+    required this.stepNumber,
     required this.stateNames,
     required this.onDelete,
     required this.onChanged,
   });
   final _StateDraft state;
+  final int stepNumber;
   final List<String> stateNames;
   final VoidCallback onDelete;
   final VoidCallback onChanged;
@@ -1032,7 +1240,8 @@ class _StateCard extends StatefulWidget {
 
 class _StateCardState extends State<_StateCard> {
   void _addOption() {
-    setState(() => widget.state.options.add(_OptionDraft()));
+    final nextValue = 'opcao_${widget.state.options.length + 1}';
+    setState(() => widget.state.options.add(_OptionDraft(value: nextValue)));
     widget.onChanged();
   }
 
@@ -1087,6 +1296,15 @@ class _StateCardState extends State<_StateCard> {
                   const SizedBox(width: 8),
                   const Icon(Icons.circle, color: _kAccent, size: 7),
                   const SizedBox(width: 8),
+                  Text(
+                    'Passo ${widget.stepNumber}',
+                    style: const TextStyle(
+                      color: _kMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: SizedBox(
                       height: 30,
@@ -1099,7 +1317,7 @@ class _StateCardState extends State<_StateCard> {
                           isDense: true,
                           contentPadding:
                               const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-                          hintText: 'nome_do_estado',
+                          hintText: 'id interno do passo (ex: inicio)',
                           hintStyle: const TextStyle(color: _kSubtle, fontSize: 13),
                           filled: true,
                           fillColor: _kCard,
@@ -1168,6 +1386,57 @@ class _StateCardState extends State<_StateCard> {
               ),
             ),
 
+            // Actions
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _kInput,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _kBorder),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.support_agent_rounded, size: 15, color: _kMuted),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'Transferir para atendente humano neste passo',
+                            style: TextStyle(color: _kMuted, fontSize: 12),
+                          ),
+                        ),
+                        Switch(
+                          value: s.requiresHandoff,
+                          activeTrackColor: _kAccent,
+                          onChanged: (v) {
+                            setState(() => s.requiresHandoff = v);
+                            widget.onChanged();
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.link_rounded, size: 15, color: _kMuted),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _DarkField(
+                            controller: s.hookActionCtrl,
+                            hint: 'Ação externa (opcional), ex: consultar_saldo',
+                            onChanged: widget.onChanged,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
             // Options
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -1194,7 +1463,11 @@ class _StateCardState extends State<_StateCard> {
                                 style: TextStyle(color: _kSubtle, fontSize: 11))),
                         SizedBox(width: 8),
                         Expanded(
-                            child: Text('Valor (identificador)',
+                            child: Text('Código interno',
+                                style: TextStyle(color: _kSubtle, fontSize: 11))),
+                        SizedBox(width: 8),
+                        Expanded(
+                            child: Text('Próximo passo',
                                 style: TextStyle(color: _kSubtle, fontSize: 11))),
                         SizedBox(width: 30),
                       ],
@@ -1217,6 +1490,40 @@ class _StateCardState extends State<_StateCard> {
                                     controller: o.valueCtrl,
                                     hint: 'Ex: ver_produtos',
                                     onChanged: widget.onChanged)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                height: 36,
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: _kInput,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: _kBorder),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: widget.stateNames.contains(o.targetState)
+                                        ? o.targetState
+                                        : null,
+                                    hint: const Text(
+                                      'Selecionar',
+                                      style: TextStyle(color: _kSubtle, fontSize: 12),
+                                    ),
+                                    isExpanded: true,
+                                    dropdownColor: _kCard,
+                                    style: const TextStyle(color: _kText, fontSize: 12),
+                                    items: widget.stateNames
+                                        .map((n) => DropdownMenuItem(value: n, child: Text(n)))
+                                        .toList(),
+                                    onChanged: (v) {
+                                      if (v == null) return;
+                                      setState(() => o.targetState = v);
+                                      widget.onChanged();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
                             InkWell(
                               onTap: () => _removeOption(i),
                               borderRadius: BorderRadius.circular(6),
@@ -1233,7 +1540,7 @@ class _StateCardState extends State<_StateCard> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Text(
-                          'Sem opções — clique em + para adicionar botões de resposta.',
+                          'Sem opções — clique em + para adicionar botões que o cliente pode tocar.',
                           style: const TextStyle(color: _kSubtle, fontSize: 12)),
                     ),
                 ],
@@ -1249,13 +1556,18 @@ class _StateCardState extends State<_StateCard> {
                   Row(
                     children: [
                       _SectionLabel(
-                          icon: Icons.arrow_forward_rounded, label: 'Regras de transição'),
+                          icon: Icons.arrow_forward_rounded, label: 'Palavras-chave (opcional)'),
                       const Spacer(),
                       _SmallBtn(
                           icon: Icons.add_rounded,
-                          tooltip: 'Adicionar regra',
+                          tooltip: 'Adicionar palavra-chave',
                           onTap: _addTransition),
                     ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Use esta área só para mensagens digitadas. Se usar botões acima, já funciona automaticamente.',
+                    style: TextStyle(color: _kSubtle, fontSize: 11),
                   ),
                   if (s.transitions.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -1265,7 +1577,7 @@ class _StateCardState extends State<_StateCard> {
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(
                           children: [
-                            _PillLabel('Se contiver'),
+                            _PillLabel('Quando escrever'),
                             Expanded(
                               child: TextField(
                                 controller: t.keywordCtrl,
@@ -1291,7 +1603,7 @@ class _StateCardState extends State<_StateCard> {
                                 ),
                               ),
                             ),
-                            _PillLabel('→ ir para'),
+                            _PillLabel('-> ir para'),
                             Container(
                               constraints: const BoxConstraints(minWidth: 130),
                               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1342,7 +1654,7 @@ class _StateCardState extends State<_StateCard> {
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 6),
                       child: Text(
-                          'Sem regras — clique em + para definir quando avançar para outro estado.',
+                          'Sem palavras-chave extras. Você pode deixar assim se usar botões.',
                           style: const TextStyle(color: _kSubtle, fontSize: 12)),
                     ),
                 ],
@@ -1450,5 +1762,6 @@ class _DarkField extends StatelessWidget {
     );
   }
 }
+
 
 
