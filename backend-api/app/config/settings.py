@@ -1,37 +1,66 @@
-"""Application settings for Backend API"""
+﻿"""Application settings for Backend API."""
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
-    """Centralized configuration loaded from environment variables"""
+    """Centralized configuration loaded from environment variables."""
 
-    # App metadata
     APP_NAME: str = "Backend API"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
 
-    # Server configuration
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 
-    # Flow engine integration
     FLOW_ENGINE_URL: str = "http://flow-engine:8002"
     FLOW_ENGINE_TIMEOUT: int = 15
 
-    # AI engine integration
     AI_ENGINE_URL: str = "http://ai-engine:8003"
     AI_ENGINE_TIMEOUT: int = 20
 
-    # Session management
+    DATABASE_URL: str = "mysql+pymysql://chatbot:chatbot@mysql:3306/chatbot"
+
     SESSION_TTL_SECONDS: int = 3600
-
-    # Multi-tenant defaults
     DEFAULT_TENANT_ID: str = "default"
+    DEFAULT_TENANT_NAME: str = "Tenant Demo"
+    DEFAULT_TENANT_EMAIL: str = "admin@demo.local"
 
-    # WhatsApp Gateway integration (for admin panel reply)
+    DEFAULT_ADMIN_EMAIL: str = "admin@demo.local"
+    DEFAULT_ADMIN_PASSWORD: str = "admin1234"
+    DEFAULT_ADMIN_NAME: str = "Administrador"
+    DEFAULT_ADMIN_ROLE: str = "superadmin"
+
+    APP_SECRET_KEY: str = "change-me-backend-secret"
+    JWT_EXPIRES_MINUTES: int = 720
+    INTERNAL_API_KEY: str = "internal-chatbot-key"
+    ADMIN_PANEL_URL: str = "http://localhost:8000"
+    INVITE_TOKEN_TTL_HOURS: int = 72
+    RESET_TOKEN_TTL_HOURS: int = 2
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "no-reply@chatbot.local"
+    SMTP_FROM_NAME: str = "Chatbot SaaS"
+    SMTP_USE_TLS: bool = True
+    SMTP_USE_SSL: bool = False
+
+    BILLING_PROVIDER: str = "stripe"
+    BILLING_GRACE_DAYS: int = 3
+    BILLING_SUCCESS_URL: str = "http://localhost:8000/#/billing/success?session_id={CHECKOUT_SESSION_ID}"
+    BILLING_CANCEL_URL: str = "http://localhost:8000/#/billing/cancel"
+    BILLING_PORTAL_RETURN_URL: str = "http://localhost:8000/#/billing"
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_STARTER: str = ""
+    STRIPE_PRICE_GROWTH: str = ""
+    STRIPE_PRICE_PRO: str = ""
+    STRIPE_PRICE_ENTERPRISE: str = ""
+    STRIPE_DEFAULT_CURRENCY: str = "brl"
+
     GATEWAY_API_URL: str = "http://whatsapp-gateway:40000"
     GATEWAY_API_TIMEOUT: int = 15
 
@@ -43,8 +72,8 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Return cached settings instance"""
     return Settings()
 
 
 settings = get_settings()
+

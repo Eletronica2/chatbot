@@ -1,4 +1,4 @@
-"""AI Engine FastAPI application"""
+﻿"""AI Engine FastAPI application"""
 from __future__ import annotations
 
 import logging
@@ -82,3 +82,4 @@ if __name__ == "__main__":
         reload=settings.DEBUG,
         log_level=settings.LOG_LEVEL.lower(),
     )
+

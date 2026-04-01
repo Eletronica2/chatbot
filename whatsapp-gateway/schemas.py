@@ -1,4 +1,4 @@
-"""
+﻿"""
 Pydantic schemas for WhatsApp Gateway
 """
 from pydantic import BaseModel, Field
@@ -269,3 +269,4 @@ class HealthResponse(BaseModel):
     service: str
     version: str
     timestamp: datetime
+

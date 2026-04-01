@@ -1,4 +1,4 @@
-"""Health and diagnostics endpoints"""
+﻿"""Health and diagnostics endpoints"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -19,3 +19,4 @@ async def health_check() -> dict:
         "version": settings.APP_VERSION,
         "timestamp": datetime.utcnow().isoformat(),
     }
+

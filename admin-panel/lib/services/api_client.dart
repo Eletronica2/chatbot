@@ -1,8 +1,9 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-const String apiBaseUrl = String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:8000');
+import 'auth_service.dart';
+import 'api_config.dart';
 
 class ApiException implements Exception {
   ApiException(this.message, {this.statusCode});
@@ -21,7 +22,7 @@ class ApiClient {
 
   Future<dynamic> get(String path) async {
     final uri = Uri.parse('$apiBaseUrl$path');
-    final response = await _httpClient.get(uri);
+    final response = await _httpClient.get(uri, headers: _headers());
     return _handleResponse(response);
   }
 
@@ -29,7 +30,7 @@ class ApiClient {
     final uri = Uri.parse('$apiBaseUrl$path');
     final response = await _httpClient.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(),
       body: jsonEncode(body ?? {}),
     );
     return _handleResponse(response);
@@ -39,7 +40,7 @@ class ApiClient {
     final uri = Uri.parse('$apiBaseUrl$path');
     final response = await _httpClient.patch(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(),
       body: jsonEncode(body ?? {}),
     );
     return _handleResponse(response);
@@ -49,10 +50,23 @@ class ApiClient {
     final uri = Uri.parse('$apiBaseUrl$path');
     final response = await _httpClient.put(
       uri,
-      headers: {'Content-Type': 'application/json'},
+      headers: _headers(),
       body: jsonEncode(body ?? {}),
     );
     return _handleResponse(response);
+  }
+
+  Map<String, String> _headers() {
+    final headers = <String, String>{'Content-Type': 'application/json'};
+    final token = authService.accessToken;
+    final tenantId = authService.tenantId;
+    if (token != null && token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
+    if (tenantId != null && tenantId.isNotEmpty) {
+      headers['x-tenant-id'] = tenantId;
+    }
+    return headers;
   }
 
   dynamic _handleResponse(http.Response response) {
@@ -65,3 +79,4 @@ class ApiClient {
 }
 
 final apiClient = ApiClient();
+

@@ -5,8 +5,21 @@ import '../services/auth_service.dart';
 import '../services/conversation_service.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/conversation_list.dart';
+import 'backoffice_screen.dart';
+import 'billing_hub_screen.dart';
 import 'conversation_detail_screen.dart';
+import 'overview_screen.dart';
 import 'settings_screen.dart';
+
+const _kBg = Color(0xFF081120);
+const _kShellSurface = Color(0xFF0B1120);
+const _kTopbar = Color(0xFF10192A);
+const _kPanel = Color(0xFF111827);
+const _kBorder = Color(0xFF223041);
+const _kText = Color(0xFFE2E8F0);
+const _kMuted = Color(0xFF94A3B8);
+const _kSubtle = Color(0xFF64748B);
+const _kAccent = Color(0xFF7C8CFF);
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.onLogout});
@@ -18,16 +31,63 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  late Future<List<Conversation>> _future;
-  List<Conversation> _all = [];
-  List<Conversation> _filtered = [];
-  int _navIndex = 0;
-  final _searchCtrl = TextEditingController();
+  static const String _navOverview = 'overview';
+  static const String _navConversations = 'conversations';
+  static const String _navFlows = 'flows';
+  static const String _navBilling = 'billing';
+  static const String _navBackoffice = 'backoffice';
+
+  late Future<List<Conversation>> _futureConversations;
+  List<Conversation> _allConversations = <Conversation>[];
+  List<Conversation> _filteredConversations = <Conversation>[];
+  String _selectedNav = _navOverview;
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  List<AppSidebarItem> get _sidebarItems {
+    return <AppSidebarItem>[
+      const AppSidebarItem(
+        id: _navOverview,
+        label: 'Visão geral',
+        icon: Icons.space_dashboard_rounded,
+        section: 'Operação',
+        helper: 'Métricas, status e atalhos rápidos',
+      ),
+      const AppSidebarItem(
+        id: _navConversations,
+        label: 'Conversas',
+        icon: Icons.chat_bubble_outline_rounded,
+        section: 'Operação',
+        helper: 'Atendimento e histórico em tempo real',
+      ),
+      const AppSidebarItem(
+        id: _navFlows,
+        label: 'Fluxos',
+        icon: Icons.account_tree_outlined,
+        section: 'Operação',
+        helper: 'Editor visual do chatbot',
+      ),
+      const AppSidebarItem(
+        id: _navBilling,
+        label: 'Cobrança',
+        icon: Icons.credit_card_rounded,
+        section: 'Operação',
+        helper: 'Planos, pagamentos e assinatura',
+      ),
+      AppSidebarItem(
+        id: _navBackoffice,
+        label: 'Administração SaaS',
+        icon: Icons.apartment_rounded,
+        section: 'Operação SaaS',
+        helper: 'Clientes, usuários e contas WhatsApp',
+        visible: authService.isSuperadmin,
+      ),
+    ];
+  }
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
+    _futureConversations = _loadConversations();
   }
 
   @override
@@ -36,52 +96,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  Future<List<Conversation>> _load() async {
+  Future<List<Conversation>> _loadConversations() async {
     final data = await conversationService.fetchConversations();
+    if (!mounted) return data;
     setState(() {
-      _all = data;
+      _allConversations = data;
       _applyFilter(_searchCtrl.text);
     });
     return data;
   }
 
-  void _applyFilter(String q) {
-    if (q.isEmpty) {
-      _filtered = List.of(_all);
-    } else {
-      final lower = q.toLowerCase();
-      _filtered = _all
-          .where((c) =>
-              c.phoneNumber.toLowerCase().contains(lower) ||
-              c.lastMessage.toLowerCase().contains(lower))
-          .toList();
+  void _refreshConversations() {
+    final future = _loadConversations();
+    setState(() {
+      _futureConversations = future;
+    });
+  }
+
+  void _applyFilter(String query) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      _filteredConversations = List<Conversation>.from(_allConversations);
+      return;
+    }
+    _filteredConversations = _allConversations.where((conversation) {
+      return conversation.phoneNumber.toLowerCase().contains(normalized) || conversation.lastMessage.toLowerCase().contains(normalized);
+    }).toList();
+  }
+
+  void _onSearchChanged(String value) {
+    setState(() => _applyFilter(value));
+  }
+
+  void _selectNav(String navId) {
+    setState(() {
+      _selectedNav = navId;
+    });
+    if (navId == _navConversations) {
+      _refreshConversations();
     }
   }
 
-  void _onSearch(String q) {
-    setState(() => _applyFilter(q));
-  }
-
-  void _refresh() {
-    _searchCtrl.clear();
-    setState(() => _future = _load());
-  }
-
-  void _openConversation(Conversation c) {
-    Navigator.of(context).push(
+  Future<void> _openConversation(Conversation conversation) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ConversationDetailScreen(conversation: c),
+        builder: (_) => ConversationDetailScreen(conversation: conversation),
       ),
     );
-  }
-
-  void _onNavTap(int i) {
-    if (i == 1) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-    } else {
-      setState(() => _navIndex = i);
-    }
+    _refreshConversations();
   }
 
   void _logout() {
@@ -93,251 +155,453 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final user = authService.currentUser;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1120),
+      backgroundColor: _kBg,
       body: Row(
         children: [
           AppSidebar(
-            selectedIndex: _navIndex,
-            onNavItemTap: _onNavTap,
+            items: _sidebarItems,
+            selectedId: _selectedNav,
+            onNavItemTap: _selectNav,
             userEmail: user?.email ?? 'admin',
+            userRole: user?.role,
+            activeTenantLabel: authService.tenantId,
             onLogout: _logout,
           ),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Header(
-                  searchCtrl: _searchCtrl,
-                  onSearch: _onSearch,
-                  onRefresh: _refresh,
-                ),
-                Expanded(
-                  child: FutureBuilder<List<Conversation>>(
-                    future: _future,
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting) {
-                        return const _LoadingState();
-                      }
-                      if (snap.hasError) {
-                        return _ErrorState(
-                          error: snap.error.toString(),
-                          onRetry: _refresh,
-                        );
-                      }
-                      if (_filtered.isEmpty) {
-                        return _EmptyState(searched: _searchCtrl.text.isNotEmpty);
-                      }
-                      return ConversationList(
-                        conversations: _filtered,
-                        onSelectConversation: _openConversation,
-                      );
-                    },
-                  ),
-                ),
-              ],
+            child: Container(
+              color: _kShellSurface,
+              child: Column(
+                children: [
+                  if (_showShellHeader)
+                    _ShellHeader(
+                      title: _pageTitle,
+                      subtitle: _pageSubtitle,
+                      tenantLabel: authService.tenantId ?? '-',
+                      onRefresh: _selectedNav == _navConversations ? _refreshConversations : null,
+                    ),
+                  Expanded(child: _buildCurrentPage()),
+                ],
+              ),
             ),
           ),
         ],
       ),
     );
   }
-}
 
-class _Header extends StatelessWidget {
-  const _Header({
-    required this.searchCtrl,
-    required this.onSearch,
-    required this.onRefresh,
-  });
+  bool get _showShellHeader => _selectedNav == _navOverview || _selectedNav == _navConversations || _selectedNav == _navBilling;
 
-  final TextEditingController searchCtrl;
-  final ValueChanged<String> onSearch;
-  final VoidCallback onRefresh;
+  String get _pageTitle {
+    switch (_selectedNav) {
+      case _navConversations:
+        return 'Central de conversas';
+      case _navFlows:
+        return 'Editor de fluxos';
+      case _navBilling:
+        return 'Cobrança e assinatura';
+      case _navBackoffice:
+        return 'Administração SaaS';
+      default:
+        return authService.isSuperadmin && authService.tenantId == (authService.homeTenantId ?? '')
+            ? 'Operação global da plataforma'
+            : 'Visão geral do chatbot';
+    }
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  String get _pageSubtitle {
+    switch (_selectedNav) {
+      case _navConversations:
+        return 'Acompanhe mensagens, histórico e o estado atual do atendimento.';
+      case _navFlows:
+        return 'Edite automações, simulações e o comportamento do chatbot.';
+      case _navBilling:
+        return 'Gerencie plano, pagamento, portal de cobrança e bloqueio por inadimplência.';
+      case _navBackoffice:
+        return 'Administre clientes, usuários, contas WhatsApp e contexto do SaaS.';
+      default:
+        return 'Métricas, eventos recentes e atalhos das principais áreas do produto.';
+    }
+  }
+
+  Widget _buildCurrentPage() {
+    switch (_selectedNav) {
+      case _navConversations:
+        return _buildConversationsPage();
+      case _navFlows:
+        return KeyedSubtree(
+          key: ValueKey<String>('flows-${authService.tenantId}'),
+          child: const SettingsScreen(embedded: true),
+        );
+      case _navBilling:
+        return KeyedSubtree(
+          key: ValueKey<String>('billing-${authService.tenantId}'),
+          child: BillingHubScreen(
+            onOpenBackoffice: authService.isSuperadmin ? () => _selectNav(_navBackoffice) : null,
+          ),
+        );
+      case _navBackoffice:
+        return KeyedSubtree(
+          key: ValueKey<String>('backoffice-${authService.tenantId}'),
+          child: BackofficeScreen(
+            embedded: true,
+            onLogout: _logout,
+            onOpenTenantFlows: () => _selectNav(_navFlows),
+          ),
+        );
+      default:
+        return KeyedSubtree(
+          key: ValueKey<String>('overview-${authService.tenantId}'),
+          child: OverviewScreen(
+            onOpenConversations: () => _selectNav(_navConversations),
+            onOpenFlows: () => _selectNav(_navFlows),
+            onOpenBilling: () => _selectNav(_navBilling),
+            onOpenBackoffice: authService.isSuperadmin ? () => _selectNav(_navBackoffice) : null,
+          ),
+        );
+    }
+  }
+
+  Widget _buildConversationsPage() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-      decoration: const BoxDecoration(
-        color: Color(0xFF111827),
-        border: Border(bottom: BorderSide(color: Color(0xFF1E293B))),
-      ),
-      child: Row(
+      color: _kShellSurface,
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Conversas',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          Container(
+            padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: _kPanel,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: _kBorder),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x16000000),
+                          blurRadius: 20,
+                          offset: Offset(0, 10),
+                        ),
+                      ],
+                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 880;
+                final searchField = SizedBox(
+                  width: compact ? double.infinity : 320,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    onChanged: _onSearchChanged,
+                    style: const TextStyle(fontSize: 13, color: _kText),
+                    decoration: InputDecoration(
+                        hintText: 'Buscar por número ou mensagem...',
+                      hintStyle: const TextStyle(fontSize: 13, color: _kSubtle),
+                      prefixIcon: const Icon(
+                        Icons.search_rounded,
+                        size: 18,
+                        color: _kMuted,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF0F172A),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _kBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _kBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: _kAccent, width: 2),
+                      ),
+                    ),
+                  ),
+                );
+
+                final intro = const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Inbox operacional',
+                      style: TextStyle(
+                        color: _kText,
+                        fontSize: 20,
                         fontWeight: FontWeight.w700,
-                        color: const Color(0xFFE2E8F0),
                       ),
-                ),
-                Text(
-                  'Monitore e responda em tempo real',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF64748B),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Acompanhe atendimento, status da IA e mensagens mais recentes.',
+                      style: TextStyle(
+                        color: _kMuted,
+                        fontSize: 12,
                       ),
-                ),
-              ],
+                    ),
+                  ],
+                );
+
+                if (compact) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      intro,
+                      const SizedBox(height: 16),
+                      searchField,
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: intro),
+                    const SizedBox(width: 16),
+                    searchField,
+                  ],
+                );
+              },
             ),
           ),
-          const SizedBox(width: 16),
-          SizedBox(
-            width: 260,
-            child: TextField(
-              controller: searchCtrl,
-              onChanged: onSearch,
-              style: const TextStyle(fontSize: 13, color: Color(0xFFE2E8F0)),
-              decoration: InputDecoration(
-                hintText: 'Buscar por número ou mensagem...',
-                hintStyle: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                prefixIcon: const Icon(Icons.search_rounded, size: 18, color: Color(0xFF94A3B8)),
-                filled: true,
-                fillColor: const Color(0xFF1E293B),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
+          const SizedBox(height: 16),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _kPanel,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _kBorder),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x18000000),
+                      blurRadius: 24,
+                      offset: Offset(0, 14),
+                    ),
+                  ],
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF334155)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: Color(0xFF4F46E5), width: 2),
+                child: FutureBuilder<List<Conversation>>(
+                  future: _futureConversations,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return _SimpleState(
+                        icon: Icons.cloud_off_rounded,
+                        title: 'Não foi possível carregar as conversas',
+                        message: snapshot.error.toString(),
+                        actionLabel: 'Tentar novamente',
+                        onTap: _refreshConversations,
+                      );
+                    }
+                    if (_filteredConversations.isEmpty) {
+                      return _SimpleState(
+                        icon: _searchCtrl.text.trim().isEmpty ? Icons.chat_bubble_outline_rounded : Icons.search_off_rounded,
+                        title: _searchCtrl.text.trim().isEmpty ? 'Sem conversas por enquanto' : 'Nenhum resultado encontrado',
+                        message:
+                            _searchCtrl.text.trim().isEmpty ? 'As conversas aparecerão aqui quando chegarem mensagens no WhatsApp.' : 'Ajuste o termo pesquisado para encontrar a conversa desejada.',
+                      );
+                    }
+                    return ConversationList(
+                      conversations: _filteredConversations,
+                      onSelectConversation: _openConversation,
+                    );
+                  },
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          _IconBtn(
-            icon: Icons.refresh_rounded,
-            tooltip: 'Atualizar',
-            onTap: onRefresh,
-          ),
         ],
       ),
     );
   }
 }
 
-class _IconBtn extends StatelessWidget {
-  const _IconBtn({required this.icon, required this.tooltip, required this.onTap});
+class _ShellHeader extends StatelessWidget {
+  const _ShellHeader({
+    required this.title,
+    required this.subtitle,
+    required this.tenantLabel,
+    this.onRefresh,
+  });
+
+  final String title;
+  final String subtitle;
+  final String tenantLabel;
+  final VoidCallback? onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+      decoration: const BoxDecoration(
+        color: _kTopbar,
+        border: Border(bottom: BorderSide(color: _kBorder)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 860;
+          final contextBadge = Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF182235),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: const Color(0xFF334155)),
+            ),
+            child: Text(
+              'Cliente em foco: $tenantLabel',
+              style: const TextStyle(
+                color: _kText,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          );
+
+          final action = onRefresh == null
+              ? const SizedBox.shrink()
+              : FilledButton.icon(
+                  onPressed: onRefresh,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Atualizar'),
+                );
+
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: _kText,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: _kMuted,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    contextBadge,
+                    if (onRefresh != null) action,
+                  ],
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: _kText,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: _kMuted,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 18),
+              contextBadge,
+              if (onRefresh != null) ...[
+                const SizedBox(width: 10),
+                action,
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SimpleState extends StatelessWidget {
+  const _SimpleState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.actionLabel,
+    this.onTap,
+  });
+
   final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
+  final String title;
+  final String message;
+  final String? actionLabel;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.all(9),
-          decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFF334155)),
-            borderRadius: BorderRadius.circular(8),
-            color: const Color(0xFF1E293B),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 44, color: _kMuted),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _kText,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _kMuted,
+                  fontSize: 12,
+                  height: 1.45,
+                ),
+              ),
+              if (actionLabel != null && onTap != null) ...[
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: onTap,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: Text(actionLabel!),
+                ),
+              ],
+            ],
           ),
-          child: Icon(icon, size: 18, color: const Color(0xFF94A3B8)),
         ),
-      ),
-    );
-  }
-}
-
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
-  }
-}
-
-class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.error, required this.onRetry});
-  final String error;
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.cloud_off_rounded, size: 48, color: Color(0xFFCBD5E1)),
-          const SizedBox(height: 14),
-          Text(
-            'Não foi possível carregar',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            error,
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Tentar novamente'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.searched});
-  final bool searched;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E293B),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              searched ? Icons.search_off_rounded : Icons.chat_bubble_outline_rounded,
-              size: 36,
-              color: const Color(0xFF4F46E5),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            searched ? 'Nenhum resultado' : 'Sem conversas ainda',
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium
-                ?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            searched
-                ? 'Tente ajustar os termos da busca'
-                : 'As conversas aparecerão aqui quando chegarem',
-            style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-          ),
-        ],
       ),
     );
   }

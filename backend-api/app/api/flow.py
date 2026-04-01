@@ -1,4 +1,4 @@
-"""Flow execution endpoints"""
+﻿"""Flow execution endpoints"""
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -67,3 +67,4 @@ async def execute_flow(
         metadata=result.metadata or {},
         requires_handoff=result.requires_handoff,
     )
+

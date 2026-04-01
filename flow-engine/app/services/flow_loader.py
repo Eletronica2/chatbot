@@ -1,4 +1,4 @@
-"""Responsible for loading and validating YAML flows"""
+"""Responsible for loading and validating YAML flows."""
 from __future__ import annotations
 
 import logging
@@ -19,15 +19,17 @@ logger = logging.getLogger(__name__)
 
 
 class FlowLoader:
-    """Loads YAML flow definitions and keeps them cached in memory"""
+    """Loads YAML flow definitions and keeps them cached in memory."""
 
     def __init__(self, flows_path: Path):
         self.flows_path = flows_path
         self._flows: Dict[str, FlowDefinition] = {}
+        self._tenant_flows: Dict[str, Dict[str, FlowDefinition]] = {}
 
     def load_flows(self) -> Dict[str, FlowDefinition]:
         logger.info("Loading flows from %s", self.flows_path)
         self._flows.clear()
+        self._tenant_flows.clear()
 
         if not self.flows_path.exists():
             logger.warning("Flows path %s does not exist", self.flows_path)
@@ -44,6 +46,38 @@ class FlowLoader:
                 logger.error("Invalid flow %s: %s", file.name, exc)
             except Exception as exc:  # pragma: no cover - defensive fallback
                 logger.exception("Failed to load flow %s: %s", file, exc)
+
+        tenant_root = self._tenant_root()
+        if tenant_root.exists():
+            for tenant_dir in tenant_root.iterdir():
+                if not tenant_dir.is_dir():
+                    continue
+                tenant_id = tenant_dir.name
+                tenant_map: Dict[str, FlowDefinition] = {}
+                for file in tenant_dir.glob("*.yaml"):
+                    try:
+                        with file.open("r", encoding="utf-8") as stream:
+                            raw = yaml.safe_load(stream) or {}
+                        flow = self._parse_flow(file, raw)
+                        tenant_map[flow.name] = flow
+                        logger.info("Loaded tenant flow %s/%s", tenant_id, flow.name)
+                    except FlowValidationError as exc:
+                        logger.error(
+                            "Invalid tenant flow %s/%s: %s",
+                            tenant_id,
+                            file.name,
+                            exc,
+                        )
+                    except Exception as exc:  # pragma: no cover
+                        logger.exception(
+                            "Failed to load tenant flow %s/%s: %s",
+                            tenant_id,
+                            file,
+                            exc,
+                        )
+                if tenant_map:
+                    self._tenant_flows[tenant_id] = tenant_map
+
         return self._flows
 
     def _parse_flow(self, source_path: Path, data: dict) -> FlowDefinition:
@@ -99,11 +133,34 @@ class FlowLoader:
         return FlowState(
             state=state_name,
             message=payload.get("message"),
+            intent_triggers=self._parse_intent_triggers(
+                state_name,
+                payload.get("intent_triggers"),
+            ),
             options=options,
             transitions=transitions,
             requires_handoff=requires_handoff,
             hook=hook,
         )
+
+    def _parse_intent_triggers(self, state_name: str, payload) -> List[str]:
+        if payload is None:
+            return []
+        if not isinstance(payload, list):
+            raise FlowValidationError(
+                f"State '{state_name}' intent_triggers must be a list"
+            )
+
+        normalized: List[str] = []
+        for idx, item in enumerate(payload):
+            if not isinstance(item, str):
+                raise FlowValidationError(
+                    f"State '{state_name}' intent_triggers index {idx} must be a string"
+                )
+            value = item.strip().lower()
+            if value and value not in normalized:
+                normalized.append(value)
+        return normalized
 
     def _parse_options(self, state_name: str, payload) -> List[FlowOption]:
         if payload is None:
@@ -160,24 +217,55 @@ class FlowLoader:
             )
         return transitions
 
-    def get_flow(self, name: str) -> FlowDefinition | None:
+    def _tenant_root(self) -> Path:
+        return self.flows_path / "tenants"
+
+    def _resolve_flow_file_path(self, name: str, tenant_id: str | None = None) -> Path:
+        if tenant_id:
+            return self._tenant_root() / tenant_id / f"{name}.yaml"
+        return self.flows_path / f"{name}.yaml"
+
+    def get_flow(self, name: str, tenant_id: str | None = None) -> FlowDefinition | None:
+        if tenant_id:
+            tenant_flow = self._tenant_flows.get(tenant_id, {}).get(name)
+            if tenant_flow:
+                return tenant_flow
         return self._flows.get(name)
 
-    def list_flows(self) -> Dict[str, FlowDefinition]:
-        return self._flows
+    def list_flows(self, tenant_id: str | None = None) -> Dict[str, FlowDefinition]:
+        if not tenant_id:
+            return self._flows
+        merged = dict(self._flows)
+        merged.update(self._tenant_flows.get(tenant_id, {}))
+        return merged
 
-    def list_flow_names(self) -> List[str]:
-        names = [path.stem for path in self.flows_path.glob("*.yaml")]
-        names.sort()
-        return names
+    def list_flow_names(self, tenant_id: str | None = None) -> List[str]:
+        names = set(path.stem for path in self.flows_path.glob("*.yaml"))
+        if tenant_id:
+            tenant_dir = self._tenant_root() / tenant_id
+            if tenant_dir.exists():
+                names.update(path.stem for path in tenant_dir.glob("*.yaml"))
+        sorted_names = list(names)
+        sorted_names.sort()
+        return sorted_names
 
-    def get_flow_yaml(self, name: str) -> str:
-        file_path = self.flows_path / f"{name}.yaml"
+    def get_flow_yaml(self, name: str, tenant_id: str | None = None) -> str:
+        if tenant_id:
+            tenant_file = self._resolve_flow_file_path(name, tenant_id)
+            if tenant_file.exists():
+                return tenant_file.read_text(encoding="utf-8")
+
+        file_path = self._resolve_flow_file_path(name, None)
         if not file_path.exists():
             raise FlowValidationError(f"Flow '{name}' not found")
         return file_path.read_text(encoding="utf-8")
 
-    def upsert_flow_yaml(self, name: str, yaml_content: str) -> FlowDefinition:
+    def upsert_flow_yaml(
+        self,
+        name: str,
+        yaml_content: str,
+        tenant_id: str | None = None,
+    ) -> FlowDefinition:
         if not name or not name.replace("_", "").replace("-", "").isalnum():
             raise FlowValidationError("Invalid flow name")
 
@@ -186,12 +274,13 @@ class FlowLoader:
         except yaml.YAMLError as exc:
             raise FlowValidationError(f"Invalid YAML: {exc}") from exc
 
-        flow = self._parse_flow(self.flows_path / f"{name}.yaml", raw)
+        file_path = self._resolve_flow_file_path(name, tenant_id)
+        flow = self._parse_flow(file_path, raw)
 
-        self.flows_path.mkdir(parents=True, exist_ok=True)
-        file_path = self.flows_path / f"{name}.yaml"
+        file_path.parent.mkdir(parents=True, exist_ok=True)
         file_path.write_text(yaml_content, encoding="utf-8")
 
         # Refresh cache with latest disk state.
         self.load_flows()
         return flow
+

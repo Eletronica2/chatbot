@@ -1,4 +1,4 @@
-"""Dependency helpers for services"""
+﻿"""Dependency helpers for services"""
 from __future__ import annotations
 
 from typing import Optional
@@ -17,3 +17,4 @@ def get_ai_service() -> AIService:
     if _ai_service is None:  # pragma: no cover - guard clause
         raise RuntimeError("AIService not initialized")
     return _ai_service
+

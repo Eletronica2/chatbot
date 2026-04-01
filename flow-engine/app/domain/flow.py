@@ -25,6 +25,7 @@ class FlowTransition(BaseModel):
 class FlowState(BaseModel):
     state: str
     message: Optional[str] = None
+    intent_triggers: List[str] = Field(default_factory=list)
     options: List[FlowOption] = Field(default_factory=list)
     transitions: List[FlowTransition] = Field(default_factory=list)
     requires_handoff: bool = False
@@ -65,6 +66,7 @@ class FlowExecutionRequest(BaseModel):
         session_state: Dict[str, Any] = {"session_id": payload.session_id}
         if payload.current_state:
             session_state["last_state"] = payload.current_state
+            session_state["current_state"] = payload.current_state
 
         message_payload = {
             "text": payload.message.text,
@@ -85,6 +87,7 @@ class FlowExecutionRequest(BaseModel):
 class FlowExecutionResponse(BaseModel):
     handled: bool
     reply_text: Optional[str] = None
+    detected_intent: Optional[str] = None
     session_state: Dict[str, Any] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     requires_handoff: bool = False

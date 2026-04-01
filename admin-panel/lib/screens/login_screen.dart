@@ -13,8 +13,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController(text: 'admin@demo.local');
+  final _passwordCtrl = TextEditingController(text: 'admin1234');
   bool _loading = false;
   bool _obscure = true;
   String? _error;
@@ -37,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (ok) {
       widget.onLogin();
     } else {
-      setState(() => _error = 'Email ou senha incorretos.');
+      setState(() => _error = authService.lastError ?? 'Email ou senha incorretos.');
     }
     setState(() => _loading = false);
   }
@@ -60,17 +60,17 @@ class _LoginScreenState extends State<LoginScreen> {
           Positioned(
             top: -120,
             left: -80,
-            child: _Glow(size: 380, color: const Color(0xFF4F46E5).withOpacity(0.18)),
+            child: _Glow(size: 380, color: const Color(0xFF4F46E5).withValues(alpha: 0.18)),
           ),
           Positioned(
             bottom: -160,
             right: -100,
-            child: _Glow(size: 480, color: const Color(0xFF818CF8).withOpacity(0.12)),
+            child: _Glow(size: 480, color: const Color(0xFF818CF8).withValues(alpha: 0.12)),
           ),
           Positioned(
             top: 80,
             right: 60,
-            child: _Glow(size: 220, color: const Color(0xFF06B6D4).withOpacity(0.08)),
+            child: _Glow(size: 220, color: const Color(0xFF06B6D4).withValues(alpha: 0.08)),
           ),
           Center(
             child: ConstrainedBox(
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: Border.all(color: const Color(0xFF334155)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.45),
+                        color: Colors.black.withValues(alpha: 0.45),
                         blurRadius: 48,
                         offset: const Offset(0, 24),
                       ),
@@ -157,7 +157,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           obscureText: _obscure,
                           style: const TextStyle(color: Colors.white, fontSize: 14),
                           onFieldSubmitted: (_) => _submit(),
-                          decoration: _darkInput('••••••••').copyWith(
+                          decoration: _darkInput('Digite sua senha').copyWith(
                             suffixIcon: IconButton(
                               onPressed: () => setState(() => _obscure = !_obscure),
                               icon: Icon(
@@ -175,10 +175,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withOpacity(0.1),
+                              color: const Color(0xFFEF4444).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: const Color(0xFFEF4444).withOpacity(0.35),
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.35),
                               ),
                             ),
                             child: Row(
@@ -306,3 +306,4 @@ class _GradientButton extends StatelessWidget {
     );
   }
 }
+

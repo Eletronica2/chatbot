@@ -1,4 +1,4 @@
-import 'dart:developer';
+﻿import 'dart:developer';
 
 import 'api_client.dart';
 
@@ -18,6 +18,46 @@ class FlowSummaryModel {
       name: json['name']?.toString() ?? '',
       description: json['description']?.toString(),
       startState: json['start_state']?.toString(),
+    );
+  }
+}
+
+class SimulationSendResult {
+  SimulationSendResult({
+    required this.userMessage,
+    required this.botResponse,
+    this.flowUsed,
+    this.state,
+    this.source,
+    this.detectedIntent,
+    this.confidence,
+  });
+
+  final String userMessage;
+  final String botResponse;
+  final String? flowUsed;
+  final String? state;
+  final String? source;
+  final String? detectedIntent;
+  final double? confidence;
+
+  factory SimulationSendResult.fromJson(Map<String, dynamic> json) {
+    final confidenceRaw = json['confidence'];
+    double? confidence;
+    if (confidenceRaw is num) {
+      confidence = confidenceRaw.toDouble();
+    } else if (confidenceRaw is String) {
+      confidence = double.tryParse(confidenceRaw);
+    }
+
+    return SimulationSendResult(
+      userMessage: json['user_message']?.toString() ?? '',
+      botResponse: json['bot_response']?.toString() ?? '',
+      flowUsed: json['flow_used']?.toString(),
+      state: json['state']?.toString(),
+      source: json['source']?.toString(),
+      detectedIntent: json['detected_intent']?.toString(),
+      confidence: confidence,
     );
   }
 }
@@ -57,6 +97,30 @@ class FlowAdminService {
       log('reloadFlows warning: $err');
     }
   }
+
+  Future<SimulationSendResult> sendSimulationMessage({
+    required String tenantId,
+    required String message,
+    String? phoneNumber,
+  }) async {
+    final payload = <String, dynamic>{
+      'tenant_id': tenantId,
+      'message': message,
+    };
+    if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+      payload['phone_number'] = phoneNumber.trim();
+    }
+
+    final data = await _apiClient.post('/simulation/send', body: payload);
+    if (data is Map<String, dynamic>) {
+      return SimulationSendResult.fromJson(data);
+    }
+    return SimulationSendResult(
+      userMessage: message,
+      botResponse: 'Não foi possível simular no momento.',
+    );
+  }
 }
 
 final flowAdminService = FlowAdminService(apiClient: apiClient);
+

@@ -1,4 +1,4 @@
-"""Application settings for AI Engine"""
+﻿"""Application settings for AI Engine"""
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 from typing import Optional
@@ -55,3 +55,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+

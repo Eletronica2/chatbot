@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/message.dart';
@@ -54,7 +54,7 @@ class MessageBubble extends StatelessWidget {
                     border: isUser ? Border.all(color: const Color(0xFFE2E8F0)) : null,
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),

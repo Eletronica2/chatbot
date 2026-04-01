@@ -63,6 +63,15 @@ async def root() -> dict:
     }
 
 
+@app.get("/health")
+async def health() -> dict:
+    return {
+        "status": "healthy",
+        "service": settings.APP_NAME,
+        "version": settings.APP_VERSION,
+    }
+
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

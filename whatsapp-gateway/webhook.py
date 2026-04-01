@@ -1,85 +1,46 @@
-"""
-WhatsApp Webhook handlers
-"""
+﻿"""WhatsApp Webhook handlers."""
+from __future__ import annotations
+
 import logging
-import httpx
 from datetime import datetime
-from fastapi import APIRouter, Request, HTTPException, Query, BackgroundTasks
-from pydantic import BaseModel
 from typing import Optional
 
+import httpx
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from pydantic import BaseModel
+
 from config import settings
+from meta_client import build_meta_client
 from schemas import (
-    WebhookPayload,
-    NormalizedMessage,
-    MessageType,
-    MessageDirection,
     HealthResponse,
+    MessageDirection,
+    MessageType,
+    NormalizedMessage,
     OutgoingTextMessage,
+    WebhookPayload,
 )
-from meta_client import meta_client
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
 
 def extract_message_content(message) -> tuple[str, MessageType, Optional[str], Optional[str], Optional[dict]]:
-    """
-    Extract content from different message types
-    Returns: (content, message_type, media_id, media_mime_type, raw_content)
-    """
     msg_type = message.type.lower()
-    
+
     if msg_type == "text" and message.text:
-        return (
-            message.text.body,
-            MessageType.TEXT,
-            None,
-            None,
-            {"body": message.text.body}
-        )
-    
-    elif msg_type == "image" and message.image:
+        return (message.text.body, MessageType.TEXT, None, None, {"body": message.text.body})
+    if msg_type == "image" and message.image:
         caption = message.image.caption or ""
-        return (
-            caption or "[Imagem recebida]",
-            MessageType.IMAGE,
-            message.image.id,
-            message.image.mime_type,
-            {"id": message.image.id, "caption": caption}
-        )
-    
-    elif msg_type == "audio" and message.audio:
-        return (
-            "[Áudio recebido]",
-            MessageType.AUDIO,
-            message.audio.id,
-            message.audio.mime_type,
-            {"id": message.audio.id}
-        )
-    
-    elif msg_type == "video" and message.video:
+        return (caption or "[Imagem recebida]", MessageType.IMAGE, message.image.id, message.image.mime_type, {"id": message.image.id, "caption": caption})
+    if msg_type == "audio" and message.audio:
+        return ("[Audio recebido]", MessageType.AUDIO, message.audio.id, message.audio.mime_type, {"id": message.audio.id})
+    if msg_type == "video" and message.video:
         caption = message.video.caption or ""
-        return (
-            caption or "[Vídeo recebido]",
-            MessageType.VIDEO,
-            message.video.id,
-            message.video.mime_type,
-            {"id": message.video.id, "caption": caption}
-        )
-    
-    elif msg_type == "document" and message.document:
+        return (caption or "[Video recebido]", MessageType.VIDEO, message.video.id, message.video.mime_type, {"id": message.video.id, "caption": caption})
+    if msg_type == "document" and message.document:
         filename = message.document.filename or "documento"
-        return (
-            f"[Documento: {filename}]",
-            MessageType.DOCUMENT,
-            message.document.id,
-            message.document.mime_type,
-            {"id": message.document.id, "filename": filename}
-        )
-    
-    elif msg_type == "location" and message.location:
+        return (f"[Documento: {filename}]", MessageType.DOCUMENT, message.document.id, message.document.mime_type, {"id": message.document.id, "filename": filename})
+    if msg_type == "location" and message.location:
         location_text = f"Lat: {message.location.latitude}, Lng: {message.location.longitude}"
         if message.location.name:
             location_text = f"{message.location.name} - {location_text}"
@@ -92,83 +53,36 @@ def extract_message_content(message) -> tuple[str, MessageType, Optional[str], O
                 "latitude": message.location.latitude,
                 "longitude": message.location.longitude,
                 "name": message.location.name,
-                "address": message.location.address
-            }
+                "address": message.location.address,
+            },
         )
-    
-    elif msg_type == "contacts" and message.contacts:
+    if msg_type == "contacts" and message.contacts:
         contacts_text = ", ".join([c.name.formatted_name for c in message.contacts])
-        return (
-            f"[Contatos: {contacts_text}]",
-            MessageType.CONTACTS,
-            None,
-            None,
-            {"contacts": [c.dict() for c in message.contacts]}
-        )
-    
-    elif msg_type == "interactive" and message.interactive:
+        return (f"[Contatos: {contacts_text}]", MessageType.CONTACTS, None, None, {"contacts": [c.dict() for c in message.contacts]})
+    if msg_type == "interactive" and message.interactive:
         if message.interactive.button_reply:
             reply = message.interactive.button_reply
-            return (
-                reply.title or reply.id,
-                MessageType.INTERACTIVE,
-                None,
-                None,
-                {"type": "button_reply", "id": reply.id, "title": reply.title}
-            )
-        elif message.interactive.list_reply:
+            return (reply.title or reply.id, MessageType.INTERACTIVE, None, None, {"type": "button_reply", "id": reply.id, "title": reply.title})
+        if message.interactive.list_reply:
             reply = message.interactive.list_reply
-            return (
-                reply.title or reply.id,
-                MessageType.INTERACTIVE,
-                None,
-                None,
-                {"type": "list_reply", "id": reply.id, "title": reply.title}
-            )
-    
-    elif msg_type == "button" and message.button:
-        return (
-            message.button.text,
-            MessageType.BUTTON,
-            None,
-            None,
-            {"text": message.button.text, "payload": message.button.payload}
-        )
-    
-    # Unknown type
-    return (
-        f"[Mensagem tipo: {msg_type}]",
-        MessageType.UNKNOWN,
-        None,
-        None,
-        {"type": msg_type}
-    )
+            return (reply.title or reply.id, MessageType.INTERACTIVE, None, None, {"type": "list_reply", "id": reply.id, "title": reply.title})
+    if msg_type == "button" and message.button:
+        return (message.button.text, MessageType.BUTTON, None, None, {"text": message.button.text, "payload": message.button.payload})
+    return (f"[Mensagem tipo: {msg_type}]", MessageType.UNKNOWN, None, None, {"type": msg_type})
 
 
-def normalize_message(
-    message,
-    metadata,
-    contacts,
-    tenant_id: str
-) -> NormalizedMessage:
-    """Normalize incoming WhatsApp message"""
-    
+def normalize_message(message, metadata, contacts, tenant_id: str) -> NormalizedMessage:
     content, msg_type, media_id, media_mime_type, raw_content = extract_message_content(message)
-    
-    # Get contact name
     contact_name = None
     if contacts:
         for contact in contacts:
             if contact.wa_id == message.from_:
                 contact_name = contact.profile.get("name") if contact.profile else None
                 break
-    
-    # Parse timestamp
     try:
         timestamp = datetime.fromtimestamp(int(message.timestamp))
     except (ValueError, TypeError):
         timestamp = datetime.utcnow()
-    
     return NormalizedMessage(
         message_id=message.id,
         tenant_id=tenant_id,
@@ -183,115 +97,146 @@ def normalize_message(
         media_id=media_id,
         media_mime_type=media_mime_type,
         timestamp=timestamp,
-        metadata={
-            "original_type": message.type
-        }
+        metadata={"original_type": message.type},
     )
 
 
-async def forward_to_backend(message: NormalizedMessage):
-    """Forward normalized message to backend API"""
+async def _resolve_account_context(*, tenant_id: str | None = None, phone_number_id: str | None = None) -> dict | None:
+    try:
+        async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
+            response = await client.post(
+                f"{settings.BACKEND_API_URL}/api/v1/internal/whatsapp/resolve",
+                headers={"x-internal-api-key": settings.BACKEND_INTERNAL_API_KEY},
+                json={"tenant_id": tenant_id, "phone_number_id": phone_number_id},
+            )
+        if response.status_code == 200:
+            data = response.json()
+            if isinstance(data, dict) and data.get("found"):
+                return data
+    except Exception as exc:
+        logger.warning("Could not resolve WhatsApp account via backend: %s", exc)
+    return None
+
+
+async def _validate_verify_token(token: str) -> bool:
+    try:
+        async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
+            response = await client.post(
+                f"{settings.BACKEND_API_URL}/api/v1/internal/whatsapp/verify-token",
+                headers={"x-internal-api-key": settings.BACKEND_INTERNAL_API_KEY},
+                json={"verify_token": token},
+            )
+        if response.status_code == 200:
+            payload = response.json()
+            return bool(payload.get("valid"))
+    except Exception as exc:
+        logger.warning("Could not validate verify token via backend: %s", exc)
+    return False
+
+
+def _fallback_account_context(tenant_id: str | None = None, phone_number_id: str | None = None) -> dict | None:
+    if not settings.META_ACCESS_TOKEN or not settings.META_PHONE_NUMBER_ID:
+        return None
+    return {
+        "found": True,
+        "tenant_id": tenant_id or settings.DEFAULT_TENANT_ID,
+        "account_key": "default-env",
+        "display_name": "Conta padrao",
+        "phone_number_id": phone_number_id or settings.META_PHONE_NUMBER_ID,
+        "display_phone_number": settings.META_PHONE_NUMBER_ID,
+        "verify_token": settings.META_VERIFY_TOKEN,
+        "access_token": settings.META_ACCESS_TOKEN,
+    }
+
+
+def _build_client(account_context: dict | None):
+    context = account_context or _fallback_account_context()
+    if context is None:
+        return None
+    access_token = context.get("access_token") or settings.META_ACCESS_TOKEN
+    phone_number_id = context.get("phone_number_id") or settings.META_PHONE_NUMBER_ID
+    if not access_token or not phone_number_id:
+        return None
+    return build_meta_client(access_token=access_token, phone_number_id=phone_number_id)
+
+
+async def forward_to_backend(message: NormalizedMessage, account_context: dict | None):
     try:
         async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
             response = await client.post(
                 f"{settings.BACKEND_API_URL}/api/v1/messages/incoming",
-                json=message.model_dump(mode="json")
+                headers={"x-internal-api-key": settings.BACKEND_INTERNAL_API_KEY},
+                json=message.model_dump(mode="json"),
             )
-            
-            if response.status_code == 200:
-                logger.info(f"Message forwarded to backend: {message.message_id}")
 
-                action = response.json()
-                reply_text = action.get("reply_text") if isinstance(action, dict) else None
-                metadata = action.get("metadata") if isinstance(action, dict) else None
-                reply_to = (
-                    action.get("phone_number")
-                    if isinstance(action, dict)
-                    else None
-                ) or message.phone_number
+        if response.status_code != 200:
+            logger.error("Backend returned error: %s - %s", response.status_code, response.text)
+            return
 
-                if reply_text:
-                    if isinstance(metadata, dict):
-                        options = metadata.get("options")
-                        if isinstance(options, list) and options:
-                            option_lines = []
-                            for option in options:
-                                if not isinstance(option, dict):
-                                    continue
-                                label = option.get("label") or option.get("value")
-                                if label:
-                                    option_lines.append(f"- {label}")
-                            if option_lines:
-                                reply_text = f"{reply_text}\n\nOpcoes:\n" + "\n".join(option_lines)
+        logger.info("Message forwarded to backend: %s", message.message_id)
+        action = response.json()
+        reply_text = action.get("reply_text") if isinstance(action, dict) else None
+        metadata = action.get("metadata") if isinstance(action, dict) else None
+        reply_to = (action.get("phone_number") if isinstance(action, dict) else None) or message.phone_number
+        if not reply_text:
+            return
 
-                    send_result = await meta_client.send_text_message(
-                        OutgoingTextMessage(to=reply_to, text=str(reply_text))
-                    )
-                    if send_result.success:
-                        logger.info(
-                            "Reply sent to WhatsApp for message %s",
-                            message.message_id,
-                        )
-                    else:
-                        logger.error(
-                            "Failed to send WhatsApp reply for %s: %s",
-                            message.message_id,
-                            send_result.error,
-                        )
-            else:
-                logger.error(
-                    f"Backend returned error: {response.status_code} - {response.text}"
-                )
-                
-    except httpx.RequestError as e:
-        logger.error(f"Failed to forward message to backend: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error forwarding to backend: {str(e)}")
+        if isinstance(metadata, dict):
+            options = metadata.get("options")
+            if isinstance(options, list) and options:
+                option_lines = []
+                for option in options:
+                    if not isinstance(option, dict):
+                        continue
+                    label = option.get("label") or option.get("value")
+                    if label:
+                        option_lines.append(f"- {label}")
+                if option_lines:
+                    reply_text = f"{reply_text}\n\nOpcoes:\n" + "\n".join(option_lines)
+
+        send_client = _build_client(account_context)
+        if send_client is None:
+            logger.error("No WhatsApp account configured to send reply")
+            return
+        send_result = await send_client.send_text_message(OutgoingTextMessage(to=reply_to, text=str(reply_text)))
+        if send_result.success:
+            logger.info("Reply sent to WhatsApp for message %s", message.message_id)
+        else:
+            logger.error("Failed to send WhatsApp reply for %s: %s", message.message_id, send_result.error)
+    except httpx.RequestError as exc:
+        logger.error("Failed to forward message to backend: %s", exc)
+    except Exception as exc:
+        logger.error("Unexpected error forwarding to backend: %s", exc)
 
 
-async def process_webhook_message(
-    message,
-    metadata,
-    contacts,
-    tenant_id: str
-):
-    """Process a single message from webhook"""
+async def process_webhook_message(message, metadata, contacts, tenant_id: str, account_context: dict | None):
     try:
-        # Mark as read
-        await meta_client.mark_as_read(message.id)
-        
-        # Normalize message
+        client = _build_client(account_context)
+        if client is not None:
+            await client.mark_as_read(message.id)
         normalized = normalize_message(message, metadata, contacts, tenant_id)
-        
         logger.info(
-            f"Processing message: {normalized.message_id} "
-            f"from {normalized.phone_number} "
-            f"type: {normalized.message_type}"
+            "Processing message: %s from %s type: %s",
+            normalized.message_id,
+            normalized.phone_number,
+            normalized.message_type,
         )
-        
-        # Forward to backend
-        await forward_to_backend(normalized)
-        
-    except Exception as e:
-        logger.error(f"Error processing message: {str(e)}")
+        await forward_to_backend(normalized, account_context)
+    except Exception as exc:
+        logger.error("Error processing message: %s", exc)
 
 
 @router.get("/webhook")
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
-    hub_challenge: str = Query(None, alias="hub.challenge")
+    hub_challenge: str = Query(None, alias="hub.challenge"),
 ):
-    """
-    Webhook verification endpoint for Meta
-    Called when setting up webhook in Meta Developer Portal
-    """
-    logger.info(f"Webhook verification: mode={hub_mode}")
-    
-    if hub_mode == "subscribe" and hub_verify_token == settings.META_VERIFY_TOKEN:
-        logger.info("Webhook verified successfully")
-        return int(hub_challenge)
-    
+    logger.info("Webhook verification: mode=%s", hub_mode)
+    if hub_mode == "subscribe":
+        if hub_verify_token == settings.META_VERIFY_TOKEN or await _validate_verify_token(hub_verify_token or ""):
+            logger.info("Webhook verified successfully")
+            return int(hub_challenge)
     logger.warning("Webhook verification failed")
     raise HTTPException(status_code=403, detail="Verification failed")
 
@@ -300,72 +245,78 @@ async def verify_webhook(
 async def receive_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
-    tenant_id: str = Query(default=None)
+    tenant_id: str = Query(default=None),
 ):
-    """
-    Receive incoming webhook from WhatsApp
-    """
     try:
         body = await request.json()
-        logger.debug(f"Received webhook: {body}")
-        
-        # Parse payload
         payload = WebhookPayload(**body)
-        
-        # Validate it's a WhatsApp message
         if payload.object != "whatsapp_business_account":
-            logger.warning(f"Unknown webhook object: {payload.object}")
+            logger.warning("Unknown webhook object: %s", payload.object)
             return {"status": "ignored"}
-        
-        # Use tenant from query or default
-        current_tenant = tenant_id or settings.DEFAULT_TENANT_ID
-        
-        # Process each entry
+
         for entry in payload.entry:
             for change in entry.changes:
                 if change.field != "messages":
                     continue
-                
                 value = change.value
-                
-                # Skip if no messages (might be status update)
                 if not value.messages:
-                    if value.statuses:
-                        logger.debug(f"Status update received: {value.statuses}")
                     continue
-                
-                # Process each message in background
+
+                account_context = await _resolve_account_context(phone_number_id=value.metadata.phone_number_id)
+                current_tenant = (
+                    (account_context or {}).get("tenant_id")
+                    or tenant_id
+                    or settings.DEFAULT_TENANT_ID
+                )
+                if account_context is None:
+                    account_context = _fallback_account_context(
+                        tenant_id=current_tenant,
+                        phone_number_id=value.metadata.phone_number_id,
+                    )
+
                 for message in value.messages:
                     background_tasks.add_task(
                         process_webhook_message,
                         message,
                         value.metadata,
                         value.contacts,
-                        current_tenant
+                        current_tenant,
+                        account_context,
                     )
-        
+
         return {"status": "ok"}
-        
-    except Exception as e:
-        logger.error(f"Error processing webhook: {str(e)}")
-        # Return 200 to prevent Meta from retrying
-        return {"status": "error", "message": str(e)}
+    except Exception as exc:
+        logger.error("Error processing webhook: %s", exc)
+        return {"status": "error", "message": str(exc)}
 
 
 class SendMessageRequest(BaseModel):
+    tenant_id: str | None = None
     to: str
     text: str
+    phone_number_id: str | None = None
 
 
 @router.post("/send-message")
-async def send_message(body: SendMessageRequest):
-    """Send a WhatsApp text message. Used by admin panel agents to reply manually."""
+async def send_message(body: SendMessageRequest, request: Request):
+    _assert_internal_api(request)
     if not body.to or not body.text:
         raise HTTPException(status_code=422, detail="to and text are required")
 
-    result = await meta_client.send_text_message(
-        OutgoingTextMessage(to=body.to, text=body.text)
+    account_context = await _resolve_account_context(
+        tenant_id=body.tenant_id,
+        phone_number_id=body.phone_number_id,
     )
+    if account_context is None:
+        account_context = _fallback_account_context(
+            tenant_id=body.tenant_id,
+            phone_number_id=body.phone_number_id,
+        )
+    client = _build_client(account_context)
+    if client is None:
+        raise HTTPException(status_code=502, detail="No WhatsApp account configured")
+
+    result = await client.send_text_message(OutgoingTextMessage(to=body.to, text=body.text))
     if not result.success:
         raise HTTPException(status_code=502, detail=f"Meta API error: {result.error}")
     return {"ok": True}
@@ -373,10 +324,16 @@ async def send_message(body: SendMessageRequest):
 
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint"""
     return HealthResponse(
         status="healthy",
         service=settings.APP_NAME,
         version=settings.APP_VERSION,
-        timestamp=datetime.utcnow()
+        timestamp=datetime.utcnow(),
     )
+
+
+def _assert_internal_api(request: Request) -> None:
+    provided = request.headers.get("x-internal-api-key", "")
+    if provided != settings.BACKEND_INTERNAL_API_KEY:
+        raise HTTPException(status_code=403, detail="Internal access denied")
+

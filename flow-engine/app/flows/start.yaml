@@ -3,6 +3,10 @@ description: Fluxo inicial padrao
 start_state: greeting
 states:
   greeting:
+    intent_triggers:
+      - saudacao
+      - oi
+      - ola
     message: "Ola! Sou o assistente virtual. Como posso ajudar?"
     options:
       - label: "Perguntas frequentes"
@@ -15,8 +19,15 @@ states:
       - condition: "contains:atendimento"
         target_state: handoff
   faq_prompt:
+    intent_triggers:
+      - faq
+      - duvida
+      - perguntas_frequentes
     message: "Legal! Posso te ajudar com duvidas comuns. Escreva sua pergunta."
   handoff:
+    intent_triggers:
+      - atendente
+      - suporte_humano
     message: "Tudo certo, ja estou encaminhando para um especialista humano."
     requires_handoff: true
   fallback:

@@ -1,4 +1,4 @@
-"""Wrapper around OpenAI Chat Completions"""
+﻿"""Wrapper around OpenAI Chat Completions"""
 from __future__ import annotations
 
 import logging
@@ -80,3 +80,4 @@ openai_client = OpenAIClient()
 
 async def get_openai_client() -> OpenAIClient:
     return openai_client
+

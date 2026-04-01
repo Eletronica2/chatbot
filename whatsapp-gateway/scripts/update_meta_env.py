@@ -1,4 +1,4 @@
-"""Utility to update WhatsApp Gateway .env values"""
+﻿"""Utility to update WhatsApp Gateway .env values"""
 from __future__ import annotations
 
 import argparse
@@ -83,3 +83,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

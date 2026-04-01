@@ -5,7 +5,7 @@ import logging
 from datetime import datetime
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.config.settings import settings
@@ -86,13 +86,14 @@ async def legacy_execute_flow(
 
 @router.get("/admin/flows", response_model=List[FlowSummary])
 async def list_flows(
+    tenant_id: str | None = Query(default=None),
     flow_service: FlowService = Depends(get_flow_service),
 ) -> List[FlowSummary]:
     loader = flow_service.loader
     loader.load_flows()
     rows: List[FlowSummary] = []
-    for name in loader.list_flow_names():
-        flow = loader.get_flow(name)
+    for name in loader.list_flow_names(tenant_id):
+        flow = loader.get_flow(name, tenant_id)
         rows.append(
             FlowSummary(
                 name=name,
@@ -106,10 +107,11 @@ async def list_flows(
 @router.get("/admin/flows/{flow_name}", response_model=FlowYamlResponse)
 async def get_flow_yaml(
     flow_name: str,
+    tenant_id: str | None = Query(default=None),
     flow_service: FlowService = Depends(get_flow_service),
 ) -> FlowYamlResponse:
     try:
-        yaml_content = flow_service.loader.get_flow_yaml(flow_name)
+        yaml_content = flow_service.loader.get_flow_yaml(flow_name, tenant_id)
     except Exception as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FlowYamlResponse(name=flow_name, yaml_content=yaml_content)
@@ -119,10 +121,11 @@ async def get_flow_yaml(
 async def upsert_flow_yaml(
     flow_name: str,
     payload: FlowUpsertPayload,
+    tenant_id: str | None = Query(default=None),
     flow_service: FlowService = Depends(get_flow_service),
 ) -> FlowUpsertResponse:
     try:
-        flow_service.loader.upsert_flow_yaml(flow_name, payload.yaml_content)
+        flow_service.loader.upsert_flow_yaml(flow_name, payload.yaml_content, tenant_id)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return FlowUpsertResponse(ok=True, name=flow_name)

@@ -1,4 +1,4 @@
-"""Wrapper around Google Gemini generateContent API"""
+﻿"""Wrapper around Google Gemini generateContent API"""
 from __future__ import annotations
 
 import json
@@ -301,3 +301,4 @@ gemini_client = GeminiClient()
 
 async def get_gemini_client() -> GeminiClient:
     return gemini_client
+

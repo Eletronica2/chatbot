@@ -1,18 +1,19 @@
-version: "3.9"
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: chatbot-postgres
+  mysql:
+    image: mysql:8.4
+    container_name: chatbot-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_USER: chatbot
-      POSTGRES_PASSWORD: chatbot
-      POSTGRES_DB: chatbot
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: chatbot
+      MYSQL_USER: chatbot
+      MYSQL_PASSWORD: chatbot
     ports:
-      - "5432:5432"
+      - "3310:3306"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ../database/seed.sql:/docker-entrypoint-initdb.d/002_seed.sql:ro
     networks:
       - chatbot-net
 
@@ -27,7 +28,7 @@ services:
     networks:
       - chatbot-net
     depends_on:
-      - postgres
+      - mysql
 
   ai-engine:
     build:
@@ -49,11 +50,12 @@ services:
     environment:
       FLOW_ENGINE_URL: http://flow-engine:8002
       AI_ENGINE_URL: http://ai-engine:8003
-      DATABASE_URL: postgres://chatbot:chatbot@postgres:5432/chatbot
+      DATABASE_URL: mysql+pymysql://chatbot:chatbot@mysql:3306/chatbot
+      INTERNAL_API_KEY: internal-chatbot-key
     depends_on:
       - flow-engine
       - ai-engine
-      - postgres
+      - mysql
     ports:
       - "8000:8000"
     networks:
@@ -67,6 +69,7 @@ services:
       - ../whatsapp-gateway/.env.example
     environment:
       BACKEND_API_URL: http://backend-api:8000
+      BACKEND_INTERNAL_API_KEY: internal-chatbot-key
     depends_on:
       - backend-api
     ports:
@@ -79,5 +82,5 @@ networks:
     driver: bridge
 
 volumes:
-  pgdata:
+  mysqldata:
     driver: local

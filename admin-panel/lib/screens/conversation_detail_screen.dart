@@ -172,7 +172,7 @@ class _ConversationDetailScreenState
   }
 }
 
-// ─── Top bar ────────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Top bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _TopBar extends StatelessWidget {
   const _TopBar({
@@ -310,7 +310,7 @@ class _BarAction extends StatelessWidget {
   }
 }
 
-// ─── Chat Area ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Chat Area â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _ChatArea extends StatelessWidget {
   const _ChatArea({
@@ -386,7 +386,7 @@ class _ChatArea extends StatelessWidget {
   }
 }
 
-// ─── Reply Bar ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Reply Bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _ReplyBar extends StatelessWidget {
   const _ReplyBar({
@@ -475,7 +475,7 @@ class _SendButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: const Color(0xFF4F46E5).withOpacity(0.35),
+                    color: const Color(0xFF4F46E5).withValues(alpha: 0.35),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -497,7 +497,7 @@ class _SendButton extends StatelessWidget {
   }
 }
 
-// ─── Info Panel ───────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Info Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class _InfoPanel extends StatelessWidget {
   const _InfoPanel({
@@ -518,7 +518,7 @@ class _InfoPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'CONTACTO',
+            'CONTATO',
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
@@ -533,7 +533,7 @@ class _InfoPanel extends StatelessWidget {
             value: conversation.aiEnabled ? 'Habilitada' : 'Desabilitada',
             badge: conversation.aiEnabled
                 ? const _Badge('IA', Color(0xFFECFDF5), Color(0xFF10B981))
-                : const _Badge('Human', Color(0xFFF1F5F9), Color(0xFF64748B)),
+                : const _Badge('Humano', Color(0xFFF1F5F9), Color(0xFF64748B)),
           ),
           _InfoRow(
               label: 'Atualizado', value: conversation.formattedUpdatedAt),
@@ -614,4 +614,5 @@ class _Badge extends StatelessWidget {
     );
   }
 }
+
 

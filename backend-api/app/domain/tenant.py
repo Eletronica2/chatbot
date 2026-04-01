@@ -1,4 +1,4 @@
-"""Domain models for tenant-level runtime settings."""
+﻿"""Domain models for tenant-level runtime settings."""
 from __future__ import annotations
 
 from typing import Dict, List
@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 
 DEFAULT_GEMINI_MODEL = "gemini-1.5-flash-latest"
 
-# Ordered fallback list requested for model redundancy.
 DEFAULT_GEMINI_FALLBACK_MODELS: List[str] = [
     "gemini-2.5-flash",
     "gemini-2.0-flash",
@@ -24,7 +23,6 @@ DEFAULT_GEMINI_FALLBACK_MODELS: List[str] = [
 
 
 def normalize_model_list(models: List[str] | None) -> List[str]:
-    """Normalize model names preserving order and dropping duplicates."""
     if not models:
         return []
 
@@ -45,6 +43,7 @@ class TenantSettings(BaseModel):
     tenant_name: str = "Tenant"
     ai_enabled: bool = True
     flow_editing_enabled: bool = True
+    debug_mode: bool = False
     gemini_model: str = DEFAULT_GEMINI_MODEL
     fallback_models: List[str] = Field(
         default_factory=lambda: list(DEFAULT_GEMINI_FALLBACK_MODELS)
@@ -58,4 +57,6 @@ class TenantSettings(BaseModel):
             "ai_model": self.gemini_model,
             "ai_fallback_models": list(self.fallback_models),
             "tenant_id": self.tenant_id,
+            "debug_mode": self.debug_mode,
         }
+

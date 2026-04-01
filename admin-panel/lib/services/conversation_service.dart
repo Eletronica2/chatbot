@@ -1,4 +1,4 @@
-import '../models/conversation.dart';
+﻿import '../models/conversation.dart';
 import '../models/flow_state.dart';
 import '../models/message.dart';
 import 'api_client.dart';
@@ -38,3 +38,4 @@ class ConversationService {
 }
 
 final conversationService = ConversationService(apiClient: apiClient);
+

@@ -1,4 +1,4 @@
-"""AI API endpoints"""
+﻿"""AI API endpoints"""
 from __future__ import annotations
 
 import logging
@@ -28,9 +28,26 @@ class LegacyAIRespondPayload(BaseModel):
 
 
 class LegacyAIRespondResponse(BaseModel):
+    handled: bool = True
     reply_text: str
+    detected_intent: str | None = None
+    confidence: float | None = None
     session_state: Dict[str, Any] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class IntentDetectPayload(BaseModel):
+    tenant_id: str
+    phone_number: str | None = None
+    text: str
+    session_state: Dict[str, Any] = Field(default_factory=dict)
+    metadata: Dict[str, Any] | None = None
+
+
+class IntentDetectResponse(BaseModel):
+    intent: str | None = None
+    confidence: float = 0.0
+    provider: str = "intent_service"
 
 
 @router.post("/generate", response_model=AIResponsePayload)
@@ -53,6 +70,19 @@ async def respond(
     normalized_request = _build_internal_payload(payload)
     result = await ai_service.generate(normalized_request)
     return _to_legacy_response(result)
+
+
+@router.post("/intent", response_model=IntentDetectResponse)
+async def detect_intent(
+    payload: IntentDetectPayload,
+    ai_service: AIService = Depends(get_ai_service),
+) -> IntentDetectResponse:
+    intent = await ai_service.detect_intent(payload.text)
+    return IntentDetectResponse(
+        intent=intent.intent,
+        confidence=float(intent.confidence),
+        provider="intent_service",
+    )
 
 
 @router.get("/health")
@@ -116,7 +146,10 @@ def _to_legacy_response(result: AIResponsePayload) -> LegacyAIRespondResponse:
         if result.confidence is not None:
             metadata.setdefault("confidence", result.confidence)
         return LegacyAIRespondResponse(
+            handled=True,
             reply_text=result.reply.content,
+            detected_intent=result.intent,
+            confidence=result.confidence,
             session_state=result.session_state,
             metadata=metadata,
         )
@@ -126,7 +159,11 @@ def _to_legacy_response(result: AIResponsePayload) -> LegacyAIRespondResponse:
     metadata.update({"error": error_code, "retryable": bool(result.retryable)})
     fallback_reply = settings.AI_FALLBACK_REPLY
     return LegacyAIRespondResponse(
+        handled=False,
         reply_text=fallback_reply,
+        detected_intent=result.intent,
+        confidence=result.confidence,
         session_state=result.session_state,
         metadata=metadata,
     )
+

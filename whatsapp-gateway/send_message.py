@@ -1,4 +1,4 @@
-"""
+﻿"""
 API endpoints for sending messages via WhatsApp
 This module can be imported by the backend or exposed as separate endpoints
 """
@@ -91,3 +91,4 @@ async def send_template(
     if not result.success:
         raise HTTPException(status_code=400, detail=result.error)
     return result
+

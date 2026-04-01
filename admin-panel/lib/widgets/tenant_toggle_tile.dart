@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class TenantToggleTile extends StatelessWidget {
   const TenantToggleTile({super.key, required this.title, required this.value, required this.onChanged});
@@ -16,3 +16,4 @@ class TenantToggleTile extends StatelessWidget {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-"""Domain models for AI Engine requests and responses"""
+﻿"""Domain models for AI Engine requests and responses"""
 from __future__ import annotations
 
 from typing import Any, Dict, List, Literal, Optional, Union
@@ -54,3 +54,4 @@ class IntentAnalysis(BaseModel):
 class PromptSegment(BaseModel):
     role: RoleType
     content: str
+

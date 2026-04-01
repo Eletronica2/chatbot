@@ -3,7 +3,10 @@ description: Fluxo de perguntas frequentes
 start_state: faq_intro
 states:
   faq_intro:
-    message: "Aqui estão algumas dúvidas comuns. Escolha uma opção:"
+    intent_triggers:
+      - faq
+      - perguntas_frequentes
+    message: "Aqui estao algumas duvidas comuns. Escolha uma opcao:"
     options:
       - label: "Prazos de entrega"
         value: "faq_shipping"
@@ -15,6 +18,12 @@ states:
       - condition: "contains:pagamento"
         target_state: faq_payment
   faq_shipping:
-    message: "Nossos prazos de entrega variam de 3 a 5 dias úteis."
+    intent_triggers:
+      - entrega
+      - prazo_entrega
+    message: "Nossos prazos de entrega variam de 3 a 5 dias uteis."
   faq_payment:
-    message: "Aceitamos cartões, PIX e boleto bancário."
+    intent_triggers:
+      - pagamento
+      - formas_pagamento
+    message: "Aceitamos cartoes, PIX e boleto bancario."

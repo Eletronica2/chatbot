@@ -1,4 +1,4 @@
-"""Middleware that attaches tenant information to the request state"""
+﻿"""Middleware that attaches tenant information to the request state"""
 from __future__ import annotations
 
 from typing import Callable
@@ -20,3 +20,4 @@ class TenantMiddleware(BaseHTTPMiddleware):
         tenant_id = request.headers.get(self.header_name, self.default_tenant)
         request.state.tenant_id = tenant_id
         return await call_next(request)
+

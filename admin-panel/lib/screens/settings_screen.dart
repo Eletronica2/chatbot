@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:yaml/yaml.dart';
 
+import '../services/auth_service.dart';
 import '../services/flow_admin_service.dart';
 import '../services/tenant_service.dart';
 
-// â”€â”€ Dark palette â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Dark palette ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 const _kBg = Color(0xFF0F172A);
 const _kSurface = Color(0xFF111827);
 const _kCard = Color(0xFF1F2937);
-const _kCardHdr = Color(0xFF111827);
 const _kInput = Color(0xFF0F172A);
 const _kSubCard = Color(0xFF020617);
 const _kBorder = Color(0xFF374151);
 const _kText = Color(0xFFE2E8F0);
 const _kMuted = Color(0xFF94A3B8);
 const _kSubtle = Color(0xFF64748B);
-const _kAccent = Color(0xFF4F46E5);
-const _kAccentSoft = Color(0xFF6366F1);
+const _kAccent = Color(0xFF7C8CFF);
+const _kAccentSoft = Color(0xFF818CF8);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
 
-// â”€â”€ Draft data models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Draft data models ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _OptionDraft {
   final TextEditingController labelCtrl;
   final TextEditingController valueCtrl;
@@ -104,19 +104,25 @@ class _FlowDraft {
   }
 }
 
-// â”€â”€ Main screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Main screen ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.embedded = false});
+
+  final bool embedded;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  static const String _tenantId = String.fromEnvironment(
+  static const String _fallbackTenantId = String.fromEnvironment(
     'TENANT_ID',
     defaultValue: 'default',
   );
+  String get _tenantId => authService.tenantId ?? _fallbackTenantId;
+  bool get _isSystemAdminHomeContext =>
+      authService.isSuperadmin &&
+      _tenantId == (authService.homeTenantId ?? '');
   List<FlowSummaryModel> _flows = [];
   bool _loadingFlows = true;
   String? _selectedName;
@@ -146,6 +152,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _init() async {
+    if (_isSystemAdminHomeContext) {
+      if (mounted) {
+        setState(() {
+          _flows = [];
+          _loadingFlows = false;
+          _draft?.dispose();
+          _draft = null;
+          _selectedName = null;
+        });
+      }
+      return;
+    }
     try {
       final s = await tenantService.fetchTenantSettings(_tenantId);
       if (mounted) {
@@ -163,6 +181,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _reloadFlows() async {
+    if (_isSystemAdminHomeContext) {
+      setState(() {
+        _flows = [];
+        _loadingFlows = false;
+      });
+      return;
+    }
     setState(() => _loadingFlows = true);
     try {
       final flows = await flowAdminService.listFlows();
@@ -201,7 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // â”€â”€ YAML â†” Draft â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ââ€â‚¬ââ€â‚¬ YAML ââ€ â€ Draft ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
   _FlowDraft _parseYaml(String fallback, String src) {
     try {
       final doc = loadYaml(src);
@@ -488,7 +513,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _esc(String s) => s.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 
-  // â”€â”€ Save â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ââ€â‚¬ââ€â‚¬ Save ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
   Future<void> _save() async {
     final d = _draft;
     if (d == null) return;
@@ -519,7 +544,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final hasLabel = option.labelCtrl.text.trim().isNotEmpty;
         if (hasLabel && option.targetState.trim().isEmpty) {
           _showErr(
-            'Defina o proximo passo para o botao "${option.labelCtrl.text.trim()}" no passo "${state.name}".',
+            'Defina o próximo passo para o botão "${option.labelCtrl.text.trim()}" no passo "${state.name}".',
           );
           return;
         }
@@ -580,12 +605,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Configuracao de IA salva com sucesso'),
+          content: Text('Configuração de IA salva com sucesso'),
           backgroundColor: _kSuccess,
         ),
       );
     } catch (err) {
-      if (mounted) _showErr('Erro ao salvar configuracao da IA: $err');
+      if (mounted) _showErr('Erro ao salvar configuração da IA: $err');
     } finally {
       if (mounted) setState(() => _savingAiConfig = false);
     }
@@ -616,7 +641,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _StateDraft(
             name: 'Prazo de entrega',
-            message: 'Nossos prazos de entrega sao de 3 a 7 dias uteis.'),
+            message: 'Nossos prazos de entrega são de 3 a 7 dias úteis.'),
         _StateDraft(
             name: 'Formas de pagamento',
             message: 'Aceitamos PIX, cartao e dinheiro.'),
@@ -652,10 +677,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             message: 'Funcionamos todos os dias, das 11h as 23h.'),
         _StateDraft(
             name: 'Fazer pedido',
-            message: 'Me diga o que voce deseja pedir para eu te ajudar.'),
+          message: 'Me diga o que você deseja pedir para eu te ajudar.'),
         _StateDraft(
           name: 'Atendente humano',
-          message: 'Vou encaminhar voce para o atendimento humano.',
+          message: 'Vou encaminhar você para o atendimento humano.',
           requiresHandoff: true,
         ),
       ];
@@ -679,7 +704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
         _StateDraft(
             name: 'Marcar horario',
-            message: 'Perfeito. Qual dia e horario voce prefere?'),
+            message: 'Perfeito. Qual dia e horário você prefere?'),
         _StateDraft(
             name: 'Horarios disponiveis',
             message: 'Temos horarios disponiveis de segunda a sexta.'),
@@ -695,7 +720,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return [
       _StateDraft(
         name: 'Mensagem inicial',
-        message: 'Ola! Como posso ajudar voce hoje?',
+        message: 'Olá! Como posso ajudar você hoje?',
         expanded: true,
         options: [
           _OptionDraft(
@@ -730,7 +755,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Escolha um nome e um modelo pronto. Depois voce so edita os textos do seu negocio.',
+                'Escolha um nome e um modelo pronto. Depois você só edita os textos do seu negócio.',
                 style: TextStyle(color: _kMuted, fontSize: 13),
               ),
               const SizedBox(height: 12),
@@ -833,31 +858,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final content = LayoutBuilder(
+      builder: (context, constraints) {
+        final showPreviewPane = constraints.maxWidth >= 1420;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildLeft(),
+            Expanded(child: _buildRight()),
+            if (showPreviewPane) ...[
+              Container(width: 1, color: _kCard),
+              SizedBox(
+                width: 390,
+                child: _buildPreviewPane(),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+
+    if (widget.embedded) {
+      return Container(color: _kBg, child: content);
+    }
+
     return Scaffold(
       backgroundColor: _kBg,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final showPreviewPane = constraints.maxWidth >= 1420;
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildLeft(),
-              Expanded(child: _buildRight()),
-              if (showPreviewPane) ...[
-                Container(width: 1, color: _kCard),
-                SizedBox(
-                  width: 390,
-                  child: _buildPreviewPane(),
-                ),
-              ],
-            ],
-          );
-        },
-      ),
+      body: content,
     );
   }
 
-  // â”€â”€ Left panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ââ€â‚¬ââ€â‚¬ Left panel ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
   Widget _buildLeft() {
     return Container(
       width: 356,
@@ -877,19 +908,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   border: Border(bottom: BorderSide(color: _kBorder))),
               child: Row(
                 children: [
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).pop(),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                          color: _kCard,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _kBorder)),
-                      child: const Icon(Icons.arrow_back_rounded,
-                          color: _kMuted, size: 16),
+                  if (!widget.embedded) ...[
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                            color: _kCard,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: _kBorder)),
+                        child: const Icon(Icons.arrow_back_rounded,
+                            color: _kMuted, size: 16),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
+                    const SizedBox(width: 10),
+                  ],
                   const Text('Configurações',
                       style: TextStyle(
                           color: _kText,
@@ -906,6 +939,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: _kSurface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _kBorder),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
                 ),
                 child: const Row(
                   children: [
@@ -989,6 +1029,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   color: _kSurface,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _kBorder),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x12000000),
+                      blurRadius: 18,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
                 ),
                 child: _loadingFlows
                     ? const Center(
@@ -1026,7 +1073,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: _FlowListItem(
                   flow: FlowSummaryModel(
                       name: _selectedName!,
-                      description: 'Novo — não salvo ainda'),
+                      description: 'Novo â€” não salvo ainda'),
                   selected: true,
                   onTap: () {},
                 ),
@@ -1049,6 +1096,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: _kCard,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _kBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -1075,7 +1129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Inteligencia Artificial',
+                      'Inteligência Artificial',
                       style: TextStyle(
                         color: _kText,
                         fontSize: 13,
@@ -1156,7 +1210,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Fallbacks (separados por virgula)',
+            'Modelos de apoio (separados por vírgula)',
             style: TextStyle(color: _kSubtle, fontSize: 11),
           ),
           const SizedBox(height: 4),
@@ -1190,7 +1244,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             width: double.infinity,
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                backgroundColor: _kAccent,
+                backgroundColor: _kAccentSoft,
                 foregroundColor: Colors.white,
               ),
               onPressed: _savingAiConfig ? null : _saveAiConfig,
@@ -1204,7 +1258,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     )
                   : const Icon(Icons.save_rounded, size: 16),
-              label: Text(_savingAiConfig ? 'Salvando...' : 'Salvar IA'),
+              label: Text(_savingAiConfig ? 'Salvando...' : 'Salvar configuração'),
             ),
           ),
         ],
@@ -1212,8 +1266,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // â”€â”€ Right panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ââ€â‚¬ââ€â‚¬ Right panel ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
   Widget _buildRight() {
+    if (_isSystemAdminHomeContext) {
+      return Container(
+        color: _kSurface,
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(32),
+            child: Text(
+              'A conta do sistema não possui fluxos próprios. Selecione um cliente na administração SaaS para editar os fluxos.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _kMuted, fontSize: 13, height: 1.5),
+            ),
+          ),
+        ),
+      );
+    }
     if (_selectedName == null) return const _EditorEmpty();
     if (_loadingDraft) {
       return const Center(child: CircularProgressIndicator());
@@ -1241,6 +1310,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildPreviewPane() {
+    if (_isSystemAdminHomeContext) {
+      return Container(
+        color: _kSurface,
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(28),
+            child: Text(
+              'Selecione um cliente na administração SaaS para usar o simulador e revisar um fluxo.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _kMuted, fontSize: 12, height: 1.45),
+            ),
+          ),
+        ),
+      );
+    }
     if (_selectedName == null) {
       return Container(
         color: _kSurface,
@@ -1307,7 +1391,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () => setState(() => _rightPanelTab = 0),
-                        child: const Text('Preview'),
+                        child: const Text('Simulação'),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1319,7 +1403,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () => setState(() => _rightPanelTab = 1),
-                        child: const Text('Fluxo'),
+                        child: const Text('Mapa do fluxo'),
                       ),
                     ),
                   ],
@@ -1355,7 +1439,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               _SmallBtn(
                 icon: Icons.refresh_rounded,
-                tooltip: 'Reiniciar preview',
+                tooltip: 'Reiniciar simulação',
                 onTap: () => _resetPreview(draft),
               ),
             ],
@@ -1507,7 +1591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-// â”€â”€ Small icon button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Small icon button ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _SidebarPill extends StatelessWidget {
   const _SidebarPill({
     required this.icon,
@@ -1588,7 +1672,7 @@ class _SmallBtnState extends State<_SmallBtn> {
   }
 }
 
-// â”€â”€ Flow list item â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Flow list item ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _FlowListItem extends StatefulWidget {
   const _FlowListItem(
       {required this.flow, required this.selected, required this.onTap});
@@ -1625,6 +1709,23 @@ class _FlowListItemState extends State<_FlowListItem> {
             border: selected
                 ? Border.all(color: _kAccent.withValues(alpha: 0.4))
                 : null,
+            boxShadow: selected
+                ? const [
+                    BoxShadow(
+                      color: Color(0x18000000),
+                      blurRadius: 12,
+                      offset: Offset(0, 6),
+                    ),
+                  ]
+                : _hovered
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x10000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ]
+                    : null,
           ),
           child: Row(
             children: [
@@ -1666,7 +1767,7 @@ class _FlowListItemState extends State<_FlowListItem> {
   }
 }
 
-// â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Empty state ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _EditorEmpty extends StatelessWidget {
   const _EditorEmpty();
 
@@ -1698,7 +1799,7 @@ class _EditorEmpty extends StatelessWidget {
   }
 }
 
-// â”€â”€ Flow editor view â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Flow editor view ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _FlowEditorView extends StatefulWidget {
   const _FlowEditorView({
     super.key,
@@ -1787,6 +1888,13 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: _kBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14000000),
+            blurRadius: 18,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1823,6 +1931,13 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
       decoration: const BoxDecoration(
         color: _kSurface,
         border: Border(bottom: BorderSide(color: _kBorder)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1833,7 +1948,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               label: 'Nome do fluxo',
               child: _DarkField(
                 controller: d.nameCtrl,
-                hint: 'ex: atendimento_loja',
+                hint: 'Ex: Atendimento da loja',
                 onChanged: widget.onChanged,
               ),
             ),
@@ -1960,7 +2075,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
   }
 }
 
-// â”€â”€ State card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ State card ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _StateCard extends StatefulWidget {
   const _StateCard({
     required this.state,
@@ -2187,7 +2302,7 @@ class _StateCardState extends State<_StateCard> {
                             children: [
                               const Expanded(
                                 child: Text(
-                                  '👤 Encaminhar conversa para atendente humano',
+                                  'Encaminhar conversa para atendente humano',
                                   style: TextStyle(
                                     color: _kMuted,
                                     fontSize: 12,
@@ -2555,7 +2670,7 @@ class _StateCardState extends State<_StateCard> {
   }
 }
 
-// â”€â”€ Helper widgets â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ââ€â‚¬ââ€â‚¬ Helper widgets ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬ââ€â‚¬
 class _DashedActionButton extends StatelessWidget {
   const _DashedActionButton({
     required this.icon,
@@ -2728,3 +2843,5 @@ class _DarkField extends StatelessWidget {
     );
   }
 }
+
+

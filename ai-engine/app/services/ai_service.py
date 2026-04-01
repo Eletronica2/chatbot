@@ -1,6 +1,7 @@
-"""AI orchestration service"""
+﻿"""AI orchestration service."""
 from __future__ import annotations
 
+import json
 import logging
 import re
 from datetime import date
@@ -21,20 +22,14 @@ from app.clients.gemini_client import (
     GeminiServerError,
 )
 from app.config.settings import settings
-from app.domain.message import (
-    AIReply,
-    AIRequestPayload,
-    AIResponsePayload,
-    ChatMessage,
-    IntentAnalysis,
-)
+from app.domain.message import AIReply, AIRequestPayload, AIResponsePayload, ChatMessage, IntentAnalysis
 from app.services.intent_service import IntentService
 
 logger = logging.getLogger(__name__)
 
 
 class AIService:
-    """Builds prompts, calls model providers, and returns structured replies"""
+    """Builds prompts, calls model providers, and returns structured replies."""
 
     _REALTIME_PATTERN = re.compile(
         r"\b("
@@ -56,6 +51,9 @@ class AIService:
         self.mock_enabled = settings.MOCK_AI
         self.provider = settings.AI_PROVIDER.lower().strip()
 
+    async def detect_intent(self, text: str) -> IntentAnalysis:
+        return self.intent_service.classify(text or "")
+
     async def generate(self, payload: AIRequestPayload) -> AIResponsePayload:
         if self.mock_enabled:
             logger.info("MOCK_AI enabled, returning simulated response")
@@ -67,13 +65,10 @@ class AIService:
         prompt = self._build_prompt(payload.context, user_text, intent)
         preferred_model = self._normalize_model_name(metadata.get("ai_model"))
         fallback_models = self._normalize_model_list(metadata.get("ai_fallback_models"))
+        debug_enabled = bool(settings.AI_DEBUG_PROMPTS or metadata.get("debug_mode"))
 
         if settings.BLOCK_REALTIME_FACTS and self._looks_like_realtime_question(user_text):
-            logger.info(
-                "Realtime guard triggered tenant=%s session=%s",
-                payload.tenant_id,
-                payload.session_id,
-            )
+            logger.info("Realtime guard triggered tenant=%s session=%s", payload.tenant_id, payload.session_id)
             return AIResponsePayload(
                 handled=True,
                 intent="realtime_guard",
@@ -93,6 +88,13 @@ class AIService:
             payload.session_id,
             intent.intent,
         )
+        if debug_enabled:
+            logger.info(
+                "AI DEBUG prompt tenant=%s session=%s payload=%s",
+                payload.tenant_id,
+                payload.session_id,
+                json.dumps(prompt, ensure_ascii=False),
+            )
 
         selected_model: str | None = None
         model_attempts: List[Dict[str, Any]] = []
@@ -117,32 +119,16 @@ class AIService:
                 model_attempts = self.gemini_client.last_attempts
         except OpenAIAuthError:
             logger.error("OpenAI authentication failed; check API key")
-            return self._unavailable_response(
-                payload.session_state,
-                error="openai_auth_error",
-                retryable=False,
-            )
+            return self._unavailable_response(payload.session_state, error="openai_auth_error", retryable=False)
         except OpenAIRateLimitError:
             logger.warning("OpenAI quota or rate limit exceeded")
-            return self._unavailable_response(
-                payload.session_state,
-                error="openai_rate_limit",
-                retryable=True,
-            )
+            return self._unavailable_response(payload.session_state, error="openai_rate_limit", retryable=True)
         except OpenAIServerError:
             logger.error("OpenAI service returned 5xx")
-            return self._unavailable_response(
-                payload.session_state,
-                error="openai_server_error",
-                retryable=True,
-            )
+            return self._unavailable_response(payload.session_state, error="openai_server_error", retryable=True)
         except OpenAIClientError:
             logger.exception("OpenAI client error")
-            return self._unavailable_response(
-                payload.session_state,
-                error="openai_client_error",
-                retryable=False,
-            )
+            return self._unavailable_response(payload.session_state, error="openai_client_error", retryable=False)
         except GeminiAuthError as exc:
             logger.error("Gemini authentication failed; check API key")
             return self._unavailable_response(
@@ -176,13 +162,20 @@ class AIService:
                 metadata={"model_attempts": exc.model_attempts},
             )
 
-        response_metadata: Dict[str, Any] = {
-            "source": source,
-            "tenant_id": payload.tenant_id,
-        }
+        response_metadata: Dict[str, Any] = {"source": source, "tenant_id": payload.tenant_id}
         if source == "gemini":
             response_metadata["model_used"] = selected_model
             response_metadata["model_attempts"] = model_attempts
+        if debug_enabled:
+            response_metadata["debug_mode"] = True
+            logger.info(
+                "AI DEBUG response tenant=%s session=%s source=%s model=%s reply=%s",
+                payload.tenant_id,
+                payload.session_id,
+                source,
+                selected_model,
+                reply_content,
+            )
 
         return AIResponsePayload(
             handled=True,
@@ -193,12 +186,7 @@ class AIService:
             metadata=response_metadata,
         )
 
-    def _build_prompt(
-        self,
-        context: List[ChatMessage],
-        user_text: str,
-        intent: IntentAnalysis,
-    ) -> List[dict]:
+    def _build_prompt(self, context: List[ChatMessage], user_text: str, intent: IntentAnalysis) -> List[dict]:
         trimmed_context = context[-settings.MAX_HISTORY_MESSAGES :]
         messages = [{"role": "system", "content": f"Intent atual: {intent.intent}"}]
         for message in trimmed_context:
@@ -228,11 +216,7 @@ class AIService:
         parts = content.get("parts", []) if isinstance(content, dict) else []
         if not parts:
             return "Desculpe, estou com dificuldades em responder."
-        text_parts = [
-            str(part.get("text", "")).strip()
-            for part in parts
-            if isinstance(part, dict)
-        ]
+        text_parts = [str(part.get("text", "")).strip() for part in parts if isinstance(part, dict)]
         text = "\n".join(part for part in text_parts if part)
         return text or "Desculpe, estou com dificuldades em responder."
 
@@ -257,7 +241,6 @@ class AIService:
         result_metadata = {"source": "ai_engine"}
         if metadata:
             result_metadata.update(metadata)
-
         return AIResponsePayload(
             handled=False,
             error=error,
@@ -291,3 +274,4 @@ class AIService:
             if normalized and normalized not in unique:
                 unique.append(normalized)
         return unique
+

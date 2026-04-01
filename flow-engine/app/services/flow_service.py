@@ -32,10 +32,10 @@ class FlowService:
     def _select_flow(self, request: FlowExecutionRequest) -> Optional[FlowDefinition]:
         candidate_name = self._explicit_flow(request) or self._session_flow(request)
         if candidate_name:
-            flow = self.loader.get_flow(candidate_name)
+            flow = self.loader.get_flow(candidate_name, request.tenant_id)
             if flow:
                 return flow
-        return self.loader.get_flow(self.default_flow)
+        return self.loader.get_flow(self.default_flow, request.tenant_id)
 
     def _explicit_flow(self, request: FlowExecutionRequest) -> Optional[str]:
         message = request.message or {}
@@ -60,5 +60,5 @@ class FlowService:
                 return value
         return None
 
-    def list_flows(self) -> Dict[str, FlowDefinition]:
-        return self.loader.list_flows()
+    def list_flows(self, tenant_id: str | None = None) -> Dict[str, FlowDefinition]:
+        return self.loader.list_flows(tenant_id)

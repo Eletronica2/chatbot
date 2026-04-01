@@ -1,4 +1,4 @@
-class FlowStateModel {
+﻿class FlowStateModel {
   FlowStateModel({
     required this.flowName,
     required this.currentState,
@@ -22,3 +22,4 @@ class FlowStateModel {
     );
   }
 }
+

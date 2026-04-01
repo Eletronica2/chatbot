@@ -1,4 +1,4 @@
-import 'dart:developer';
+﻿import 'dart:developer';
 
 import '../models/tenant_settings.dart';
 import 'api_client.dart';
@@ -31,9 +31,10 @@ class TenantService {
     }
     return TenantSettings(
       tenantId: tenantId,
-      tenantName: 'Tenant Demo',
+      tenantName: 'Cliente demo',
       aiEnabled: true,
       flowEditingEnabled: true,
+      debugMode: false,
       geminiModel: 'gemini-1.5-flash-latest',
       fallbackModels: List<String>.from(_defaultFallbackModels),
       availableModels: List<String>.from(_defaultFallbackModels),
@@ -54,9 +55,10 @@ class TenantService {
     }
     return TenantSettings(
       tenantId: tenantId,
-      tenantName: 'Tenant Demo',
+      tenantName: 'Cliente demo',
       aiEnabled: enabled,
       flowEditingEnabled: true,
+      debugMode: false,
       geminiModel: 'gemini-1.5-flash-latest',
       fallbackModels: List<String>.from(_defaultFallbackModels),
       availableModels: List<String>.from(_defaultFallbackModels),
@@ -67,6 +69,7 @@ class TenantService {
     required String tenantId,
     required String geminiModel,
     required List<String> fallbackModels,
+    bool? debugMode,
   }) async {
     try {
       final data = await _apiClient.patch(
@@ -74,6 +77,7 @@ class TenantService {
         body: {
           'gemini_model': geminiModel,
           'fallback_models': fallbackModels,
+          if (debugMode != null) 'debug_mode': debugMode,
         },
       );
       if (data is Map<String, dynamic>) {
@@ -85,9 +89,10 @@ class TenantService {
     final available = <String>{geminiModel, ..._defaultFallbackModels, ...fallbackModels}.toList();
     return TenantSettings(
       tenantId: tenantId,
-      tenantName: 'Tenant Demo',
+      tenantName: 'Cliente demo',
       aiEnabled: true,
       flowEditingEnabled: true,
+      debugMode: debugMode ?? false,
       geminiModel: geminiModel,
       fallbackModels: List<String>.from(fallbackModels),
       availableModels: available,
@@ -113,3 +118,4 @@ class TenantService {
 }
 
 final tenantService = TenantService(apiClient: apiClient);
+

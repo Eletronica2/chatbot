@@ -1,4 +1,4 @@
-class ChatMessageModel {
+﻿class ChatMessageModel {
   ChatMessageModel({
     required this.id,
     required this.role,
@@ -30,3 +30,4 @@ class ChatMessageModel {
     return [];
   }
 }
+
