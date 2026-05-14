@@ -8,7 +8,7 @@ from typing import Optional
 
 from app.config.settings import Settings
 from app.db.mysql import MySQLDatabase
-from app.domain.subscription import TenantSubscription
+from app.domain.subscription import TenantSubscription, map_subscription_to_tenant_status
 from app.repositories.message_repository import MessageRepository
 
 
@@ -193,6 +193,6 @@ class SubscriptionService:
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = %s
                     """,
-                    (plan, "active" if status == "active" else status, tenant_pk),
+                    (plan, map_subscription_to_tenant_status(status), tenant_pk),
                 )
 

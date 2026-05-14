@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:admin_panel/screens/dashboard_screen.dart';
 import 'package:admin_panel/screens/login_screen.dart';
 import 'package:admin_panel/screens/token_action_screen.dart';
 import 'package:admin_panel/services/auth_service.dart';
+import 'package:admin_panel/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,57 +71,10 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
           )
         : null;
 
-    final baseTheme = ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF081120),
-      colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF7C8CFF),
-        secondary: Color(0xFF38BDF8),
-        surface: Color(0xFF111827),
-        error: Color(0xFFEF4444),
-      ),
-      textTheme: GoogleFonts.spaceGroteskTextTheme(
-        ThemeData(brightness: Brightness.dark).textTheme,
-      ).apply(
-        bodyColor: const Color(0xFFE2E8F0),
-        displayColor: const Color(0xFFE2E8F0),
-      ),
-      snackBarTheme: const SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Color(0xFF111827),
-        contentTextStyle: TextStyle(color: Color(0xFFE2E8F0)),
-      ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: const Color(0xFF7C8CFF),
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-        ),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: const Color(0xFF0F172A),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF243041)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF243041)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: Color(0xFF7C8CFF), width: 1.8),
-        ),
-      ),
-    );
+    final baseTheme = AdminAppTheme.build();
 
     return MaterialApp(
-      title: 'Chatbot Admin',
+      title: 'Painel do Chatbot',
       theme: baseTheme,
       darkTheme: baseTheme,
       themeMode: ThemeMode.dark,

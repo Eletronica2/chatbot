@@ -25,13 +25,21 @@ class Settings(BaseSettings):
 
     SESSION_TTL_SECONDS: int = 3600
     DEFAULT_TENANT_ID: str = "default"
-    DEFAULT_TENANT_NAME: str = "Tenant Demo"
-    DEFAULT_TENANT_EMAIL: str = "admin@demo.local"
+    DEFAULT_TENANT_NAME: str = "Operacao SaaS"
+    DEFAULT_TENANT_EMAIL: str = "operacao@chatbot.local"
 
-    DEFAULT_ADMIN_EMAIL: str = "admin@demo.local"
-    DEFAULT_ADMIN_PASSWORD: str = "admin1234"
-    DEFAULT_ADMIN_NAME: str = "Administrador"
+    DEFAULT_ADMIN_EMAIL: str = "arthurlaranjo@hotmail.com"
+    DEFAULT_ADMIN_PASSWORD: str = "adminpanel"
+    DEFAULT_ADMIN_NAME: str = "Arthur Laranjo"
     DEFAULT_ADMIN_ROLE: str = "superadmin"
+    BOOTSTRAP_COMPANY_TENANT_ID: str = "loja_centro_demo"
+    BOOTSTRAP_COMPANY_NAME: str = "Loja Centro Demo"
+    BOOTSTRAP_COMPANY_EMAIL: str = "contato@lojacentro.local"
+    BOOTSTRAP_COMPANY_ADMIN_NAME: str = "Admin Loja Centro"
+    BOOTSTRAP_COMPANY_ADMIN_EMAIL: str = "admin@lojacentro.local"
+    BOOTSTRAP_COMPANY_ADMIN_PASSWORD: str = "empresa123"
+    BOOTSTRAP_COMPANY_PLAN: str = "starter"
+    BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT: int = 1000
 
     APP_SECRET_KEY: str = "change-me-backend-secret"
     JWT_EXPIRES_MINUTES: int = 720

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/admin_audit_entry.dart';
@@ -16,14 +16,14 @@ import '../services/whatsapp_account_service.dart';
 import '../widgets/app_sidebar.dart';
 import 'settings_screen.dart';
 
-const _kBg = Color(0xFF0B1120);
-const _kSurface = Color(0xFF111827);
-const _kCard = Color(0xFF1F2937);
-const _kInput = Color(0xFF0F172A);
-const _kBorder = Color(0xFF374151);
-const _kText = Color(0xFFE2E8F0);
-const _kMuted = Color(0xFF94A3B8);
-const _kSubtle = Color(0xFF64748B);
+const _kBg = Color(0xFF0B0F1A);
+const _kSurface = Color(0xFF121826);
+const _kCard = Color(0xFF182133);
+const _kInput = Color(0xFF101726);
+const _kBorder = Color(0xFF25304A);
+const _kText = Color(0xFFF5F7FF);
+const _kMuted = Color(0xFF98A4C0);
+const _kSubtle = Color(0xFF6E7B99);
 const _kAccent = Color(0xFF7C8CFF);
 const _kAccentSoft = Color(0xFF818CF8);
 const _kSuccess = Color(0xFF10B981);
@@ -66,7 +66,7 @@ String _statusLabel(String value) {
 String _roleLabel(String value) {
   switch (value.trim().toLowerCase()) {
     case 'owner':
-      return 'Proprietário';
+      return 'Admin da empresa';
     case 'manager':
       return 'Gerente';
     case 'agent':
@@ -203,7 +203,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     } catch (err) {
       if (!mounted) return;
       setState(() => _loadingTenants = false);
-      _showError('Não foi possível carregar os clientes: $err');
+      _showError('Não foi possível carregar as empresas: $err');
     }
   }
 
@@ -274,7 +274,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     } catch (err) {
       if (!mounted) return;
       setState(() => _loadingDetails = false);
-      _showError('Não foi possível carregar os detalhes do cliente: $err');
+      _showError('Não foi possível carregar os detalhes da empresa: $err');
     }
   }
 
@@ -389,7 +389,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 Navigator.of(dialogContext).pop();
                 await _loadTenants();
                 await _selectTenant(created);
-                _showOk('Cliente criado com sucesso.');
+                _showOk('Empresa criada com sucesso.');
               } catch (err) {
                 setDialogState(() {
                   error = '$err';
@@ -401,7 +401,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             return AlertDialog(
               backgroundColor: _kCard,
               title: const Text(
-                'Novo cliente',
+                'Nova empresa',
                 style: TextStyle(color: _kText),
               ),
               content: SizedBox(
@@ -412,7 +412,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                     children: [
                       _DialogField(
                         controller: tenantIdCtrl,
-                        label: 'Identificador do cliente',
+                        label: 'Identificador da empresa',
                       ),
                       const SizedBox(height: 10),
                       _DialogField(
@@ -487,7 +487,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 FilledButton(
                   onPressed: saving ? null : submit,
                   style: FilledButton.styleFrom(backgroundColor: _kAccent),
-                  child: Text(saving ? 'Criando...' : 'Criar cliente'),
+                  child: Text(saving ? 'Criando...' : 'Criar empresa'),
                 ),
               ],
             );
@@ -967,7 +967,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   Future<void> _openTenantFlows() async {
     if (_selectedTenant == null) return;
     if (_isSystemTenantContext) {
-      _showError('A conta do sistema não possui fluxos próprios. Selecione um cliente.');
+      _showError('A conta do sistema não possui automações próprias. Selecione uma empresa.');
       return;
     }
     if (widget.onOpenTenantFlows != null) {
@@ -1052,7 +1052,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               ),
               AppSidebarItem(
                 id: 'flows',
-                label: 'Fluxos',
+                label: 'Automações',
                 icon: Icons.account_tree_outlined,
                 section: 'Operação',
                 helper: 'Editor do chatbot',
@@ -1069,7 +1069,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 label: 'Administração SaaS',
                 icon: Icons.apartment_rounded,
                 section: 'Operação SaaS',
-                helper: 'Clientes e governança',
+                helper: 'Empresas e governança',
               ),
             ],
             selectedId: 'backoffice',
@@ -1089,7 +1089,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
 
   Widget _buildTenantsOverviewCard() {
     final activeCount = _tenants.where((tenant) => tenant.status == 'active').length;
-    final selectedLabel = _selectedTenant?.name ?? 'Nenhum cliente selecionado';
+    final selectedLabel = _selectedTenant?.name ?? 'Nenhuma empresa selecionada';
 
     return Container(
       margin: const EdgeInsets.only(top: 14),
@@ -1142,7 +1142,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                     ),
                     SizedBox(height: 3),
                     Text(
-                      'Acompanhe rapidamente quantos clientes estão ativos e qual contexto está aberto agora.',
+                      'Acompanhe rapidamente quantas empresas estão ativas e qual contexto está aberto agora.',
                       style: TextStyle(color: _kMuted, fontSize: 11, height: 1.4),
                     ),
                   ],
@@ -1156,7 +1156,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             runSpacing: 8,
             children: [
               _Tag(
-                label: '${_tenants.length} cliente(s)',
+                label: '${_tenants.length} empresa(s)',
                 background: const Color(0xFF1E293B),
                 foreground: const Color(0xFFE2E8F0),
               ),
@@ -1185,7 +1185,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Cliente em foco',
+                  'Empresa em foco',
                   style: TextStyle(color: _kSubtle, fontSize: 11),
                 ),
                 const SizedBox(height: 4),
@@ -1305,7 +1305,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                   foregroundColor: Colors.white,
                 ),
                 icon: const Icon(Icons.account_tree_outlined, size: 16),
-                label: const Text('Abrir fluxos'),
+                label: const Text('Abrir automações'),
               ),
             ],
           ),
@@ -1315,7 +1315,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             runSpacing: 12,
             children: [
               _MetricBox(label: 'Usuários', value: _users.length.toString()),
-              _MetricBox(label: 'Fluxos', value: _flows.length.toString()),
+              _MetricBox(label: 'Automações', value: _flows.length.toString()),
               _MetricBox(label: 'WhatsApp', value: _accounts.length.toString()),
               _MetricBox(
                 label: 'Renovação',
@@ -1353,7 +1353,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Liste clientes, crie novas contas e acompanhe planos.',
+                          'Liste empresas, crie novas contas e acompanhe planos.',
                           style: TextStyle(color: _kMuted, fontSize: 12),
                         ),
                       ],
@@ -1363,7 +1363,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                     onPressed: _showCreateTenantDialog,
                     style: FilledButton.styleFrom(backgroundColor: _kAccent),
                     icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('Novo cliente'),
+                    label: const Text('Nova empresa'),
                   ),
                 ],
               ),
@@ -1373,7 +1373,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 onChanged: _onSearchChanged,
                 style: const TextStyle(color: _kText, fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Buscar cliente, empresa ou email',
+                  hintText: 'Buscar empresa, identificador ou email',
                   hintStyle: const TextStyle(color: _kSubtle, fontSize: 12),
                   prefixIcon: const Icon(Icons.search_rounded, color: _kMuted, size: 18),
                   filled: true,
@@ -1558,7 +1558,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     if (tenant == null) {
       return const Center(
         child: Text(
-          'Selecione um cliente para ver os detalhes.',
+          'Selecione uma empresa para ver os detalhes.',
           style: TextStyle(color: _kMuted),
         ),
       );
@@ -1583,7 +1583,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Este cliente interno não consome plano, não usa contas WhatsApp e não possui fluxos próprios. Para visualizar ou editar fluxos, selecione um cliente comercial na coluna da esquerda.',
+                'Esta conta interna não consome plano, não usa contas WhatsApp e não possui automações próprias. Para visualizar ou editar automações, selecione uma empresa comercial na coluna da esquerda.',
                 style: TextStyle(color: _kMuted, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 16),
@@ -1591,7 +1591,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _MetricBox(label: 'Cliente interno', value: tenant.tenantId),
+                  _MetricBox(label: 'Conta interna', value: tenant.tenantId),
                   _MetricBox(label: 'Criado em', value: _formatDate(tenant.createdAt)),
                   const _MetricBox(label: 'Tipo', value: 'Administrador do sistema'),
                 ],
@@ -1615,8 +1615,8 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           _buildTenantHeroCard(tenant, subscription),
           const SizedBox(height: 20),
           _DetailCard(
-            title: 'Resumo do cliente',
-            subtitle: 'Dados básicos, governança e contexto comercial do cliente selecionado.',
+            title: 'Resumo da empresa',
+            subtitle: 'Dados básicos, governança e contexto comercial da empresa selecionada.',
             child: Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -1647,7 +1647,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                       border: Border.all(color: const Color(0xFF7F1D1D)),
                     ),
                     child: const Text(
-                      'Este cliente está bloqueado. O cliente ainda consegue visualizar o painel, mas a edição e o envio ficam limitados até a reativação.',
+                      'Esta empresa está bloqueada. O painel continua visível, mas edição e envio ficam limitados até a reativação.',
                       style: TextStyle(color: Color(0xFFFECACA), fontSize: 12),
                     ),
                   ),
@@ -1774,7 +1774,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           const SizedBox(height: 16),
           _DetailCard(
             title: 'Contas de WhatsApp',
-            subtitle: 'Visualize, crie e edite todas as contas do cliente.',
+            subtitle: 'Visualize, crie e edite todas as contas da empresa.',
             action: FilledButton.icon(
               onPressed: () => _showAccountDialog(),
               style: FilledButton.styleFrom(backgroundColor: _kAccent),
@@ -1785,7 +1785,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 ? const _EmptyCardState(
                     icon: Icons.mark_chat_unread_outlined,
                     title: 'Nenhuma conta configurada',
-                    message: 'Cadastre uma conta WhatsApp para conectar o número do cliente.',
+                    message: 'Cadastre uma conta WhatsApp para conectar o número da empresa.',
                   )
                 : Column(
                     children: _accounts.map((account) {
@@ -1888,7 +1888,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           ),
           const SizedBox(height: 16),
           _DetailCard(
-            title: 'Usuários do cliente',
+            title: 'Usuários da empresa',
             subtitle: 'Convide usuários, ajuste perfis e gere redefinição de senha.',
             action: FilledButton.icon(
               onPressed: _showInviteUserDialog,
@@ -1901,7 +1901,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                     icon: Icons.group_outlined,
                     title: 'Nenhum usuário adicional',
                     message:
-                        'Convide usuários do time do cliente para acessarem o painel.',
+                        'Convide usuários do time da empresa para acessarem o painel.',
                   )
                 : Column(
                     children: _users.map((userItem) {
@@ -2021,8 +2021,8 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           ),
           const SizedBox(height: 16),
           _DetailCard(
-            title: 'Fluxos do cliente',
-            subtitle: 'O administrador do sistema pode visualizar os fluxos de qualquer cliente.',
+            title: 'Automações da empresa',
+            subtitle: 'O administrador do sistema pode visualizar as automações de qualquer empresa.',
             action: OutlinedButton.icon(
               onPressed: _openTenantFlows,
               style: OutlinedButton.styleFrom(
@@ -2035,8 +2035,8 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             child: _flows.isEmpty
                 ? const _EmptyCardState(
                     icon: Icons.account_tree_outlined,
-                    title: 'Nenhum fluxo salvo',
-                    message: 'Crie o primeiro fluxo do cliente para montar o atendimento.',
+                    title: 'Nenhuma automação salva',
+                    message: 'Crie a primeira automação da empresa para montar o atendimento.',
                   )
                 : Column(
                     children: _flows.map((flow) {
@@ -2073,7 +2073,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                                   Text(
                                     flow.description?.trim().isNotEmpty == true
                                         ? flow.description!
-                                        : 'Fluxo sem descrição cadastrada.',
+                                        : 'Automação sem descrição cadastrada.',
                                     style: const TextStyle(color: _kMuted, fontSize: 12),
                                   ),
                                 ],
@@ -2095,7 +2095,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           const SizedBox(height: 16),
           _DetailCard(
             title: 'Auditoria recente',
-            subtitle: 'Acompanhe as últimas alterações administrativas deste cliente.',
+            subtitle: 'Acompanhe as últimas alterações administrativas desta empresa.',
             child: _auditEntries.isEmpty
                 ? const _EmptyCardState(
                     icon: Icons.history_toggle_off_rounded,

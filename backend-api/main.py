@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import flow as flow_routes
 from app.api.routes import (
+    actions,
     admin_audit_logs,
     admin_tenants,
     admin_users,
@@ -59,6 +60,7 @@ from app.services.dependencies import (
     set_tenant_admin_service,
     set_tenant_settings_service,
     set_tenant_user_service,
+    set_actions_service,
     set_whatsapp_account_service,
 )
 from app.services.admin_audit_service import AdminAuditService
@@ -72,6 +74,7 @@ from app.services.session_service import SessionService
 from app.services.subscription_service import SubscriptionService
 from app.services.tenant_settings_service import TenantSettingsService
 from app.services.tenant_user_service import TenantUserService
+from app.services.flow_actions_service import FlowActionsService
 from app.services.whatsapp_account_service import WhatsAppAccountService
 
 logging.basicConfig(
@@ -166,7 +169,20 @@ async def lifespan(app: FastAPI):
     set_tenant_admin_service(tenant_admin_service)
     set_tenant_user_service(tenant_user_service)
 
+    actions_service = FlowActionsService(database)
+    set_actions_service(actions_service)
+
     await _sync_default_flows(flow_service, flow_catalog_service)
+    await tenant_admin_service.ensure_bootstrap_tenant(
+        tenant_id=settings.BOOTSTRAP_COMPANY_TENANT_ID,
+        name=settings.BOOTSTRAP_COMPANY_NAME,
+        email=settings.BOOTSTRAP_COMPANY_EMAIL,
+        owner_name=settings.BOOTSTRAP_COMPANY_ADMIN_NAME,
+        owner_email=settings.BOOTSTRAP_COMPANY_ADMIN_EMAIL,
+        owner_password=settings.BOOTSTRAP_COMPANY_ADMIN_PASSWORD,
+        plan=settings.BOOTSTRAP_COMPANY_PLAN,
+        monthly_message_limit=settings.BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT,
+    )
     yield
     logger.info("Backend API shutdown complete")
 
@@ -208,6 +224,7 @@ app.include_router(conversation_logs.router)
 app.include_router(whatsapp_accounts.router)
 app.include_router(internal_whatsapp.router)
 app.include_router(flow_routes.router)
+app.include_router(actions.router)
 
 
 @app.get("/")

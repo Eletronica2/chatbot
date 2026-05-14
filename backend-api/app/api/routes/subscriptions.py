@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.subscription import TenantSubscription
 from app.services.admin_audit_service import AdminAuditService
@@ -84,6 +84,7 @@ async def patch_subscription(
     service: SubscriptionService = Depends(subscription_service_dependency),
     audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
 ) -> SubscriptionResponse:
+    assert_superadmin(user)
     target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
     item = await service.update(
         target_tenant_id,

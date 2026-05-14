@@ -145,6 +145,132 @@ class TenantAdminService:
         await self.bootstrap_default_flows(normalized_tenant_id)
         return await self.get_tenant(normalized_tenant_id)
 
+    async def ensure_bootstrap_tenant(
+        self,
+        *,
+        tenant_id: str,
+        name: str,
+        email: str,
+        owner_name: str,
+        owner_email: str,
+        owner_password: str,
+        plan: str = 'starter',
+        monthly_message_limit: int | None = None,
+    ) -> TenantProvisionRecord:
+        normalized_tenant_id = self._normalize_tenant_id(tenant_id)
+        if not normalized_tenant_id:
+            raise ValueError('tenant_id invalido')
+        if len(owner_password.strip()) < 6:
+            raise ValueError('A senha do usuario deve ter pelo menos 6 caracteres')
+
+        def _write() -> None:
+            normalized_tenant_email = email.strip().lower()
+            normalized_owner_email = owner_email.strip().lower()
+            normalized_plan = plan.strip() or 'starter'
+            owner_password_hash = hash_password(owner_password.strip())
+
+            with self.database.transaction() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        SELECT id
+                        FROM tenants
+                        WHERE external_key = %s
+                        LIMIT 1
+                        """,
+                        (normalized_tenant_id,),
+                    )
+                    tenant_row = cursor.fetchone()
+
+                    if tenant_row is None:
+                        cursor.execute(
+                            """
+                            INSERT INTO tenants (external_key, name, email, whatsapp_phone_number, status, plan)
+                            VALUES (%s, %s, %s, NULL, 'active', %s)
+                            """,
+                            (
+                                normalized_tenant_id,
+                                name.strip(),
+                                normalized_tenant_email,
+                                normalized_plan,
+                            ),
+                        )
+                        tenant_pk = int(cursor.lastrowid or 0)
+                    else:
+                        tenant_pk = int(tenant_row['id'])
+                        cursor.execute(
+                            """
+                            UPDATE tenants
+                            SET name = %s,
+                                email = %s,
+                                status = 'active',
+                                plan = %s,
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                            """,
+                            (
+                                name.strip(),
+                                normalized_tenant_email,
+                                normalized_plan,
+                                tenant_pk,
+                            ),
+                        )
+
+                    cursor.execute(
+                        """
+                        SELECT id
+                        FROM users
+                        WHERE email = %s
+                        LIMIT 1
+                        """,
+                        (normalized_owner_email,),
+                    )
+                    user_row = cursor.fetchone()
+
+                    if user_row is None:
+                        cursor.execute(
+                            """
+                            INSERT INTO users (tenant_id, email, display_name, password_hash, role, status)
+                            VALUES (%s, %s, %s, %s, 'owner', 'active')
+                            """,
+                            (
+                                tenant_pk,
+                                normalized_owner_email,
+                                owner_name.strip(),
+                                owner_password_hash,
+                            ),
+                        )
+                    else:
+                        cursor.execute(
+                            """
+                            UPDATE users
+                            SET tenant_id = %s,
+                                display_name = %s,
+                                password_hash = %s,
+                                role = 'owner',
+                                status = 'active',
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE id = %s
+                            """,
+                            (
+                                tenant_pk,
+                                owner_name.strip(),
+                                owner_password_hash,
+                                int(user_row['id']),
+                            ),
+                        )
+
+        await asyncio.to_thread(_write)
+        await self.tenant_settings_service.get_or_create(normalized_tenant_id)
+        await self.subscription_service.update(
+            normalized_tenant_id,
+            plan=plan.strip() or 'starter',
+            status='active',
+            monthly_message_limit=monthly_message_limit,
+        )
+        await self.bootstrap_default_flows(normalized_tenant_id)
+        return await self.get_tenant(normalized_tenant_id)
+
     async def bootstrap_default_flows(self, tenant_id: str) -> None:
         if (
             self.flow_service is None

@@ -8,6 +8,16 @@ from pydantic import BaseModel, Field
 
 
 SubscriptionStatus = Literal["active", "trialing", "past_due", "canceled", "inactive"]
+TenantLifecycleStatus = Literal["active", "inactive", "suspended"]
+
+
+def map_subscription_to_tenant_status(status: str) -> TenantLifecycleStatus:
+    normalized = status.strip().lower()
+    if normalized in {"active", "trialing"}:
+        return "active"
+    if normalized == "inactive":
+        return "inactive"
+    return "suspended"
 
 
 class TenantSubscription(BaseModel):

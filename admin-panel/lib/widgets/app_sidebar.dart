@@ -1,23 +1,14 @@
 import 'package:flutter/material.dart';
 
-const _kBg = Color(0xFF081120);
-const _kSurface = Color(0xFF111827);
-const _kSurfaceSoft = Color(0xFF172033);
-const _kHover = Color(0xFF1E293B);
-const _kActive = Color(0xFF7C8CFF);
-const _kBorder = Color(0xFF243041);
-const _kMuted = Color(0xFF94A3B8);
-const _kSubtle = Color(0xFF64748B);
-const _kText = Color(0xFFE2E8F0);
-const _kSuccess = Color(0xFF10B981);
+import '../theme/app_tokens.dart';
 
 String _humanizeRoleLabel(String? role) {
   final normalized = (role ?? '').trim().toLowerCase();
   if (normalized.contains('system')) return 'Administrador do sistema';
   if (normalized.contains('super')) return 'Superadministrador';
-  if (normalized.contains('owner')) return 'Proprietário';
+  if (normalized.contains('owner')) return 'Admin da empresa';
   if (normalized.contains('manager')) return 'Gerente';
-  if (normalized.isEmpty) return 'Usuário';
+  if (normalized.contains('agent')) return 'Atendente';
   return 'Usuário';
 }
 
@@ -26,7 +17,7 @@ class AppSidebarItem {
     required this.id,
     required this.label,
     required this.icon,
-    required this.section,
+    this.section,
     this.helper,
     this.visible = true,
   });
@@ -34,7 +25,7 @@ class AppSidebarItem {
   final String id;
   final String label;
   final IconData icon;
-  final String section;
+  final String? section;
   final String? helper;
   final bool visible;
 }
@@ -49,6 +40,8 @@ class AppSidebar extends StatelessWidget {
     required this.onLogout,
     this.userRole,
     this.activeTenantLabel,
+    this.onHomeTap,
+    this.homeSelected = false,
   });
 
   final List<AppSidebarItem> items;
@@ -58,60 +51,63 @@ class AppSidebar extends StatelessWidget {
   final VoidCallback onLogout;
   final String? userRole;
   final String? activeTenantLabel;
+  final VoidCallback? onHomeTap;
+  final bool homeSelected;
 
   @override
   Widget build(BuildContext context) {
     final visibleItems = items.where((item) => item.visible).toList();
-    final sections = <String, List<AppSidebarItem>>{};
-    for (final item in visibleItems) {
-      sections.putIfAbsent(item.section, () => <AppSidebarItem>[]).add(item);
-    }
 
     return Container(
-      width: 286,
+      width: 304,
       decoration: const BoxDecoration(
-        color: _kBg,
-        border: Border(right: BorderSide(color: _kBorder)),
+        color: AppColors.sidebar,
+        border: Border(right: BorderSide(color: AppColors.border)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const _SidebarBrand(),
+          _SidebarBrand(
+            selected: homeSelected,
+            onTap: onHomeTap,
+          ),
+          if (activeTenantLabel != null && activeTenantLabel!.trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _CompanyFocusCard(
+                label: activeTenantLabel!,
+                userRole: userRole,
+              ),
+            ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (activeTenantLabel != null &&
-                      activeTenantLabel!.trim().isNotEmpty) ...[
-                    _ActiveTenantCard(
-                      label: activeTenantLabel!,
-                      userRole: userRole,
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
+                    child: Text(
+                      'Navegação principal',
+                      style: TextStyle(
+                        color: AppColors.textSoft,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.4,
+                      ),
                     ),
-                    const SizedBox(height: 18),
-                  ],
-                  for (final entry in sections.entries) ...[
-                    _SidebarSection(
-                      title: entry.key,
-                      children: entry.value
-                          .map(
-                            (item) => _SidebarNavItem(
-                              item: item,
-                              selected: item.id == selectedId,
-                              onTap: () => onNavItemTap(item.id),
-                            ),
-                          )
-                          .toList(),
+                  ),
+                  for (final item in visibleItems)
+                    _SidebarNavItem(
+                      item: item,
+                      selected: item.id == selectedId,
+                      onTap: () => onNavItemTap(item.id),
                     ),
-                    const SizedBox(height: 14),
-                  ],
                 ],
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: _UserFooter(
               email: userEmail,
               role: userRole,
@@ -124,74 +120,138 @@ class AppSidebar extends StatelessWidget {
   }
 }
 
-class _SidebarBrand extends StatelessWidget {
-  const _SidebarBrand();
+class _SidebarBrand extends StatefulWidget {
+  const _SidebarBrand({
+    this.onTap,
+    required this.selected,
+  });
+
+  final VoidCallback? onTap;
+  final bool selected;
+
+  @override
+  State<_SidebarBrand> createState() => _SidebarBrandState();
+}
+
+class _SidebarBrandState extends State<_SidebarBrand> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
+    final interactive = widget.onTap != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: _kBorder),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF111827), Color(0xFF0F172A)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x22000000),
-              blurRadius: 20,
-              offset: Offset(0, 8),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.xl,
+              border: Border.all(
+                color: widget.selected
+                    ? AppColors.primary.withValues(alpha: 0.65)
+                    : AppColors.border,
+              ),
+              gradient: LinearGradient(
+                colors: [
+                  widget.selected || _hovered
+                      ? const Color(0xFF171F34)
+                      : AppColors.surface,
+                  const Color(0xFF0F1627),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: widget.selected || _hovered
+                  ? AppShadows.hover
+                  : AppShadows.card,
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF7C8CFF), Color(0xFF4F46E5)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.auto_awesome_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Painel do chatbot',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        borderRadius: AppRadius.md,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primaryStrong,
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Operação, cobrança e fluxos em um só lugar',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: 11,
-                          height: 1.35,
+                      child: const Icon(
+                        Icons.auto_awesome_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Central de Ação',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            interactive
+                                ? 'Clique para voltar ao painel principal'
+                                : 'Seu painel de operação do chatbot',
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 11,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (interactive)
+                      Icon(
+                        Icons.keyboard_arrow_right_rounded,
+                        color: widget.selected
+                            ? AppColors.primarySoft
+                            : AppColors.textSoft,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSoft,
+                    borderRadius: AppRadius.md,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.bolt_rounded, size: 15, color: AppColors.primarySoft),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Converse, automatize, acompanhe cobrança e gerencie empresas em um só lugar.',
+                          style: TextStyle(
+                            color: AppColors.text,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ],
@@ -199,41 +259,15 @@ class _SidebarBrand extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: _kSurfaceSoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _kBorder),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.insights_rounded, size: 15, color: _kActive),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Painel modular para operação, clientes e administração',
-                      style: TextStyle(
-                        color: _kText,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        height: 1.35,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _ActiveTenantCard extends StatelessWidget {
-  const _ActiveTenantCard({
+class _CompanyFocusCard extends StatelessWidget {
+  const _CompanyFocusCard({
     required this.label,
     this.userRole,
   });
@@ -244,20 +278,18 @@ class _ActiveTenantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalizedRole = (userRole ?? '').trim().toLowerCase();
-    final isSuperadmin = normalizedRole.contains('super');
-    final isSystemAdmin = normalizedRole.contains('system');
-    final scopeLabel = isSystemAdmin
-        ? 'Administrador do sistema'
-        : isSuperadmin
-            ? 'Superadministrador'
-            : 'Cliente';
+    final contextLabel = normalizedRole.contains('system')
+        ? 'Sistema'
+        : normalizedRole.contains('super')
+            ? 'Administrador SaaS'
+            : 'Empresa';
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
+        color: AppColors.surface,
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,32 +297,31 @@ class _ActiveTenantCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _kHover,
-                  borderRadius: BorderRadius.circular(999),
+                  color: AppColors.surfaceSoft,
+                  borderRadius: AppRadius.pill,
                 ),
                 child: Text(
-                  scopeLabel,
+                  contextLabel,
                   style: const TextStyle(
-                    color: _kText,
+                    color: AppColors.text,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.radar_rounded, color: _kSuccess, size: 15),
+              const Icon(Icons.radar_rounded, color: AppColors.success, size: 16),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           const Text(
-            'Cliente em foco',
+            'Empresa em foco',
             style: TextStyle(
-              color: _kSubtle,
+              color: AppColors.textSoft,
               fontSize: 11,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 4),
@@ -299,46 +330,14 @@ class _ActiveTenantCard extends StatelessWidget {
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: _kText,
-              fontSize: 13,
+              color: AppColors.text,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
               height: 1.35,
             ),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SidebarSection extends StatelessWidget {
-  const _SidebarSection({
-    required this.title,
-    required this.children,
-  });
-
-  final String title;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: _kSubtle,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
-            ),
-          ),
-        ),
-        ...children,
-      ],
     );
   }
 }
@@ -364,56 +363,45 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 8),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
         child: InkWell(
           onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppRadius.lg,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            duration: const Duration(milliseconds: 160),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: selected
-                  ? _kSurface
-                  : (_hovering ? _kHover.withValues(alpha: 0.82) : Colors.transparent),
-              borderRadius: BorderRadius.circular(16),
+                  ? AppColors.surface
+                  : (_hovering
+                      ? AppColors.surfaceAlt.withValues(alpha: 0.92)
+                      : Colors.transparent),
+              borderRadius: AppRadius.lg,
               border: Border.all(
-                color: selected ? const Color(0xFF2E3C58) : Colors.transparent,
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.30)
+                    : Colors.transparent,
               ),
-              boxShadow: selected
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x22000000),
-                        blurRadius: 18,
-                        offset: Offset(0, 8),
-                      ),
-                    ]
-                  : _hovering
-                      ? const [
-                          BoxShadow(
-                            color: Color(0x14000000),
-                            blurRadius: 10,
-                            offset: Offset(0, 4),
-                          ),
-                        ]
-                      : null,
+              boxShadow: selected || _hovering ? AppShadows.hover : null,
             ),
             child: Row(
               children: [
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 42,
+                  height: 42,
                   decoration: BoxDecoration(
-                    color: selected ? _kHover : _kSurfaceSoft,
-                    borderRadius: BorderRadius.circular(12),
+                    color: selected ? AppColors.surfaceSoft : AppColors.surfaceAlt,
+                    borderRadius: AppRadius.md,
                   ),
                   child: Icon(
                     widget.item.icon,
-                    size: 18,
-                    color: selected ? _kActive : _kMuted,
+                    size: 20,
+                    color: selected ? AppColors.primarySoft : AppColors.textMuted,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -424,23 +412,22 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                       Text(
                         widget.item.label,
                         style: TextStyle(
-                          color: selected ? Colors.white : _kText,
-                          fontSize: 13,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w600,
+                          color: selected ? Colors.white : AppColors.text,
+                          fontSize: 14,
+                          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
                       if (widget.item.helper != null &&
                           widget.item.helper!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 3),
                         Text(
                           widget.item.helper!,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: _kSubtle,
+                            color: AppColors.textSoft,
                             fontSize: 11,
-                            height: 1.3,
+                            height: 1.35,
                           ),
                         ),
                       ],
@@ -448,8 +435,8 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                   ),
                 ),
                 Icon(
-                  Icons.chevron_right_rounded,
-                  color: selected ? _kActive : _kSubtle,
+                  selected ? Icons.north_east_rounded : Icons.chevron_right_rounded,
+                  color: selected ? AppColors.primarySoft : AppColors.textSoft,
                   size: 18,
                 ),
               ],
@@ -474,33 +461,33 @@ class _UserFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nameSeed = email.isNotEmpty ? email[0].toUpperCase() : 'A';
+    final seed = email.isNotEmpty ? email[0].toUpperCase() : 'A';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
+        color: AppColors.surface,
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(13),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4F46E5), Color(0xFF7C8CFF)],
+            width: 42,
+            height: 42,
+            decoration: const BoxDecoration(
+              borderRadius: AppRadius.md,
+              gradient: LinearGradient(
+                colors: [AppColors.primaryStrong, AppColors.primary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
             ),
             alignment: Alignment.center,
             child: Text(
-              nameSeed,
+              seed,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -514,9 +501,9 @@ class _UserFooter extends StatelessWidget {
                   email,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _kText,
+                    color: AppColors.text,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -524,7 +511,7 @@ class _UserFooter extends StatelessWidget {
                   _humanizeRoleLabel(role),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: _kSubtle,
+                    color: AppColors.textSoft,
                     fontSize: 11,
                   ),
                 ),
@@ -534,11 +521,7 @@ class _UserFooter extends StatelessWidget {
           IconButton(
             onPressed: onLogout,
             tooltip: 'Sair',
-            icon: const Icon(
-              Icons.logout_rounded,
-              size: 18,
-              color: _kMuted,
-            ),
+            icon: const Icon(Icons.logout_rounded, color: AppColors.textMuted),
           ),
         ],
       ),

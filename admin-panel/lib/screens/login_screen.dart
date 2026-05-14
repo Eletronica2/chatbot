@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 
@@ -13,8 +13,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailCtrl = TextEditingController(text: 'admin@demo.local');
-  final _passwordCtrl = TextEditingController(text: 'admin1234');
+  final _emailCtrl = TextEditingController(text: 'admin@bellamassa.com.br');
+  final _passwordCtrl = TextEditingController(text: 'Bella@2026!');
   bool _loading = false;
   bool _obscure = true;
   String? _error;

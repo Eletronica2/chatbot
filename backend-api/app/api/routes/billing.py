@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.billing import BillingSummary
 from app.services.billing_service import BillingService
@@ -45,6 +45,7 @@ async def get_billing_summary(
     billing_service: BillingService = Depends(billing_service_dependency),
     subscription_service: SubscriptionService = Depends(subscription_service_dependency),
 ) -> BillingSummary:
+    assert_superadmin(user)
     target_tenant_id = resolve_tenant_scope(user, request)
     subscription = await subscription_service.get_or_create(target_tenant_id)
     usage = await subscription_service.get_usage_snapshot(target_tenant_id)
@@ -62,6 +63,7 @@ async def create_checkout_session(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     billing_service: BillingService = Depends(billing_service_dependency),
 ) -> BillingCheckoutResponse:
+    assert_superadmin(user)
     target_tenant_id = resolve_tenant_scope(user, request)
     tenant_record = billing_service.database.get_tenant_record(target_tenant_id)
     if tenant_record is None:
@@ -91,6 +93,7 @@ async def create_portal_session(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     billing_service: BillingService = Depends(billing_service_dependency),
 ) -> BillingPortalResponse:
+    assert_superadmin(user)
     target_tenant_id = resolve_tenant_scope(user, request)
     try:
         portal = await billing_service.create_portal_session(

@@ -20,7 +20,7 @@ from app.domain.billing import (
     BillingPortalSession,
     BillingSummary,
 )
-from app.domain.subscription import TenantSubscription
+from app.domain.subscription import TenantSubscription, map_subscription_to_tenant_status
 from app.services.email_service import EmailService
 
 logger = logging.getLogger(__name__)
@@ -488,7 +488,7 @@ class BillingService:
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = %s
                 """,
-                (next_plan, "active" if status in {"active", "trialing"} else status, tenant_pk),
+                (next_plan, map_subscription_to_tenant_status(status), tenant_pk),
             )
 
         await asyncio.to_thread(_write)

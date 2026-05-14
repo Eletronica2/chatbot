@@ -22,12 +22,14 @@ from app.services.admin_audit_service import AdminAuditService
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.services.tenant_user_service import TenantUserService
+from app.services.flow_actions_service import FlowActionsService
 
 _conversation_service: Optional[ConversationService] = None
 _flow_service: Optional[FlowService] = None
 _session_service: Optional[SessionService] = None
 _tenant_settings_service: Optional[TenantSettingsService] = None
 _subscription_service: Optional[SubscriptionService] = None
+_actions_service: Optional[FlowActionsService] = None
 _conversation_log_service: Optional[ConversationLogService] = None
 _message_service: Optional[MessageService] = None
 _auth_service: Optional[AuthService] = None
@@ -327,5 +329,22 @@ def get_dashboard_service() -> DashboardService:
 def dashboard_service_dependency(
     service: DashboardService = Depends(get_dashboard_service),
 ) -> DashboardService:
+    return service
+
+
+def set_actions_service(service: FlowActionsService) -> None:
+    global _actions_service
+    _actions_service = service
+
+
+def get_actions_service() -> FlowActionsService:
+    if _actions_service is None:
+        raise RuntimeError("FlowActionsService not configured")
+    return _actions_service
+
+
+def actions_service_dependency(
+    service: FlowActionsService = Depends(get_actions_service),
+) -> FlowActionsService:
     return service
 

@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/conversation.dart';
+import '../theme/app_tokens.dart';
 
 class ConversationList extends StatelessWidget {
   const ConversationList({
@@ -15,10 +16,11 @@ class ConversationList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: const Color(0xFF111827),
-      child: ListView.builder(
-        padding: EdgeInsets.zero,
+      color: Colors.transparent,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(12),
         itemCount: conversations.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
           return _ConversationTile(
             conversation: conversations[index],
@@ -46,13 +48,13 @@ class _ConversationTile extends StatefulWidget {
 class _ConversationTileState extends State<_ConversationTile> {
   bool _hovered = false;
 
-  static const _palette = [
-    Color(0xFF4F46E5),
-    Color(0xFF0EA5E9),
-    Color(0xFF10B981),
-    Color(0xFFF59E0B),
-    Color(0xFFEF4444),
-    Color(0xFF8B5CF6),
+  static const List<Color> _palette = <Color>[
+    Color(0xFF7C8CFF),
+    Color(0xFF48C0FF),
+    Color(0xFF19C37D),
+    Color(0xFFFFB84D),
+    Color(0xFFFF6B6B),
+    Color(0xFF9B8CFF),
   ];
 
   Color _avatarColor(String phone) =>
@@ -66,143 +68,201 @@ class _ConversationTileState extends State<_ConversationTile> {
 
   @override
   Widget build(BuildContext context) {
-    final conv = widget.conversation;
-    final hasUnread = conv.unreadCount > 0;
+    final conversation = widget.conversation;
+    final hasUnread = conversation.unreadCount > 0;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
+      child: InkWell(
         onTap: widget.onTap,
+        borderRadius: AppRadius.lg,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          color: _hovered ? const Color(0xFF1E293B) : const Color(0xFF111827),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surfaceAlt : AppColors.surface,
+            borderRadius: AppRadius.lg,
+            border: Border.all(
+              color: hasUnread
+                  ? AppColors.primary.withValues(alpha: 0.26)
+                  : AppColors.border,
+            ),
+            boxShadow: _hovered ? AppShadows.hover : null,
+          ),
           child: Row(
             children: [
-              // Avatar
               Stack(
                 clipBehavior: Clip.none,
                 children: [
                   CircleAvatar(
-                    radius: 22,
-                    backgroundColor: _avatarColor(conv.phoneNumber),
+                    radius: 24,
+                    backgroundColor: _avatarColor(conversation.phoneNumber),
                     child: Text(
-                      _initials(conv.phoneNumber),
+                      _initials(conversation.phoneNumber),
                       style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                         fontSize: 12,
-                        letterSpacing: 0.5,
+                        letterSpacing: 0.4,
                       ),
                     ),
                   ),
                   Positioned(
-                    bottom: -1,
-                    right: -1,
+                    right: -2,
+                    bottom: -2,
                     child: Container(
-                      width: 13,
-                      height: 13,
+                      width: 14,
+                      height: 14,
                       decoration: BoxDecoration(
-                        color: conv.aiEnabled
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFF94A3B8),
+                        color: conversation.aiEnabled
+                            ? AppColors.success
+                            : AppColors.warning,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF111827), width: 2),
+                        border: Border.all(color: AppColors.surface, width: 2),
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(width: 14),
-              // Text block
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Flexible(
+                        Expanded(
                           child: Text(
-                            conv.phoneNumber,
+                            conversation.phoneNumber,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontWeight:
-                                  hasUnread ? FontWeight.w700 : FontWeight.w500,
+                              color: AppColors.text,
                               fontSize: 14,
-                              color: const Color(0xFFE2E8F0),
+                              fontWeight:
+                                  hasUnread ? FontWeight.w800 : FontWeight.w600,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          conv.formattedUpdatedAt,
+                          conversation.formattedUpdatedAt,
                           style: TextStyle(
-                            fontSize: 11,
                             color: hasUnread
-                                ? const Color(0xFF4F46E5)
-                                : const Color(0xFF94A3B8),
-                            fontWeight: hasUnread
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                                ? AppColors.primarySoft
+                                : AppColors.textSoft,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            conv.lastMessage.isEmpty
-                                ? 'Sem mensagens'
-                                : conv.lastMessage,
+                            conversation.lastMessage.trim().isEmpty
+                                ? 'Nenhuma mensagem ainda'
+                                : conversation.lastMessage,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
+                              color: AppColors.textMuted,
                               fontSize: 12,
-                              color: hasUnread
-                                  ? const Color(0xFF374151)
-                                  : const Color(0xFF64748B),
-                              fontWeight: hasUnread
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
+                              height: 1.35,
                             ),
                           ),
                         ),
-                        if (hasUnread)
+                        if (hasUnread) ...[
+                          const SizedBox(width: 10),
                           Container(
-                            margin: const EdgeInsets.only(left: 6),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF4F46E5),
-                              borderRadius: BorderRadius.circular(999),
+                              color: AppColors.primary,
+                              borderRadius: AppRadius.pill,
                             ),
                             child: Text(
-                              conv.unreadCount.toString(),
+                              conversation.unreadCount.toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _ModePill(
+                          icon: conversation.aiEnabled
+                              ? Icons.auto_awesome_rounded
+                              : Icons.support_agent_rounded,
+                          label: conversation.aiEnabled
+                              ? 'IA ativa'
+                              : 'Atendimento humano',
+                          color: conversation.aiEnabled
+                              ? AppColors.success
+                              : AppColors.warning,
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               const Icon(
                 Icons.chevron_right_rounded,
-                size: 18,
-                color: Color(0xFF475569),
+                color: AppColors.textSoft,
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ModePill extends StatelessWidget {
+  const _ModePill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: AppRadius.pill,
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }

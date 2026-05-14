@@ -11,8 +11,8 @@ INSERT INTO tenants (
 )
 SELECT
     'default',
-    'Tenant Demo',
-    'demo@chatbot.local',
+    'Operacao SaaS',
+    'operacao@chatbot.local',
     '+5511999999999',
     'demo_token_placeholder',
     'active',

@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.tenant import TenantSettings
 from app.services.dependencies import authenticated_user_dependency, tenant_settings_service_dependency
@@ -39,6 +39,14 @@ class TenantSettingsResponse(BaseModel):
         return cls(**item.model_dump())
 
 
+def assert_tenant_settings_patch_access(
+    user: AuthenticatedUser,
+    payload: TenantSettingsPatchPayload,
+) -> None:
+    if payload.gemini_model is not None or payload.fallback_models is not None:
+        assert_superadmin(user)
+
+
 @router.get("/{tenant_id}/settings", response_model=TenantSettingsResponse)
 async def get_tenant_settings(
     request: Request,
@@ -59,6 +67,7 @@ async def patch_tenant_settings(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: TenantSettingsService = Depends(tenant_settings_service_dependency),
 ) -> TenantSettingsResponse:
+    assert_tenant_settings_patch_access(user, payload)
     target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
     updated = await service.update(
         target_tenant_id,

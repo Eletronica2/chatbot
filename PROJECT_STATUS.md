@@ -387,3 +387,45 @@ Para deixar o produto ainda mais forte para venda recorrente:
 4. registrar auditoria tambem para aceite de convite, login e alteracoes de IA
 5. criar testes automatizados para fluxo, assinatura, usuarios e backoffice
 6. adicionar dashboard financeiro com receita realizada e churn por periodo
+- `admin@demo.local` / `admin1234`
+
+## Admin Panel - rodada visual mais recente
+O `admin-panel` passou por uma rodada focada em UX visual e traducao para portugues.
+
+Principais mudancas:
+- nova identidade visual com design system compartilhado em:
+  - `admin-panel/lib/theme/app_tokens.dart`
+  - `admin-panel/lib/theme/app_theme.dart`
+  - `admin-panel/lib/widgets/ui_kit.dart`
+- dashboard transformado em `Central de Acao`
+- nova navegacao principal:
+  - `Conversas`
+  - `Automações`
+  - `Clientes`
+  - `Cobrança`
+  - `Configurações`
+- sidebar reformulada com destaque de empresa em foco
+- tela de conversas com visual mais proximo de WhatsApp Web
+- tela de detalhes da conversa com:
+  - bolhas redesenhadas
+  - input fixo
+  - status de IA / atendimento humano
+  - painel lateral de resumo
+- nova tela `Configurações` para IA, plano e contexto da empresa
+- `Flow Builder` com termos simplificados:
+  - `Fluxos` -> `Automações`
+  - `Passos` -> `Etapas`
+  - simulador com envio de mensagens
+- backoffice com linguagem orientada a `Empresa`
+
+Arquivos visuais principais desta rodada:
+- `admin-panel/lib/main.dart`
+- `admin-panel/lib/screens/dashboard_screen.dart`
+- `admin-panel/lib/screens/overview_screen.dart`
+- `admin-panel/lib/screens/conversation_detail_screen.dart`
+- `admin-panel/lib/screens/settings_hub_screen.dart`
+- `admin-panel/lib/screens/settings_screen.dart`
+- `admin-panel/lib/screens/backoffice_screen.dart`
+- `admin-panel/lib/widgets/app_sidebar.dart`
+- `admin-panel/lib/widgets/conversation_list.dart`
+- `admin-panel/lib/widgets/message_bubble.dart`

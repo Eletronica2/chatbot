@@ -14,6 +14,12 @@ services:
       - mysqldata:/var/lib/mysql
       - ../database/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
       - ../database/seed.sql:/docker-entrypoint-initdb.d/002_seed.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     networks:
       - chatbot-net
 
@@ -28,7 +34,8 @@ services:
     networks:
       - chatbot-net
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
 
   ai-engine:
     build:
@@ -53,9 +60,12 @@ services:
       DATABASE_URL: mysql+pymysql://chatbot:chatbot@mysql:3306/chatbot
       INTERNAL_API_KEY: internal-chatbot-key
     depends_on:
-      - flow-engine
-      - ai-engine
-      - mysql
+      flow-engine:
+        condition: service_healthy
+      ai-engine:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
     ports:
       - "8000:8000"
     networks:
@@ -71,7 +81,8 @@ services:
       BACKEND_API_URL: http://backend-api:8000
       BACKEND_INTERNAL_API_KEY: internal-chatbot-key
     depends_on:
-      - backend-api
+      backend-api:
+        condition: service_healthy
     ports:
       - "40000:40000"
     networks:

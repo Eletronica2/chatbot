@@ -1,17 +1,21 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/message.dart';
+import '../theme/app_tokens.dart';
 
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({super.key, required this.message});
+  const MessageBubble({
+    super.key,
+    required this.message,
+  });
 
   final ChatMessageModel message;
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    final ts = DateFormat('HH:mm').format(message.createdAt.toLocal());
+    final timestamp = DateFormat('HH:mm').format(message.createdAt.toLocal());
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -21,69 +25,96 @@ class MessageBubble extends StatelessWidget {
             isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
         children: [
           if (isUser) ...[
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: const Color(0xFFE2E8F0),
-              child: const Icon(Icons.person_outline_rounded, size: 16, color: Color(0xFF64748B)),
+            _BubbleAvatar(
+              backgroundColor: const Color(0xFF20304E),
+              icon: Icons.person_outline_rounded,
+              iconColor: AppColors.textMuted,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 10),
           ],
           Flexible(
             child: Column(
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
               children: [
-                Container(
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
                   constraints: const BoxConstraints(maxWidth: 520),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: isUser ? Colors.white : null,
-                    gradient: isUser
-                        ? null
-                        : const LinearGradient(
-                            colors: [Color(0xFF818CF8), Color(0xFF4F46E5)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                    color: isUser
+                        ? AppColors.whatsappBubble
+                        : AppColors.whatsappReply,
                     borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 4 : 16),
-                      bottomRight: Radius.circular(isUser ? 16 : 4),
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isUser ? 6 : 18),
+                      bottomRight: Radius.circular(isUser ? 18 : 6),
                     ),
-                    border: isUser ? Border.all(color: const Color(0xFFE2E8F0)) : null,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    border: Border.all(
+                      color: isUser
+                          ? AppColors.border
+                          : AppColors.primaryStrong.withValues(alpha: 0.48),
+                    ),
+                    boxShadow: AppShadows.hover,
                   ),
                   child: Text(
                     message.content,
                     style: TextStyle(
-                      color: isUser ? const Color(0xFF0F172A) : Colors.white,
+                      color: Colors.white,
                       fontSize: 14,
-                      height: 1.5,
+                      height: 1.55,
                     ),
                   ),
                 ),
-                const SizedBox(height: 3),
-                Text(ts, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
+                const SizedBox(height: 6),
+                Text(
+                  timestamp,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textSoft,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
           if (!isUser) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: const Color(0xFFEEF2FF),
-              child: const Icon(Icons.smart_toy_rounded, size: 15, color: Color(0xFF4F46E5)),
+            const SizedBox(width: 10),
+            _BubbleAvatar(
+              backgroundColor: AppColors.primary.withValues(alpha: 0.16),
+              icon: Icons.smart_toy_rounded,
+              iconColor: AppColors.primarySoft,
             ),
           ],
         ],
       ),
+    );
+  }
+}
+
+class _BubbleAvatar extends StatelessWidget {
+  const _BubbleAvatar({
+    required this.backgroundColor,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  final Color backgroundColor;
+  final IconData icon;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Icon(icon, size: 16, color: iconColor),
     );
   }
 }

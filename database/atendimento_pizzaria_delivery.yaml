@@ -1,0 +1,428 @@
+name: atendimento_pizzaria_delivery
+description: "Fluxo completo de atendimento para pizzaria com cardapio, pedidos, sabores, entrega, retirada, promocoes e atendimento humano"
+start_state: boas_vindas
+
+states:
+  boas_vindas:
+    display_name: "Boas-vindas"
+    message: |
+      Ola! Seja muito bem-vindo a Pizzaria Bella Massa!
+      E um prazer atender voce
+
+      Como podemos te ajudar hoje?
+
+      Escolha uma das opcoes abaixo
+    options:
+      - label: "Ver cardapio"
+        value: "ver_cardapio"
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Promocoes"
+        value: "promocoes"
+      - label: "Horarios"
+        value: "horarios"
+      - label: "Atendente"
+        value: "atendente"
+    transitions:
+      - condition: "contains:ver_cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:promocoes"
+        target_state: promocoes_do_dia
+      - condition: "contains:horarios"
+        target_state: horario_funcionamento
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+      - condition: "contains:pizza"
+        target_state: cardapio_principal
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:promocao"
+        target_state: promocoes_do_dia
+      - condition: "contains:cupom"
+        target_state: promocoes_do_dia
+      - condition: "contains:horario"
+        target_state: horario_funcionamento
+      - condition: "contains:abre"
+        target_state: horario_funcionamento
+      - condition: "contains:funciona"
+        target_state: horario_funcionamento
+      - condition: "contains:humano"
+        target_state: atendente_humano
+
+  cardapio_principal:
+    display_name: "Cardapio principal"
+    message: |
+      Nosso Cardapio
+
+      Pizzas Tradicionais
+      Pizzas Especiais
+      Pizzas Doces
+      Bebidas
+      Bordas recheadas
+
+      Escolha uma categoria para visualizar
+    options:
+      - label: "Tradicionais"
+        value: "tradicionais"
+      - label: "Especiais"
+        value: "especiais"
+      - label: "Pizzas doces"
+        value: "pizzas_doces"
+      - label: "Bebidas"
+        value: "bebidas"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:tradicionais"
+        target_state: pizzas_tradicionais
+      - condition: "contains:especiais"
+        target_state: pizzas_especiais
+      - condition: "contains:pizzas_doces"
+        target_state: pizzas_doces
+      - condition: "contains:bebidas"
+        target_state: bebidas
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:tradicional"
+        target_state: pizzas_tradicionais
+      - condition: "contains:especial"
+        target_state: pizzas_especiais
+      - condition: "contains:doce"
+        target_state: pizzas_doces
+      - condition: "contains:bebida"
+        target_state: bebidas
+      - condition: "contains:menu"
+        target_state: boas_vindas
+
+  pizzas_tradicionais:
+    display_name: "Pizzas tradicionais"
+    message: |
+      Pizzas Tradicionais
+
+      Mussarela — R$ 39,90
+      Calabresa — R$ 42,90
+      Portuguesa — R$ 45,90
+      Frango com Catupiry — R$ 46,90
+
+      Todos os sabores disponiveis nos tamanhos:
+      Broto, Media e Grande
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Ver especiais"
+        value: "ver_especiais"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:ver_especiais"
+        target_state: pizzas_especiais
+      - condition: "contains:voltar_menu"
+        target_state: cardapio_principal
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:especial"
+        target_state: pizzas_especiais
+      - condition: "contains:voltar"
+        target_state: cardapio_principal
+
+  pizzas_especiais:
+    display_name: "Pizzas especiais"
+    message: |
+      Pizzas Especiais
+
+      Camarao Especial — R$ 69,90
+      Parma com Rucula — R$ 64,90
+      Quatro Queijos Premium — R$ 59,90
+      Costela BBQ — R$ 72,90
+
+      Deseja fazer um pedido?
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Pizzas doces"
+        value: "pizzas_doces"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:pizzas_doces"
+        target_state: pizzas_doces
+      - condition: "contains:voltar_menu"
+        target_state: cardapio_principal
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:doce"
+        target_state: pizzas_doces
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+
+  pizzas_doces:
+    display_name: "Pizzas doces"
+    message: |
+      Pizzas Doces
+
+      Chocolate com Morango — R$ 49,90
+      Banana com Canela — R$ 42,90
+      Prestigio — R$ 47,90
+      Nutella com Leite Ninho — R$ 59,90
+
+      Uma delicia para finalizar sua noite!
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Bebidas"
+        value: "bebidas"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:bebidas"
+        target_state: bebidas
+      - condition: "contains:voltar_menu"
+        target_state: cardapio_principal
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:bebida"
+        target_state: bebidas
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+
+  bebidas:
+    display_name: "Bebidas"
+    message: |
+      Bebidas disponiveis
+
+      Refrigerante Lata — R$ 7,00
+      Refrigerante 2L — R$ 14,00
+      Suco Natural — R$ 10,00
+      Agua Mineral — R$ 4,00
+
+      Deseja adicionar bebidas ao seu pedido?
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:voltar_menu"
+        target_state: cardapio_principal
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+
+  promocoes_do_dia:
+    display_name: "Promocoes do dia"
+    message: |
+      Promocoes de Hoje
+
+      2 Pizzas Grandes Tradicionais + Refrigerante 2L
+      Apenas R$ 89,90
+
+      Pizza doce com 20% OFF apos 22h
+
+      Delivery gratis para pedidos acima de R$ 80,00 em ate 5km
+
+      Aproveite!
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Ver cardapio"
+        value: "ver_cardapio"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:ver_cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:menu"
+        target_state: boas_vindas
+
+  horario_funcionamento:
+    display_name: "Horario funcionamento"
+    message: |
+      Horario de funcionamento
+
+      Segunda a Quinta: 18h as 23h
+      Sexta e Sabado: 18h a 00h
+      Domingo: 18h as 22h
+
+      Delivery disponivel todos os dias!
+
+      Posso ajudar com mais alguma coisa?
+    options:
+      - label: "Fazer pedido"
+        value: "fazer_pedido"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:fazer_pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:menu"
+        target_state: boas_vindas
+
+  iniciar_pedido:
+    display_name: "Iniciar pedido"
+    message: |
+      Perfeito! Vamos iniciar seu pedido
+
+      Por favor, envie:
+
+      Seu nome
+      Seu endereco completo
+      Sabores desejados
+      Tamanho da pizza
+      Forma de pagamento
+
+      Caso prefira retirada, informe: RETIRADA
+    options:
+      - label: "Entrega"
+        value: "entrega"
+      - label: "Retirada"
+        value: "retirada"
+      - label: "Atendente"
+        value: "atendente"
+    transitions:
+      - condition: "contains:entrega"
+        target_state: pedido_entrega
+      - condition: "contains:retirada"
+        target_state: pedido_retirada
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:humano"
+        target_state: atendente_humano
+
+  pedido_entrega:
+    display_name: "Pedido entrega"
+    message: |
+      Perfeito! Seu pedido sera enviado por delivery.
+
+      Agora envie:
+
+      Endereco completo
+      Sabores desejados
+      Forma de pagamento
+
+      Nosso time ira confirmar tudo rapidinho
+    options:
+      - label: "Atendente"
+        value: "atendente"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:menu"
+        target_state: boas_vindas
+      - condition: "contains:humano"
+        target_state: atendente_humano
+    hook:
+      action: "registrar_pedido_delivery"
+
+  pedido_retirada:
+    display_name: "Pedido retirada"
+    message: |
+      Perfeito! Seu pedido ficara disponivel para retirada em nossa loja.
+
+      Agora envie:
+
+      Sabores desejados
+      Nome para retirada
+      Forma de pagamento
+
+      Assim que estiver pronto avisaremos
+    options:
+      - label: "Atendente"
+        value: "atendente"
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:menu"
+        target_state: boas_vindas
+      - condition: "contains:humano"
+        target_state: atendente_humano
+    hook:
+      action: "registrar_pedido_retirada"
+
+  consultar_pedido:
+    display_name: "Consultar pedido"
+    message: |
+      Para consultar seu pedido, envie:
+
+      Numero do pedido
+      ou
+      CPF utilizado na compra
+
+      Vamos localizar para voce
+    options:
+      - label: "Voltar menu"
+        value: "voltar_menu"
+      - label: "Atendente"
+        value: "atendente"
+    transitions:
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:pedido"
+        target_state: consultar_pedido_status
+      - condition: "contains:humano"
+        target_state: atendente_humano
+    hook:
+      action: "consultar_status_pedido"
+
+  consultar_pedido_status:
+    display_name: "Consultar pedido status"
+    message: |
+      Estamos verificando o status do seu pedido.
+
+      Em instantes voce recebera as informacoes atualizadas
+    options:
+      - label: "Voltar menu"
+        value: "voltar_menu"
+    transitions:
+      - condition: "contains:voltar_menu"
+        target_state: boas_vindas
+      - condition: "contains:menu"
+        target_state: boas_vindas
+    hook:
+      action: "verificar_status_pedido"
+
+  atendente_humano:
+    display_name: "Atendente humano"
+    message: |
+      Perfeito! Vou encaminhar sua conversa para um de nossos atendentes agora.
+
+      Nosso tempo medio de resposta e de ate 5 minutos
+
+      Obrigado pela paciencia!
+    requires_handoff: true

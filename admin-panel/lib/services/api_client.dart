@@ -56,6 +56,13 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  Future<void> delete(String path) async {
+    final uri = Uri.parse('$apiBaseUrl$path');
+    final response = await _httpClient.delete(uri, headers: _headers());
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
+    throw ApiException(response.body, statusCode: response.statusCode);
+  }
+
   Map<String, String> _headers() {
     final headers = <String, String>{'Content-Type': 'application/json'};
     final token = authService.accessToken;

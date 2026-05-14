@@ -3,23 +3,17 @@ import 'package:flutter/material.dart';
 import '../models/conversation.dart';
 import '../services/auth_service.dart';
 import '../services/conversation_service.dart';
+import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/conversation_list.dart';
+import '../widgets/ui_kit.dart';
+import 'actions_screen.dart';
 import 'backoffice_screen.dart';
 import 'billing_hub_screen.dart';
 import 'conversation_detail_screen.dart';
 import 'overview_screen.dart';
+import 'settings_hub_screen.dart';
 import 'settings_screen.dart';
-
-const _kBg = Color(0xFF081120);
-const _kShellSurface = Color(0xFF0B1120);
-const _kTopbar = Color(0xFF10192A);
-const _kPanel = Color(0xFF111827);
-const _kBorder = Color(0xFF223041);
-const _kText = Color(0xFFE2E8F0);
-const _kMuted = Color(0xFF94A3B8);
-const _kSubtle = Color(0xFF64748B);
-const _kAccent = Color(0xFF7C8CFF);
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.onLogout});
@@ -31,55 +25,59 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  static const String _navOverview = 'overview';
+  static const String _navHome = 'home';
   static const String _navConversations = 'conversations';
-  static const String _navFlows = 'flows';
+  static const String _navAutomations = 'automations';
+  static const String _navActions = 'actions';
+  static const String _navClients = 'clients';
   static const String _navBilling = 'billing';
-  static const String _navBackoffice = 'backoffice';
+  static const String _navSettings = 'settings';
 
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
-  String _selectedNav = _navOverview;
+  String _selectedNav = _navHome;
   final TextEditingController _searchCtrl = TextEditingController();
 
   List<AppSidebarItem> get _sidebarItems {
     return <AppSidebarItem>[
       const AppSidebarItem(
-        id: _navOverview,
-        label: 'Visão geral',
-        icon: Icons.space_dashboard_rounded,
-        section: 'Operação',
-        helper: 'Métricas, status e atalhos rápidos',
-      ),
-      const AppSidebarItem(
         id: _navConversations,
         label: 'Conversas',
-        icon: Icons.chat_bubble_outline_rounded,
-        section: 'Operação',
-        helper: 'Atendimento e histórico em tempo real',
+        icon: Icons.chat_bubble_rounded,
+        helper: 'Atendimento, histórico e fila de resposta',
       ),
       const AppSidebarItem(
-        id: _navFlows,
-        label: 'Fluxos',
-        icon: Icons.account_tree_outlined,
-        section: 'Operação',
-        helper: 'Editor visual do chatbot',
+        id: _navAutomations,
+        label: 'Automações',
+        icon: Icons.auto_awesome_motion_rounded,
+        helper: 'Monte etapas, respostas e simulações do chatbot',
       ),
       const AppSidebarItem(
+        id: _navActions,
+        label: 'Ações',
+        icon: Icons.bolt_rounded,
+        helper: 'Gerencie ações reutilizáveis: imagens, links, requisições HTTP',
+      ),
+      AppSidebarItem(
+        id: _navClients,
+        label: 'Clientes',
+        icon: Icons.business_rounded,
+        helper: 'Empresas, usuários e números de WhatsApp',
+        visible: authService.isSuperadmin,
+      ),
+      AppSidebarItem(
         id: _navBilling,
         label: 'Cobrança',
         icon: Icons.credit_card_rounded,
-        section: 'Operação',
-        helper: 'Planos, pagamentos e assinatura',
-      ),
-      AppSidebarItem(
-        id: _navBackoffice,
-        label: 'Administração SaaS',
-        icon: Icons.apartment_rounded,
-        section: 'Operação SaaS',
-        helper: 'Clientes, usuários e contas WhatsApp',
+        helper: 'Planos, uso mensal e assinatura',
         visible: authService.isSuperadmin,
+      ),
+      const AppSidebarItem(
+        id: _navSettings,
+        label: 'Configurações',
+        icon: Icons.tune_rounded,
+        helper: 'IA, contexto da empresa e ajustes gerais',
       ),
     ];
   }
@@ -120,7 +118,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
     _filteredConversations = _allConversations.where((conversation) {
-      return conversation.phoneNumber.toLowerCase().contains(normalized) || conversation.lastMessage.toLowerCase().contains(normalized);
+      return conversation.phoneNumber.toLowerCase().contains(normalized) ||
+          conversation.lastMessage.toLowerCase().contains(normalized);
     }).toList();
   }
 
@@ -154,30 +153,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final user = authService.currentUser;
+
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: AppColors.background,
       body: Row(
         children: [
           AppSidebar(
             items: _sidebarItems,
             selectedId: _selectedNav,
             onNavItemTap: _selectNav,
-            userEmail: user?.email ?? 'admin',
+            onHomeTap: () => _selectNav(_navHome),
+            homeSelected: _selectedNav == _navHome,
+            userEmail: user?.email ?? 'admin@empresa.local',
             userRole: user?.role,
             activeTenantLabel: authService.tenantId,
             onLogout: _logout,
           ),
           Expanded(
             child: Container(
-              color: _kShellSurface,
+              color: AppColors.background,
               child: Column(
                 children: [
-                  if (_showShellHeader)
+                  if (_selectedNav != _navHome)
                     _ShellHeader(
                       title: _pageTitle,
                       subtitle: _pageSubtitle,
-                      tenantLabel: authService.tenantId ?? '-',
-                      onRefresh: _selectedNav == _navConversations ? _refreshConversations : null,
+                      companyLabel: authService.tenantId ?? '-',
+                      onRefresh: _selectedNav == _navConversations
+                          ? _refreshConversations
+                          : null,
                     ),
                   Expanded(child: _buildCurrentPage()),
                 ],
@@ -189,37 +193,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  bool get _showShellHeader => _selectedNav == _navOverview || _selectedNav == _navConversations || _selectedNav == _navBilling;
-
   String get _pageTitle {
     switch (_selectedNav) {
       case _navConversations:
-        return 'Central de conversas';
-      case _navFlows:
-        return 'Editor de fluxos';
+        return 'Conversas';
+      case _navAutomations:
+        return 'Automações';
+      case _navActions:
+        return 'Ações';
+      case _navClients:
+        return 'Clientes';
       case _navBilling:
-        return 'Cobrança e assinatura';
-      case _navBackoffice:
-        return 'Administração SaaS';
+        return 'Cobrança';
+      case _navSettings:
+        return 'Configurações';
       default:
-        return authService.isSuperadmin && authService.tenantId == (authService.homeTenantId ?? '')
-            ? 'Operação global da plataforma'
-            : 'Visão geral do chatbot';
+        return 'Central de Ação';
     }
   }
 
   String get _pageSubtitle {
     switch (_selectedNav) {
       case _navConversations:
-        return 'Acompanhe mensagens, histórico e o estado atual do atendimento.';
-      case _navFlows:
-        return 'Edite automações, simulações e o comportamento do chatbot.';
+        return 'Atenda com contexto, veja quem aguarda resposta e abra cada conversa como no WhatsApp Web.';
+      case _navAutomations:
+        return 'Organize a jornada do cliente em etapas, mensagens e respostas de um jeito simples de editar.';
+      case _navActions:
+        return 'Cadastre ações reutilizáveis — imagens, links, requisições HTTP e mais — para usar nos fluxos.';
+      case _navClients:
+        return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
-        return 'Gerencie plano, pagamento, portal de cobrança e bloqueio por inadimplência.';
-      case _navBackoffice:
-        return 'Administre clientes, usuários, contas WhatsApp e contexto do SaaS.';
+        return 'Gerencie plano, uso, cobrança e saúde financeira da operação.';
+      case _navSettings:
+        return 'Ajuste IA, modo de operação e atalhos importantes da empresa em foco.';
       default:
-        return 'Métricas, eventos recentes e atalhos das principais áreas do produto.';
+        return 'Seu resumo operacional do dia.';
     }
   }
 
@@ -227,35 +235,55 @@ class _DashboardScreenState extends State<DashboardScreen> {
     switch (_selectedNav) {
       case _navConversations:
         return _buildConversationsPage();
-      case _navFlows:
+      case _navAutomations:
         return KeyedSubtree(
-          key: ValueKey<String>('flows-${authService.tenantId}'),
+          key: ValueKey<String>('automations-${authService.tenantId}'),
           child: const SettingsScreen(embedded: true),
+        );
+      case _navActions:
+        return KeyedSubtree(
+          key: ValueKey<String>('actions-${authService.tenantId}'),
+          child: const ActionsScreen(),
+        );
+      case _navClients:
+        return KeyedSubtree(
+          key: ValueKey<String>('clients-${authService.tenantId}'),
+          child: BackofficeScreen(
+            embedded: true,
+            onLogout: _logout,
+            onOpenTenantFlows: () => _selectNav(_navAutomations),
+          ),
         );
       case _navBilling:
         return KeyedSubtree(
           key: ValueKey<String>('billing-${authService.tenantId}'),
           child: BillingHubScreen(
-            onOpenBackoffice: authService.isSuperadmin ? () => _selectNav(_navBackoffice) : null,
+            onOpenBackoffice:
+                authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
         );
-      case _navBackoffice:
+      case _navSettings:
         return KeyedSubtree(
-          key: ValueKey<String>('backoffice-${authService.tenantId}'),
-          child: BackofficeScreen(
-            embedded: true,
-            onLogout: _logout,
-            onOpenTenantFlows: () => _selectNav(_navFlows),
+          key: ValueKey<String>('settings-${authService.tenantId}'),
+          child: SettingsHubScreen(
+            onOpenAutomations: () => _selectNav(_navAutomations),
+            onOpenBilling:
+                authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
+            onOpenClients:
+                authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
         );
       default:
         return KeyedSubtree(
-          key: ValueKey<String>('overview-${authService.tenantId}'),
+          key: ValueKey<String>('home-${authService.tenantId}'),
           child: OverviewScreen(
             onOpenConversations: () => _selectNav(_navConversations),
-            onOpenFlows: () => _selectNav(_navFlows),
-            onOpenBilling: () => _selectNav(_navBilling),
-            onOpenBackoffice: authService.isSuperadmin ? () => _selectNav(_navBackoffice) : null,
+            onOpenAutomations: () => _selectNav(_navAutomations),
+            onOpenBilling:
+                authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
+            onOpenSettings: () => _selectNav(_navSettings),
+            onOpenClients:
+                authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
         );
     }
@@ -263,56 +291,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildConversationsPage() {
     return Container(
-      color: _kShellSurface,
+      color: AppColors.background,
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: _kPanel,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: _kBorder),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x16000000),
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
-                        ),
-                      ],
-                    ),
+          AppPanelCard(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final compact = constraints.maxWidth < 880;
+                final compact = constraints.maxWidth < 980;
                 final searchField = SizedBox(
-                  width: compact ? double.infinity : 320,
+                  width: compact ? double.infinity : 360,
                   child: TextField(
                     controller: _searchCtrl,
                     onChanged: _onSearchChanged,
-                    style: const TextStyle(fontSize: 13, color: _kText),
-                    decoration: InputDecoration(
-                        hintText: 'Buscar por número ou mensagem...',
-                      hintStyle: const TextStyle(fontSize: 13, color: _kSubtle),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        size: 18,
-                        color: _kMuted,
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFF0F172A),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _kAccent, width: 2),
-                      ),
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar por número, nome ou última mensagem...',
+                      prefixIcon: Icon(Icons.search_rounded),
                     ),
                   ),
                 );
@@ -321,19 +315,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Inbox operacional',
+                      'Inbox estilo WhatsApp',
                       style: TextStyle(
-                        color: _kText,
-                        fontSize: 20,
+                        color: AppColors.text,
+                        fontSize: 24,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    SizedBox(height: 6),
                     Text(
-                      'Acompanhe atendimento, status da IA e mensagens mais recentes.',
+                      'Veja quem está aguardando, abra a conversa e responda com mais contexto em menos cliques.',
                       style: TextStyle(
-                        color: _kMuted,
-                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                        height: 1.45,
                       ),
                     ),
                   ],
@@ -362,50 +357,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _kPanel,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _kBorder),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x18000000),
-                      blurRadius: 24,
-                      offset: Offset(0, 14),
-                    ),
-                  ],
-                ),
-                child: FutureBuilder<List<Conversation>>(
-                  future: _futureConversations,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    if (snapshot.hasError) {
-                      return _SimpleState(
-                        icon: Icons.cloud_off_rounded,
-                        title: 'Não foi possível carregar as conversas',
-                        message: snapshot.error.toString(),
-                        actionLabel: 'Tentar novamente',
-                        onTap: _refreshConversations,
-                      );
-                    }
-                    if (_filteredConversations.isEmpty) {
-                      return _SimpleState(
-                        icon: _searchCtrl.text.trim().isEmpty ? Icons.chat_bubble_outline_rounded : Icons.search_off_rounded,
-                        title: _searchCtrl.text.trim().isEmpty ? 'Sem conversas por enquanto' : 'Nenhum resultado encontrado',
-                        message:
-                            _searchCtrl.text.trim().isEmpty ? 'As conversas aparecerão aqui quando chegarem mensagens no WhatsApp.' : 'Ajuste o termo pesquisado para encontrar a conversa desejada.',
-                      );
-                    }
-                    return ConversationList(
-                      conversations: _filteredConversations,
-                      onSelectConversation: _openConversation,
+            child: AppPanelCard(
+              padding: EdgeInsets.zero,
+              child: FutureBuilder<List<Conversation>>(
+                future: _futureConversations,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return AppEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Não foi possível carregar as conversas',
+                      message: snapshot.error.toString(),
+                      action: FilledButton.icon(
+                        onPressed: _refreshConversations,
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Tentar novamente'),
+                      ),
                     );
-                  },
-                ),
+                  }
+                  if (_filteredConversations.isEmpty) {
+                    return AppEmptyState(
+                      icon: _searchCtrl.text.trim().isEmpty
+                          ? Icons.mark_chat_unread_outlined
+                          : Icons.search_off_rounded,
+                      title: _searchCtrl.text.trim().isEmpty
+                          ? 'Nenhuma conversa ainda'
+                          : 'Nada encontrado',
+                      message: _searchCtrl.text.trim().isEmpty
+                          ? 'As conversas vão aparecer aqui assim que chegarem mensagens no WhatsApp.'
+                          : 'Tente mudar o termo pesquisado para encontrar a conversa desejada.',
+                    );
+                  }
+                  return ConversationList(
+                    conversations: _filteredConversations,
+                    onSelectConversation: _openConversation,
+                  );
+                },
               ),
             ),
           ),
@@ -419,51 +408,44 @@ class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.title,
     required this.subtitle,
-    required this.tenantLabel,
+    required this.companyLabel,
     this.onRefresh,
   });
 
   final String title;
   final String subtitle;
-  final String tenantLabel;
+  final String companyLabel;
   final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
-      decoration: const BoxDecoration(
-        color: _kTopbar,
-        border: Border(bottom: BorderSide(color: _kBorder)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 18,
-            offset: Offset(0, 8),
-          ),
-        ],
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.72),
+        border: const Border(bottom: BorderSide(color: AppColors.border)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 860;
-          final contextBadge = Container(
+          final companyChip = Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF182235),
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: const Color(0xFF334155)),
+              color: AppColors.surfaceAlt,
+              borderRadius: AppRadius.pill,
+              border: Border.all(color: AppColors.border),
             ),
             child: Text(
-              'Cliente em foco: $tenantLabel',
+              'Empresa em foco: $companyLabel',
               style: const TextStyle(
-                color: _kText,
+                color: AppColors.text,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
             ),
           );
 
-          final action = onRefresh == null
+          final refreshButton = onRefresh == null
               ? const SizedBox.shrink()
               : FilledButton.icon(
                   onPressed: onRefresh,
@@ -475,30 +457,14 @@ class _ShellHeader extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: _kText,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: _kMuted,
-                    fontSize: 13,
-                    height: 1.45,
-                  ),
-                ),
+                AppSectionHeader(title: title, subtitle: subtitle),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    contextBadge,
-                    if (onRefresh != null) action,
+                    companyChip,
+                    if (onRefresh != null) refreshButton,
                   ],
                 ),
               ],
@@ -508,100 +474,17 @@ class _ShellHeader extends StatelessWidget {
           return Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: _kText,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: _kMuted,
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                ),
+                child: AppSectionHeader(title: title, subtitle: subtitle),
               ),
-              const SizedBox(width: 18),
-              contextBadge,
+              const SizedBox(width: 16),
+              companyChip,
               if (onRefresh != null) ...[
                 const SizedBox(width: 10),
-                action,
+                refreshButton,
               ],
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _SimpleState extends StatelessWidget {
-  const _SimpleState({
-    required this.icon,
-    required this.title,
-    required this.message,
-    this.actionLabel,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 480),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 44, color: _kMuted),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _kText,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: _kMuted,
-                  fontSize: 12,
-                  height: 1.45,
-                ),
-              ),
-              if (actionLabel != null && onTap != null) ...[
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: onTap,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: Text(actionLabel!),
-                ),
-              ],
-            ],
-          ),
-        ),
       ),
     );
   }
