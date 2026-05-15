@@ -55,6 +55,9 @@ class FlowExecutionResult(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
     requires_handoff: bool = False
     detected_intent: Optional[str] = None
+    requires_ai_fallback: bool = False
+    smart_reentry: bool = False
+    collected_data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class AIResponse(BaseModel):

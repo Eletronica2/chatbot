@@ -62,7 +62,7 @@ class AIService:
         metadata = self._extract_metadata(payload.metadata)
         user_text = payload.latest_text
         intent = self.intent_service.classify(user_text)
-        prompt = self._build_prompt(payload.context, user_text, intent)
+        prompt = self._build_prompt(payload.context, user_text, intent, payload.metadata)
         preferred_model = self._normalize_model_name(metadata.get("ai_model"))
         fallback_models = self._normalize_model_list(metadata.get("ai_fallback_models"))
         debug_enabled = bool(settings.AI_DEBUG_PROMPTS or metadata.get("debug_mode"))
@@ -186,9 +186,61 @@ class AIService:
             metadata=response_metadata,
         )
 
-    def _build_prompt(self, context: List[ChatMessage], user_text: str, intent: IntentAnalysis) -> List[dict]:
+    def _build_prompt(
+        self,
+        context: List[ChatMessage],
+        user_text: str,
+        intent: IntentAnalysis,
+        metadata: Dict[str, Any] | None = None,
+    ) -> List[dict]:
         trimmed_context = context[-settings.MAX_HISTORY_MESSAGES :]
-        messages = [{"role": "system", "content": f"Intent atual: {intent.intent}"}]
+
+        # Build a context-aware system message
+        context_lines = [f"Intenção detectada: {intent.intent}"]
+
+        meta = metadata or {}
+
+        # Include current flow state message as context
+        flow_state_msg = meta.get("flow_state_message")
+        if flow_state_msg:
+            context_lines.append(
+                f"Contexto do fluxo atual: {flow_state_msg.strip()}"
+            )
+
+        # Include available options as natural suggestions (not commands)
+        options: List[Any] = meta.get("options") or []
+        if options:
+            opt_labels = [
+                opt.get("label") or opt.get("value", "")
+                for opt in options
+                if isinstance(opt, dict)
+            ]
+            opt_labels = [str(o).strip() for o in opt_labels if o]
+            if opt_labels:
+                context_lines.append(
+                    "Opções disponíveis (mencione como sugestões naturais, "
+                    "não como lista numerada ou menu): "
+                    + ", ".join(f'"{o}"' for o in opt_labels)
+                )
+
+        # Include already-collected data so AI doesn't re-ask
+        collected: Dict[str, Any] = meta.get("collected_data") or {}
+        if collected:
+            items = "; ".join(f"{k}: {v}" for k, v in collected.items())
+            context_lines.append(
+                f"Informações já coletadas (NÃO pergunte novamente): {items}"
+            )
+
+        # Natural language style instructions
+        context_lines.append(
+            "Responda de forma natural e conversacional, como um atendente humano "
+            "simpático. Evite frases como 'Escolha uma opção' ou 'Digite o número'. "
+            "Prefira 'Posso te mostrar...', 'Quer que eu te ajude com...' ou "
+            "'Que tal...'. Seja breve e direto."
+        )
+
+        system_content = "\n".join(context_lines)
+        messages = [{"role": "system", "content": system_content}]
         for message in trimmed_context:
             messages.append(message.model_dump())
         messages.append({"role": "user", "content": user_text})

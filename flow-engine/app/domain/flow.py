@@ -22,6 +22,13 @@ class FlowTransition(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
+class GlobalTransition(BaseModel):
+    """A transition checked in any state when no local transition matches."""
+    condition: str
+    target_state: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
 class FlowState(BaseModel):
     state: str
     message: Optional[str] = None
@@ -30,6 +37,10 @@ class FlowState(BaseModel):
     transitions: List[FlowTransition] = Field(default_factory=list)
     requires_handoff: bool = False
     hook: Dict[str, Any] = Field(default_factory=dict)
+    # Natural language extensions
+    silent: bool = False  # True = change state without sending a message
+    collect: Optional[str] = None  # Save user input to collected_data[this_key]
+    fallback_ai: bool = False  # Trigger AI fallback for this specific state
 
 
 class FlowDefinition(BaseModel):
@@ -38,6 +49,10 @@ class FlowDefinition(BaseModel):
     start_state: str
     states: Dict[str, FlowState]
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    # Natural language extensions
+    global_transitions: List[GlobalTransition] = Field(default_factory=list)
+    intent_aliases: Dict[str, List[str]] = Field(default_factory=dict)
+    fallback_ai: bool = False  # Enable AI fallback for the entire flow
 
     def get_state(self, state_name: str) -> Optional[FlowState]:
         return self.states.get(state_name)
@@ -91,3 +106,7 @@ class FlowExecutionResponse(BaseModel):
     session_state: Dict[str, Any] = Field(default_factory=dict)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     requires_handoff: bool = False
+    # Natural language extensions
+    collected_data: Dict[str, Any] = Field(default_factory=dict)
+    smart_reentry: bool = False  # True when a global transition interrupted the flow
+    requires_ai_fallback: bool = False  # Flow signals that AI should complete this response

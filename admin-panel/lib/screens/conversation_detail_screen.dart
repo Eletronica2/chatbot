@@ -472,6 +472,21 @@ class _InfoPanel extends StatelessWidget {
   final FlowStateModel? flowState;
   final bool loading;
 
+  String _sourceLabel(String source) {
+    switch (source) {
+      case 'flow':
+        return 'Fluxo automatizado';
+      case 'ai':
+        return 'IA (Gemini)';
+      case 'ai_fallback':
+        return 'IA (fallback de fluxo)';
+      case 'subscription':
+        return 'Bloqueio de assinatura';
+      default:
+        return source;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppPanelCard(
@@ -514,6 +529,37 @@ class _InfoPanel extends StatelessWidget {
               label: 'Etapa atual',
               value: flowState!.currentState,
             ),
+            if (flowState!.stateData['detected_intent'] != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              _InfoBlock(
+                label: 'Intenção detectada',
+                value: '${flowState!.stateData['detected_intent']}'
+                    '${flowState!.stateData['confidence'] != null ? ' (${((flowState!.stateData['confidence'] as num) * 100).round()}%)' : ''}',
+              ),
+            ],
+            if (flowState!.stateData['source'] != null) ...[
+              const SizedBox(height: AppSpacing.md),
+              _InfoBlock(
+                label: 'Fonte da última resposta',
+                value: _sourceLabel(flowState!.stateData['source']?.toString() ?? ''),
+              ),
+            ],
+            if (flowState!.stateData['collected_data'] is Map &&
+                (flowState!.stateData['collected_data'] as Map).isNotEmpty) ...[
+              const SizedBox(height: AppSpacing.md),
+              _CollectedDataBlock(
+                data: Map<String, dynamic>.from(
+                  flowState!.stateData['collected_data'] as Map,
+                ),
+              ),
+            ],
+            if (flowState!.stateData['smart_reentry'] == true) ...[
+              const SizedBox(height: AppSpacing.md),
+              _TagChip(
+                label: 'Retomou fluxo após pergunta fora de contexto',
+                color: AppColors.warning,
+              ),
+            ],
             const SizedBox(height: AppSpacing.md),
             _InfoBlock(
               label: 'Atualizada em',
@@ -565,6 +611,112 @@ class _InfoBlock extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w600,
               height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CollectedDataBlock extends StatelessWidget {
+  const _CollectedDataBlock({required this.data});
+
+  final Map<String, dynamic> data;
+
+  static const Map<String, String> _labels = {
+    'nome_cliente': 'Nome',
+    'endereco_entrega': 'Endereço de entrega',
+    'info_retirada': 'Info retirada',
+    'sabores_pedido': 'Sabores escolhidos',
+    'forma_pagamento': 'Forma de pagamento',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = data.entries.toList();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Dados coletados',
+            style: TextStyle(
+              color: AppColors.textSoft,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...entries.map((e) {
+            final label = _labels[e.key] ?? e.key;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '$label: ',
+                    style: const TextStyle(
+                      color: AppColors.textSoft,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      '${e.value}',
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.loop_rounded, size: 13, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

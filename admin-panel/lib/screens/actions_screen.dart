@@ -17,7 +17,6 @@ const _kSubtle = Color(0xFF6E7B99);
 const _kAccent = Color(0xFF7C8CFF);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
-const _kWarn = Color(0xFFF59E0B);
 
 // ── Action type presentation helpers ────────────────────────────────────────
 

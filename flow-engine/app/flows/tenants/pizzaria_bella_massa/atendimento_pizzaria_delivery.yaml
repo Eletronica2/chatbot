@@ -1,39 +1,156 @@
 name: atendimento_pizzaria_delivery
-description: "Fluxo completo de atendimento para pizzaria com cardapio, pedidos, sabores, entrega, retirada, promocoes e atendimento humano"
+description: "Atendimento humanizado e conversacional para a Pizzaria Bella Massa — delivery e retirada"
 start_state: boas_vindas
+fallback_ai: true
 
+# ─────────────────────────────────────────────────────────────
+# ALIASES: frases naturais que o cliente pode dizer →
+#          mapeadas para um intent canônico.
+#          Usadas por _find_state_by_intent + intent_triggers.
+# ─────────────────────────────────────────────────────────────
+intent_aliases:
+  horario:
+    - horario
+    - funciona
+    - abre
+    - funcionamento
+    - que horas abre
+    - ate que horas
+    - aberto agora
+    - voces abrem
+    - abre hoje
+    - fecha que horas
+    - ta aberto
+    - quando abre
+  promocao:
+    - promocao
+    - desconto
+    - cupom
+    - oferta
+    - tem promocao
+    - alguma promocao
+    - combo
+    - tem desconto
+  bebidas:
+    - bebidas
+    - refrigerante
+    - suco
+    - agua
+    - o que tem pra beber
+    - beber
+    - refri
+    - coca
+    - guarana
+    - fanta
+    - sprite
+  atendente:
+    - atendente
+    - humano
+    - pessoa
+    - falar com alguem
+    - preciso de ajuda
+    - falar com atendente
+    - quero falar
+  consultar:
+    - consultar pedido
+    - meu pedido
+    - onde esta meu pedido
+    - status
+    - rastrear pedido
+    - status do pedido
+    - cade meu pedido
+    - quanto tempo falta
+
+# ─────────────────────────────────────────────────────────────
+# TRANSIÇÕES GLOBAIS: verificadas em QUALQUER estado quando
+#                     nenhuma transição local corresponde.
+#                     Ativam smart_reentry automaticamente.
+# ─────────────────────────────────────────────────────────────
+global_transitions:
+  - condition:
+      contains: "atendente"
+    target_state: atendente_humano
+  - condition:
+      contains: "humano"
+    target_state: atendente_humano
+  - condition:
+      contains: "falar com"
+    target_state: atendente_humano
+  - condition:
+      contains: "cardapio"
+    target_state: cardapio_principal
+  - condition:
+      contains: "menu"
+    target_state: cardapio_principal
+  - condition:
+      contains: "horario"
+    target_state: horario_funcionamento
+  - condition:
+      contains: "funciona"
+    target_state: horario_funcionamento
+  - condition:
+      contains: "abre"
+    target_state: horario_funcionamento
+  - condition:
+      contains: "promocao"
+    target_state: promocoes_do_dia
+  - condition:
+      contains: "desconto"
+    target_state: promocoes_do_dia
+  - condition:
+      contains: "combo"
+    target_state: promocoes_do_dia
+  - condition:
+      contains: "refrigerante"
+    target_state: bebidas
+  - condition:
+      contains: "bebida"
+    target_state: bebidas
+  - condition:
+      contains: "beber"
+    target_state: bebidas
+  - condition:
+      contains: "coca"
+    target_state: bebidas
+  - condition:
+      contains: "guarana"
+    target_state: bebidas
+  - condition:
+      contains: "status"
+    target_state: consultar_pedido
+  - condition:
+      contains: "meu pedido"
+    target_state: consultar_pedido
+  - condition:
+      contains: "cancelar"
+    target_state: boas_vindas
+  - condition:
+      contains: "voltar"
+    target_state: boas_vindas
+
+# ─────────────────────────────────────────────────────────────
+# ESTADOS
+# ─────────────────────────────────────────────────────────────
 states:
+  # ── Boas-vindas ──────────────────────────────────────────────
   boas_vindas:
-    display_name: "Boas-vindas"
     message: |
-      Ola! Seja muito bem-vindo a Pizzaria Bella Massa!
-      E um prazer atender voce
+      Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
 
-      Como podemos te ajudar hoje?
+      Sou o assistente virtual da pizzaria e fico feliz em te atender!
 
-      Escolha uma das opcoes abaixo
+      Me fala o que você precisa — posso mostrar nosso cardápio, te contar sobre as promoções de hoje, ajudar com um pedido ou informar nossos horários 😄
+    fallback_ai: true
     options:
-      - label: "Ver cardapio"
-        value: "ver_cardapio"
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Promocoes"
-        value: "promocoes"
-      - label: "Horarios"
-        value: "horarios"
-      - label: "Atendente"
-        value: "atendente"
+      - label: "Ver cardápio 🍕"
+        value: "cardapio"
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Promoções do dia 🔥"
+        value: "promocao"
+      - label: "Horários ⏰"
+        value: "horario"
     transitions:
-      - condition: "contains:ver_cardapio"
-        target_state: cardapio_principal
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:promocoes"
-        target_state: promocoes_do_dia
-      - condition: "contains:horarios"
-        target_state: horario_funcionamento
-      - condition: "contains:atendente"
-        target_state: atendente_humano
       - condition: "contains:cardapio"
         target_state: cardapio_principal
       - condition: "contains:menu"
@@ -42,9 +159,13 @@ states:
         target_state: cardapio_principal
       - condition: "contains:pedido"
         target_state: iniciar_pedido
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:pedir"
+        target_state: iniciar_pedido
       - condition: "contains:promocao"
         target_state: promocoes_do_dia
-      - condition: "contains:cupom"
+      - condition: "contains:desconto"
         target_state: promocoes_do_dia
       - condition: "contains:horario"
         target_state: horario_funcionamento
@@ -52,377 +173,558 @@ states:
         target_state: horario_funcionamento
       - condition: "contains:funciona"
         target_state: horario_funcionamento
+      - condition: "contains:bebida"
+        target_state: bebidas
+      - condition: "contains:refrigerante"
+        target_state: bebidas
+      - condition: "contains:consultar"
+        target_state: consultar_pedido
+      - condition: "contains:status"
+        target_state: consultar_pedido
+      - condition: "contains:atendente"
+        target_state: atendente_humano
       - condition: "contains:humano"
         target_state: atendente_humano
 
+  # ── Cardápio principal ──────────────────────────────────────────
   cardapio_principal:
-    display_name: "Cardapio principal"
     message: |
-      Nosso Cardapio
+      Aqui está nosso cardápio! 😍🍕
 
-      Pizzas Tradicionais
-      Pizzas Especiais
-      Pizzas Doces
-      Bebidas
-      Bordas recheadas
+      🍕 *Tradicionais* — a partir de R$ 39,90
+      Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry...
 
-      Escolha uma categoria para visualizar
+      ⭐ *Especiais* — a partir de R$ 59,90
+      Camaão, Parma c/ Rúcula, Quatro Queijos, Costela BBQ...
+
+      🍫 *Doces* — a partir de R$ 42,90
+      Chocolate c/ Morango, Banana c/ Canela, Nutella...
+
+      🥤 *Bebidas* — a partir de R$ 4,00
+      Refrigerantes, Sucos, Água...
+
+      Quer ver os sabores de uma categoria específica ou já quer fazer seu pedido? 😊
+    fallback_ai: true
     options:
-      - label: "Tradicionais"
+      - label: "Tradicionais 🍕"
         value: "tradicionais"
-      - label: "Especiais"
+      - label: "Especiais ⭐"
         value: "especiais"
-      - label: "Pizzas doces"
-        value: "pizzas_doces"
-      - label: "Bebidas"
+      - label: "Doces 🍫"
+        value: "doces"
+      - label: "Bebidas 🥤"
         value: "bebidas"
-      - label: "Voltar menu"
-        value: "voltar_menu"
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
     transitions:
-      - condition: "contains:tradicionais"
-        target_state: pizzas_tradicionais
-      - condition: "contains:especiais"
-        target_state: pizzas_especiais
-      - condition: "contains:pizzas_doces"
-        target_state: pizzas_doces
-      - condition: "contains:bebidas"
-        target_state: bebidas
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
       - condition: "contains:tradicional"
         target_state: pizzas_tradicionais
       - condition: "contains:especial"
         target_state: pizzas_especiais
       - condition: "contains:doce"
         target_state: pizzas_doces
+      - condition: "contains:chocolate"
+        target_state: pizzas_doces
+      - condition: "contains:nutella"
+        target_state: pizzas_doces
       - condition: "contains:bebida"
         target_state: bebidas
-      - condition: "contains:menu"
-        target_state: boas_vindas
-
-  pizzas_tradicionais:
-    display_name: "Pizzas tradicionais"
-    message: |
-      Pizzas Tradicionais
-
-      Mussarela — R$ 39,90
-      Calabresa — R$ 42,90
-      Portuguesa — R$ 45,90
-      Frango com Catupiry — R$ 46,90
-
-      Todos os sabores disponiveis nos tamanhos:
-      Broto, Media e Grande
-    options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Ver especiais"
-        value: "ver_especiais"
-      - label: "Voltar menu"
-        value: "voltar_menu"
-    transitions:
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:ver_especiais"
-        target_state: pizzas_especiais
-      - condition: "contains:voltar_menu"
-        target_state: cardapio_principal
+      - condition: "contains:refrigerante"
+        target_state: bebidas
       - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:pedir"
+        target_state: iniciar_pedido
+
+  # ── Pizzas tradicionais ────────────────────────────────────────
+  pizzas_tradicionais:
+    message: |
+      Nossas Pizzas Tradicionais 🍕
+
+      • *Mussarela* — R$ 39,90 / R$ 49,90 / R$ 59,90
+      • *Calabresa* — R$ 42,90 / R$ 52,90 / R$ 62,90
+      • *Portuguesa* — R$ 45,90 / R$ 55,90 / R$ 65,90
+      • *Frango c/ Catupiry* — R$ 46,90 / R$ 56,90 / R$ 66,90
+      • *Palmito* — R$ 43,90 / R$ 53,90 / R$ 63,90
+      • *Napolitana* — R$ 40,90 / R$ 50,90 / R$ 60,90
+
+      _(Preços: Broto 25cm / Média 35cm / Grande 45cm)_
+
+      Quer pedir alguma dessas? Posso te ajudar! 😄
+    fallback_ai: true
+    options:
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Ver especiais ⭐"
+        value: "especiais"
+      - label: "Ver doces 🍫"
+        value: "doces"
+    transitions:
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:pedir"
         target_state: iniciar_pedido
       - condition: "contains:especial"
         target_state: pizzas_especiais
-      - condition: "contains:voltar"
-        target_state: cardapio_principal
-
-  pizzas_especiais:
-    display_name: "Pizzas especiais"
-    message: |
-      Pizzas Especiais
-
-      Camarao Especial — R$ 69,90
-      Parma com Rucula — R$ 64,90
-      Quatro Queijos Premium — R$ 59,90
-      Costela BBQ — R$ 72,90
-
-      Deseja fazer um pedido?
-    options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Pizzas doces"
-        value: "pizzas_doces"
-      - label: "Voltar menu"
-        value: "voltar_menu"
-    transitions:
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:pizzas_doces"
-        target_state: pizzas_doces
-      - condition: "contains:voltar_menu"
-        target_state: cardapio_principal
-      - condition: "contains:pedido"
-        target_state: iniciar_pedido
       - condition: "contains:doce"
         target_state: pizzas_doces
-      - condition: "contains:menu"
-        target_state: cardapio_principal
 
+  # ── Pizzas especiais ─────────────────────────────────────────
+  pizzas_especiais:
+    message: |
+      Nossas Pizzas Especiais ⭐🍕
+
+      • *Camaão Especial* — R$ 69,90 / R$ 82,90 / R$ 99,90
+      • *Parma com Rúcula* — R$ 64,90 / R$ 77,90 / R$ 92,90
+      • *Quatro Queijos Premium* — R$ 59,90 / R$ 72,90 / R$ 87,90
+      • *Costela BBQ* — R$ 72,90 / R$ 85,90 / R$ 102,90
+      • *Salmão Defumado* — R$ 74,90 / R$ 89,90 / R$ 109,90
+
+      _(Preços: Broto 25cm / Média 35cm / Grande 45cm)_
+
+      São incríveis! Quer montar seu pedido? 😍
+    fallback_ai: true
+    options:
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Ver tradicionais 🍕"
+        value: "tradicionais"
+      - label: "Ver doces 🍫"
+        value: "doces"
+    transitions:
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:pedir"
+        target_state: iniciar_pedido
+      - condition: "contains:tradicional"
+        target_state: pizzas_tradicionais
+      - condition: "contains:doce"
+        target_state: pizzas_doces
+
+  # ── Pizzas doces ──────────────────────────────────────────────
   pizzas_doces:
-    display_name: "Pizzas doces"
     message: |
-      Pizzas Doces
+      Pizzas Doces — pra adoçar a noite! 🍫😊
 
-      Chocolate com Morango — R$ 49,90
-      Banana com Canela — R$ 42,90
-      Prestigio — R$ 47,90
-      Nutella com Leite Ninho — R$ 59,90
+      • *Chocolate c/ Morango* — R$ 49,90 / R$ 59,90 / R$ 72,90
+      • *Banana c/ Canela* — R$ 42,90 / R$ 52,90 / R$ 63,90
+      • *Prestígio* — R$ 47,90 / R$ 57,90 / R$ 69,90
+      • *Nutella c/ Leite Ninho* — R$ 59,90 / R$ 72,90 / R$ 86,90
+      • *Romeu e Julieta* — R$ 44,90 / R$ 54,90 / R$ 66,90
 
-      Uma delicia para finalizar sua noite!
+      _(Preços: Broto 25cm / Média 35cm / Grande 45cm)_
+
+      Bateu a vontade? Posso montar seu pedido! 🍕
+    fallback_ai: true
     options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Bebidas"
-        value: "bebidas"
-      - label: "Voltar menu"
-        value: "voltar_menu"
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Ver tradicionais 🍕"
+        value: "tradicionais"
+      - label: "Ver especiais ⭐"
+        value: "especiais"
     transitions:
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:bebidas"
-        target_state: bebidas
-      - condition: "contains:voltar_menu"
-        target_state: cardapio_principal
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:bebida"
-        target_state: bebidas
-      - condition: "contains:menu"
-        target_state: cardapio_principal
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:pedir"
+        target_state: iniciar_pedido
+      - condition: "contains:tradicional"
+        target_state: pizzas_tradicionais
+      - condition: "contains:especial"
+        target_state: pizzas_especiais
 
+  # ── Bebidas ─────────────────────────────────────────────────────
   bebidas:
-    display_name: "Bebidas"
     message: |
-      Bebidas disponiveis
+      Nossas bebidas 🥤
 
-      Refrigerante Lata — R$ 7,00
-      Refrigerante 2L — R$ 14,00
-      Suco Natural — R$ 10,00
-      Agua Mineral — R$ 4,00
+      • *Refrigerante Lata* (350ml) — R$ 7,00
+        Coca-Cola, Guaraná Antarctica, Fanta, Sprite
+      • *Refrigerante 2L* — R$ 14,00
+        Coca-Cola, Guaraná Antarctica, Fanta
+      • *Suco Natural* (500ml) — R$ 10,00
+        Laranja, Limão, Maracujá, Uva
+      • *Água Mineral* (500ml) — R$ 4,00
+      • *Água com Gás* (500ml) — R$ 5,00
 
-      Deseja adicionar bebidas ao seu pedido?
+      Posso adicionar ao seu pedido! Quer pedir? 😊
+    intent_triggers:
+      - bebidas
+    fallback_ai: true
     options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Voltar menu"
-        value: "voltar_menu"
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Ver cardápio 🍕"
+        value: "cardapio"
     transitions:
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:voltar_menu"
-        target_state: cardapio_principal
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:menu"
-        target_state: cardapio_principal
-
-  promocoes_do_dia:
-    display_name: "Promocoes do dia"
-    message: |
-      Promocoes de Hoje
-
-      2 Pizzas Grandes Tradicionais + Refrigerante 2L
-      Apenas R$ 89,90
-
-      Pizza doce com 20% OFF apos 22h
-
-      Delivery gratis para pedidos acima de R$ 80,00 em ate 5km
-
-      Aproveite!
-    options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Ver cardapio"
-        value: "ver_cardapio"
-      - label: "Voltar menu"
-        value: "voltar_menu"
-    transitions:
-      - condition: "contains:fazer_pedido"
+      - condition: "contains:quero"
         target_state: iniciar_pedido
-      - condition: "contains:ver_cardapio"
-        target_state: cardapio_principal
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
-      - condition: "contains:pedido"
+      - condition: "contains:pedir"
         target_state: iniciar_pedido
       - condition: "contains:cardapio"
         target_state: cardapio_principal
       - condition: "contains:menu"
-        target_state: boas_vindas
+        target_state: cardapio_principal
 
-  horario_funcionamento:
-    display_name: "Horario funcionamento"
+  # ── Promoções ─────────────────────────────────────────────────
+  promocoes_do_dia:
     message: |
-      Horario de funcionamento
+      🔥 Promoções de Hoje!
 
-      Segunda a Quinta: 18h as 23h
-      Sexta e Sabado: 18h a 00h
-      Domingo: 18h as 22h
+      🍕 *Combo Família*
+      2 Pizzas Grandes Tradicionais + Refrigerante 2L
+      De R$ 139,70 por apenas *R$ 89,90*
 
-      Delivery disponivel todos os dias!
+      🍫 *Pizza Doce com 20% OFF*
+      Válido após as 22h — qualquer sabor doce!
 
-      Posso ajudar com mais alguma coisa?
+      🛵 *Frete Grátis*
+      Para pedidos acima de R$ 80,00 em até 5km
+
+      ⭐ *Especial do Dia*
+      Pizza Grande Quatro Queijos Premium por *R$ 69,90*
+      _(normalmente R$ 87,90)_
+
+      Aproveita! Qual promoção te interessa? 😄
+    intent_triggers:
+      - promocao
+    fallback_ai: true
     options:
-      - label: "Fazer pedido"
-        value: "fazer_pedido"
-      - label: "Voltar menu"
-        value: "voltar_menu"
+      - label: "Quero o Combo Família 🍕"
+        value: "pedido"
+      - label: "Ver cardápio completo"
+        value: "cardapio"
     transitions:
-      - condition: "contains:fazer_pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:menu"
-        target_state: boas_vindas
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:combo"
+        target_state: iniciar_pedido
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
 
-  iniciar_pedido:
-    display_name: "Iniciar pedido"
+  # ── Horário ─────────────────────────────────────────────────────
+  horario_funcionamento:
     message: |
-      Perfeito! Vamos iniciar seu pedido
+      Nossos horários de funcionamento ⏰
 
-      Por favor, envie:
+      🗓 *Segunda a Quinta:* 18h às 23h
+      🗓 *Sexta e Sábado:* 18h à 00h
+      🗓 *Domingo:* 18h às 22h
 
-      Seu nome
-      Seu endereco completo
-      Sabores desejados
-      Tamanho da pizza
-      Forma de pagamento
+      🛵 *Delivery disponível* todos os dias!
+      📍 *Retirada no local* — sem taxa de entrega
 
-      Caso prefira retirada, informe: RETIRADA
+      Tem mais alguma dúvida ou quer fazer um pedido? 😊
+    intent_triggers:
+      - horario
+    fallback_ai: true
     options:
-      - label: "Entrega"
-        value: "entrega"
-      - label: "Retirada"
-        value: "retirada"
-      - label: "Atendente"
+      - label: "Fazer pedido 🛵"
+        value: "pedido"
+      - label: "Ver cardápio 🍕"
+        value: "cardapio"
+    transitions:
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:quero"
+        target_state: iniciar_pedido
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+
+  # ── FLUXO DE PEDIDO ─────────────────────────────────────────────
+  iniciar_pedido:
+    message: |
+      Ótimo, vamos lá! 😄🍕
+
+      Pra começar: qual é o seu nome?
+    collect: customer_name
+    options:
+      - label: "Preciso de ajuda"
         value: "atendente"
+    transitions:
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:humano"
+        target_state: atendente_humano
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "*"
+        target_state: pedido_tamanho
+
+  pedido_tamanho:
+    message: |
+      Que prazer! 😊
+
+      Qual tamanho de pizza você prefere?
+
+      🍕 *Broto* (25cm) — pra 1-2 pessoas
+      🍕 *Média* (35cm) — pra 2-3 pessoas
+      🍕 *Grande* (45cm) — pra 3-4 pessoas
+
+      Pode pedir mais de uma também, sem problema 😄
+    collect: pizza_size
+    options:
+      - label: "Broto"
+        value: "broto"
+      - label: "Média"
+        value: "media"
+      - label: "Grande"
+        value: "grande"
+    transitions:
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:humano"
+        target_state: atendente_humano
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "*"
+        target_state: pedido_sabores
+
+  pedido_sabores:
+    message: |
+      Boa escolha! 🍕✨
+
+      Agora me conta: quais sabores você gostaria?
+
+      Pode combinar até dois sabores numa pizza sem custo adicional 😄
+      Se quiser ver o cardápio pra lembrar os sabores, é só falar!
+    collect: pizza_flavors
+    fallback_ai: true
+    options:
+      - label: "Ver cardápio 🍕"
+        value: "cardapio"
+      - label: "Tradicionais"
+        value: "tradicionais"
+      - label: "Especiais ⭐"
+        value: "especiais"
+      - label: "Doces 🍫"
+        value: "doces"
+    transitions:
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:menu"
+        target_state: cardapio_principal
+      - condition: "contains:tradicional"
+        target_state: pizzas_tradicionais
+      - condition: "contains:especial"
+        target_state: pizzas_especiais
+      - condition: "contains:doce"
+        target_state: pizzas_doces
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:humano"
+        target_state: atendente_humano
+      - condition: "*"
+        target_state: pedido_bebida
+
+  pedido_bebida:
+    message: |
+      Perfeito! 😍
+
+      E pra beber? Temos:
+      • Coca-Cola, Guaraná, Fanta, Sprite (lata ou 2L)
+      • Sucos naturais (laranja, limão, maracujá, uva)
+      • Água mineral
+
+      Quer adicionar uma bebida ou prefere só a pizza mesmo? 😊
+    collect: drink
+    options:
+      - label: "Coca-Cola lata"
+        value: "coca-cola"
+      - label: "Guaraná 2L"
+        value: "guarana"
+      - label: "Suco natural"
+        value: "suco"
+      - label: "Água mineral"
+        value: "agua"
+      - label: "Sem bebida"
+        value: "sem bebida"
+    transitions:
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "*"
+        target_state: pedido_tipo_entrega
+
+  pedido_tipo_entrega:
+    message: |
+      Ótimo! 🛵
+
+      Você prefere receber em casa (entrega) ou vai buscar aqui na loja (retirada)?
+
+      _(Delivery disponível para endereços em até 8km da pizzaria)_
+    collect: delivery_type
+    options:
+      - label: "Entrega em casa 🛵"
+        value: "entrega"
+      - label: "Vou retirar 🏃"
+        value: "retirada"
     transitions:
       - condition: "contains:entrega"
-        target_state: pedido_entrega
+        target_state: pedido_endereco
+      - condition: "contains:delivery"
+        target_state: pedido_endereco
+      - condition: "contains:casa"
+        target_state: pedido_endereco
       - condition: "contains:retirada"
-        target_state: pedido_retirada
+        target_state: pedido_pagamento
+      - condition: "contains:buscar"
+        target_state: pedido_pagamento
+      - condition: "contains:retiro"
+        target_state: pedido_pagamento
+      - condition: "contains:busco"
+        target_state: pedido_pagamento
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "*"
+        target_state: pedido_endereco
+
+  pedido_endereco:
+    message: |
+      Perfeito! 📍
+
+      Qual é o endereço completo para entrega?
+
+      _(Rua, número, bairro e complemento, se tiver)_
+    collect: address
+    fallback_ai: true
+    options:
+      - label: "Vou retirar no local"
+        value: "retirada"
+      - label: "Preciso de ajuda"
+        value: "atendente"
+    transitions:
+      - condition: "contains:retirada"
+        target_state: pedido_pagamento
+      - condition: "contains:buscar"
+        target_state: pedido_pagamento
+      - condition: "contains:retiro"
+        target_state: pedido_pagamento
       - condition: "contains:atendente"
         target_state: atendente_humano
       - condition: "contains:humano"
         target_state: atendente_humano
+      - condition: "*"
+        target_state: pedido_pagamento
 
-  pedido_entrega:
-    display_name: "Pedido entrega"
+  pedido_pagamento:
     message: |
-      Perfeito! Seu pedido sera enviado por delivery.
+      Quase lá! 💳
 
-      Agora envie:
+      Como você vai pagar?
 
-      Endereco completo
-      Sabores desejados
-      Forma de pagamento
-
-      Nosso time ira confirmar tudo rapidinho
+      • *PIX* — chave: pizzariabellamassa@pix.com
+      • *Cartão* — crédito ou débito (maquininha na entrega)
+      • *Dinheiro* — informe se precisar de troco 😊
+    collect: payment_method
     options:
-      - label: "Atendente"
+      - label: "PIX 💸"
+        value: "pix"
+      - label: "Cartão de crédito"
+        value: "credito"
+      - label: "Cartão de débito"
+        value: "debito"
+      - label: "Dinheiro"
+        value: "dinheiro"
+    transitions:
+      - condition: "contains:pix"
+        target_state: pedido_confirmacao
+      - condition: "contains:cartao"
+        target_state: pedido_confirmacao
+      - condition: "contains:credito"
+        target_state: pedido_confirmacao
+      - condition: "contains:debito"
+        target_state: pedido_confirmacao
+      - condition: "contains:dinheiro"
+        target_state: pedido_confirmacao
+      - condition: "contains:atendente"
+        target_state: atendente_humano
+      - condition: "*"
+        target_state: pedido_confirmacao
+
+  pedido_confirmacao:
+    message: |
+      🎉 Pedido recebido com sucesso!
+
+      Nossa equipe já vai conferir tudo e em instantes você recebe a confirmação com o tempo estimado de entrega.
+
+      Obrigado por pedir na Bella Massa! 🍕😊
+      Em caso de dúvidas, pode chamar aqui mesmo!
+    requires_handoff: true
+    options:
+      - label: "Falar com atendente"
         value: "atendente"
-      - label: "Voltar menu"
-        value: "voltar_menu"
     transitions:
       - condition: "contains:atendente"
         target_state: atendente_humano
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
-      - condition: "contains:menu"
-        target_state: boas_vindas
       - condition: "contains:humano"
         target_state: atendente_humano
     hook:
-      action: "registrar_pedido_delivery"
+      action: "confirmar_pedido"
 
-  pedido_retirada:
-    display_name: "Pedido retirada"
-    message: |
-      Perfeito! Seu pedido ficara disponivel para retirada em nossa loja.
-
-      Agora envie:
-
-      Sabores desejados
-      Nome para retirada
-      Forma de pagamento
-
-      Assim que estiver pronto avisaremos
-    options:
-      - label: "Atendente"
-        value: "atendente"
-      - label: "Voltar menu"
-        value: "voltar_menu"
-    transitions:
-      - condition: "contains:atendente"
-        target_state: atendente_humano
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
-      - condition: "contains:menu"
-        target_state: boas_vindas
-      - condition: "contains:humano"
-        target_state: atendente_humano
-    hook:
-      action: "registrar_pedido_retirada"
-
+  # ── CONSULTAR PEDIDO ────────────────────────────────────────────
   consultar_pedido:
-    display_name: "Consultar pedido"
     message: |
-      Para consultar seu pedido, envie:
+      Claro! Vou verificar seu pedido 🔍
 
-      Numero do pedido
-      ou
-      CPF utilizado na compra
-
-      Vamos localizar para voce
+      Me passa o número do pedido ou o CPF utilizado na compra?
+    intent_triggers:
+      - consultar
+    fallback_ai: true
     options:
-      - label: "Voltar menu"
-        value: "voltar_menu"
-      - label: "Atendente"
+      - label: "Falar com atendente"
         value: "atendente"
     transitions:
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
       - condition: "contains:atendente"
         target_state: atendente_humano
-      - condition: "contains:pedido"
-        target_state: consultar_pedido_status
       - condition: "contains:humano"
         target_state: atendente_humano
+      - condition: "*"
+        target_state: consultar_pedido_resultado
     hook:
       action: "consultar_status_pedido"
 
-  consultar_pedido_status:
-    display_name: "Consultar pedido status"
+  consultar_pedido_resultado:
     message: |
-      Estamos verificando o status do seu pedido.
+      Estou verificando o status do seu pedido agora... 📦
 
-      Em instantes voce recebera as informacoes atualizadas
+      Em instantes nossa equipe te responde com as informações atualizadas!
     options:
-      - label: "Voltar menu"
-        value: "voltar_menu"
+      - label: "Fazer novo pedido 🍕"
+        value: "pedido"
+      - label: "Falar com atendente"
+        value: "atendente"
     transitions:
-      - condition: "contains:voltar_menu"
-        target_state: boas_vindas
-      - condition: "contains:menu"
-        target_state: boas_vindas
+      - condition: "contains:pedido"
+        target_state: iniciar_pedido
+      - condition: "contains:atendente"
+        target_state: atendente_humano
     hook:
       action: "verificar_status_pedido"
 
+  # ── ATENDENTE HUMANO ────────────────────────────────────────────
   atendente_humano:
-    display_name: "Atendente humano"
     message: |
-      Perfeito! Vou encaminhar sua conversa para um de nossos atendentes agora.
+      Claro! Já estou te conectando com um dos nossos atendentes 😊
 
-      Nosso tempo medio de resposta e de ate 5 minutos
+      O tempo médio de espera é de até 5 minutos.
 
-      Obrigado pela paciencia!
+      Obrigado pela paciência! Estamos aqui pra te ajudar 🍕
+    intent_triggers:
+      - atendente
     requires_handoff: true

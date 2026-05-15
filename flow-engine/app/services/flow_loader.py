@@ -12,6 +12,7 @@ from app.domain.flow import (
     FlowOption,
     FlowState,
     FlowTransition,
+    GlobalTransition,
     FlowValidationError,
 )
 
@@ -109,12 +110,22 @@ class FlowLoader:
         if metadata is not None and not isinstance(metadata, dict):
             raise FlowValidationError("'metadata' must be a mapping if provided")
 
+        # Parse natural language extensions
+        intent_aliases = self._parse_intent_aliases(data.get("intent_aliases"))
+        global_transitions = self._parse_global_transitions(
+            data.get("global_transitions"), states
+        )
+        fallback_ai = bool(data.get("fallback_ai", False))
+
         return FlowDefinition(
             name=str(data.get("name") or source_path.stem),
             description=data.get("description"),
             start_state=start_state,
             states=states,
             metadata=metadata or {},
+            intent_aliases=intent_aliases,
+            global_transitions=global_transitions,
+            fallback_ai=fallback_ai,
         )
 
     def _parse_state(self, state_name: str, payload: dict) -> FlowState:
@@ -130,6 +141,12 @@ class FlowLoader:
         if not isinstance(hook, dict):
             raise FlowValidationError(f"State '{state_name}' hook must be a mapping")
 
+        silent = bool(payload.get("silent", False))
+        collect_key = payload.get("collect")
+        if collect_key is not None and not isinstance(collect_key, str):
+            raise FlowValidationError(f"State '{state_name}' collect must be a string key")
+        fallback_ai = bool(payload.get("fallback_ai", False))
+
         return FlowState(
             state=state_name,
             message=payload.get("message"),
@@ -141,6 +158,9 @@ class FlowLoader:
             transitions=transitions,
             requires_handoff=requires_handoff,
             hook=hook,
+            silent=silent,
+            collect=collect_key,
+            fallback_ai=fallback_ai,
         )
 
     def _parse_intent_triggers(self, state_name: str, payload) -> List[str]:
@@ -216,6 +236,72 @@ class FlowLoader:
                 )
             )
         return transitions
+
+    def _parse_intent_aliases(self, payload) -> Dict[str, List[str]]:
+        """Parse intent_aliases block: {intent_name: [alias1, alias2, ...]}"""
+        if payload is None:
+            return {}
+        if not isinstance(payload, dict):
+            raise FlowValidationError("'intent_aliases' must be a mapping")
+        result: Dict[str, List[str]] = {}
+        for intent_name, aliases in payload.items():
+            if not isinstance(aliases, list):
+                raise FlowValidationError(
+                    f"intent_aliases['{intent_name}'] must be a list of strings"
+                )
+            normalized = []
+            for alias in aliases:
+                if not isinstance(alias, str):
+                    raise FlowValidationError(
+                        f"intent_aliases['{intent_name}'] must contain strings only"
+                    )
+                val = alias.strip().lower()
+                if val and val not in normalized:
+                    normalized.append(val)
+            result[str(intent_name).strip().lower()] = normalized
+        return result
+
+    def _parse_global_transitions(
+        self, payload, states: Dict[str, FlowState]
+    ) -> List[GlobalTransition]:
+        """Parse global_transitions list checked across all states."""
+        if payload is None:
+            return []
+        if not isinstance(payload, list):
+            raise FlowValidationError("'global_transitions' must be a list")
+        result: List[GlobalTransition] = []
+        for idx, item in enumerate(payload):
+            if not isinstance(item, dict):
+                raise FlowValidationError(
+                    f"global_transitions index {idx} must be a mapping"
+                )
+            condition_raw = item.get("condition")
+            target = item.get("target_state") or item.get("target")
+            if not condition_raw or not target:
+                raise FlowValidationError(
+                    f"global_transitions index {idx} missing condition/target"
+                )
+            # Normalize condition the same way as state transitions
+            if isinstance(condition_raw, dict):
+                # Support dict-style: {contains: "word"} or {equals: "word"}
+                for op, val in condition_raw.items():
+                    condition = f"{op.strip().lower()}:{str(val).strip()}"
+                    break
+            else:
+                condition = str(condition_raw)
+            if str(target) not in states:
+                raise FlowValidationError(
+                    f"global_transitions index {idx} references unknown state '{target}'"
+                )
+            metadata = item.get("metadata") if isinstance(item.get("metadata"), dict) else {}
+            result.append(
+                GlobalTransition(
+                    condition=condition,
+                    target_state=str(target),
+                    metadata=metadata,
+                )
+            )
+        return result
 
     def _tenant_root(self) -> Path:
         return self.flows_path / "tenants"

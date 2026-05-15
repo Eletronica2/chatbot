@@ -174,15 +174,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: AppColors.background,
               child: Column(
                 children: [
-                  if (_selectedNav != _navHome)
-                    _ShellHeader(
-                      title: _pageTitle,
-                      subtitle: _pageSubtitle,
-                      companyLabel: authService.tenantId ?? '-',
-                      onRefresh: _selectedNav == _navConversations
-                          ? _refreshConversations
-                          : null,
-                    ),
+                  _ShellHeader(
+                    title: _pageTitle,
+                    subtitle: _pageSubtitle,
+                    companyLabel: authService.tenantId ?? '-',
+                    onRefresh: _selectedNav == _navConversations
+                        ? _refreshConversations
+                        : null,
+                  ),
                   Expanded(child: _buildCurrentPage()),
                 ],
               ),

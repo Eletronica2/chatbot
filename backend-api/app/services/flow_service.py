@@ -60,6 +60,9 @@ class FlowService:
                     session_state=data.get("session_state"),
                     metadata=data.get("metadata"),
                     requires_handoff=data.get("requires_handoff", False),
+                    requires_ai_fallback=data.get("requires_ai_fallback", False),
+                    smart_reentry=data.get("smart_reentry", False),
+                    collected_data=data.get("collected_data") or {},
                 )
 
             logger.warning(

@@ -150,10 +150,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _rightPanelTab = 0;
   String? _previewCurrentStep;
   List<Map<String, String>> _previewHistory = <Map<String, String>>[];
+  String _simulationPhoneNumber = 'sim-init';
 
   @override
   void initState() {
     super.initState();
+    _simulationPhoneNumber = 'sim-${DateTime.now().millisecondsSinceEpoch}';
     _init();
   }
 
@@ -584,12 +586,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    final current = _findStateByDisplayName(draft, _previewCurrentStep) ??
-        (draft.states.isNotEmpty ? draft.states.first : null);
-    if (current == null) {
-      return;
-    }
-
     setState(() {
       _sendingSimulation = true;
       _simulationInputCtrl.clear();
@@ -599,27 +595,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     });
 
+    debugPrint('SIMULATION: Starting message send. Tenant: $_tenantId, Message: $message, Flow: ${draft.name}, Phone: $_simulationPhoneNumber');
     try {
-      final nextState = _resolveNextStateForMessage(draft, current, message);
+      debugPrint('SIMULATION: Calling flowAdminService.sendSimulationMessage...');
+      final result = await flowAdminService.sendSimulationMessage(
+        tenantId: _tenantId,
+        message: message,
+        flowName: draft.name,
+        phoneNumber: _simulationPhoneNumber,
+      );
+      debugPrint('SIMULATION: Success. Bot response length: ${result.botResponse.length}');
+
       if (!mounted) {
         return;
       }
 
       setState(() {
-        if (nextState != null) {
-          _previewCurrentStep = nextState.name;
-          if (nextState.message.isNotEmpty) {
-            _previewHistory.add(<String, String>{
-              'role': 'bot',
-              'text': nextState.message,
-            });
-          }
-        } else {
-          _previewHistory.add(<String, String>{
-            'role': 'bot',
-            'text': _buildSimulationFallback(current, message),
-          });
+        _previewHistory.add(<String, String>{
+          'role': 'bot',
+          'text': result.botResponse,
+        });
+        if (result.state != null && result.state!.isNotEmpty) {
+           _previewCurrentStep = result.state;
         }
+      });
+    } catch (e, stack) {
+      // ignore: avoid_print
+      print('SIMULATION ERROR: $e\n$stack');
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _previewHistory.add(<String, String>{
+          'role': 'bot',
+          'text': '⚠️ Erro na simulação!\nTenant: $_tenantId\nErro: $e',
+        });
       });
     } finally {
       if (mounted) {
@@ -1389,14 +1399,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted || draft == null) {
       return;
     }
-    setState(() => _rightPanelTab = 0);
-    _resetPreview(draft);
     await _showAutomationDialog(
       title: 'Testar automa\u00e7\u00e3o',
       subtitle: draft.name,
       width: 960,
       height: 760,
-      child: _buildInsightsPanel(draft),
+      child: _FlowTestView(draft: draft),
     );
   }
 
@@ -1483,21 +1491,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final content = Container(
       color: _kBg,
       child: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1280),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _buildPageHeader(),
-                  const SizedBox(height: 20),
-                  _buildAiConfigCard(),
-                  const SizedBox(height: 20),
-                  Expanded(child: _buildAutomationListCard()),
-                ],
+        child: SingleChildScrollView(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1280),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildPageHeader(),
+                    const SizedBox(height: 20),
+                    _buildAiConfigCard(),
+                    const SizedBox(height: 20),
+                    _buildAutomationListCard(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1643,7 +1653,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const Divider(height: 1, color: _kBorder),
           _buildAutomationTableHeader(),
           const Divider(height: 1, color: _kBorder),
-          Expanded(child: _buildAutomationListBody()),
+          _buildAutomationListBody(),
         ],
       ),
     );
@@ -1721,6 +1731,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       children: rows,
     );
   }
@@ -1960,14 +1972,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: _kBorder),
                   ),
-                  child: const Text(
-                    'Pr\u00e9via da automa\u00e7\u00e3o',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _kMuted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(),
+                      const Text(
+                        'Pr\u00e9via da automa\u00e7\u00e3o',
+                        style: TextStyle(
+                          color: _kMuted,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _simulationPhoneNumber =
+                                'sim-${DateTime.now().millisecondsSinceEpoch}';
+                          });
+                          _resetPreview(draft);
+                        },
+                        child: const Row(
+                          children: [
+                            Icon(Icons.refresh, size: 12, color: _kAccent),
+                            SizedBox(width: 4),
+                            Text(
+                              'Reiniciar',
+                              style: TextStyle(color: _kAccent, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -2186,6 +2223,501 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+
+// ── Flow test view (self-contained simulation panel) ─────────────────────────
+
+class _FlowTestView extends StatefulWidget {
+  const _FlowTestView({required this.draft});
+
+  final _FlowDraft draft;
+
+  @override
+  State<_FlowTestView> createState() => _FlowTestViewState();
+}
+
+class _FlowTestViewState extends State<_FlowTestView> {
+  final TextEditingController _inputCtrl = TextEditingController();
+  final ScrollController _scrollCtrl = ScrollController();
+  bool _sending = false;
+  int _tab = 0;
+  String? _currentStep;
+  List<Map<String, String>> _history = <Map<String, String>>[];
+  bool _waitingForFirstMessage = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetPreview();
+  }
+
+  @override
+  void dispose() {
+    _inputCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _resetPreview() {
+    final draft = widget.draft;
+    final startDisplay = draft.startState.isNotEmpty
+        ? draft.startState
+        : (draft.states.isNotEmpty ? draft.states.first.name : '');
+    final startState = _findState(startDisplay) ??
+        (draft.states.isNotEmpty ? draft.states.first : null);
+    setState(() {
+      _currentStep = startState?.name;
+      _history = <Map<String, String>>[];
+      _waitingForFirstMessage = true;
+      _inputCtrl.clear();
+    });
+    _scrollToBottom();
+  }
+
+  _StateDraft? _findState(String? displayName) {
+    if (displayName == null || displayName.trim().isEmpty) return null;
+    for (final state in widget.draft.states) {
+      if (state.name.trim().toLowerCase() == displayName.trim().toLowerCase()) {
+        return state;
+      }
+    }
+    return null;
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      _scrollCtrl.animateTo(
+        _scrollCtrl.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  bool _matches(String message, String candidate) {
+    final m = message.trim().toLowerCase();
+    final c = candidate.trim().toLowerCase();
+    if (m.isEmpty || c.isEmpty) return false;
+    return m == c || m.contains(c);
+  }
+
+  String _autoId(String label, int index) {
+    final slug = label
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9_\- ]'), '')
+        .replaceAll(' ', '_');
+    return slug.isNotEmpty ? slug : 'botao_${index + 1}';
+  }
+
+  _StateDraft? _nextState(_StateDraft current, String message) {
+    // Check option transitions first
+    for (var i = 0; i < current.options.length; i++) {
+      final opt = current.options[i];
+      final target = opt.targetState.trim();
+      if (target.isEmpty) continue;
+      final label = opt.labelCtrl.text.trim();
+      final token = _autoId(label, i);
+      if (_matches(message, label) || _matches(message, token)) {
+        return _findState(target);
+      }
+    }
+    // Check keyword transitions; hold wildcard (*) as last resort
+    _StateDraft? wildcardTarget;
+    for (final t in current.transitions) {
+      final target = t.targetState.trim();
+      if (target.isEmpty) continue;
+      final kw = t.keywordCtrl.text.trim();
+      if (kw == '*') {
+        wildcardTarget ??= _findState(target);
+        continue;
+      }
+      if (_matches(message, kw)) return _findState(target);
+    }
+    return wildcardTarget;
+  }
+
+  String _fallback(_StateDraft current, String message) {
+    if (current.requiresHandoff) {
+      return 'Esta etapa encaminha a conversa para um atendente humano.';
+    }
+    final hasRoutes = current.options.any(
+          (o) =>
+              o.labelCtrl.text.trim().isNotEmpty &&
+              o.targetState.trim().isNotEmpty,
+        ) ||
+        current.transitions.any(
+          (t) =>
+              t.keywordCtrl.text.trim().isNotEmpty &&
+              t.targetState.trim().isNotEmpty,
+        );
+    if (hasRoutes) {
+      return 'Nenhuma pr\u00f3xima etapa encontrada para "$message". Tente outra palavra-chave.';
+    }
+    return 'Esta etapa n\u00e3o possui pr\u00f3ximos passos configurados.';
+  }
+
+  Future<void> _send(String rawMessage) async {
+    if (_sending) return;
+    final message = rawMessage.trim();
+    if (message.isEmpty) return;
+    
+    setState(() {
+      _sending = true;
+      _inputCtrl.clear();
+      _history.add(<String, String>{'role': 'user', 'text': message});
+    });
+
+    try {
+      final tenantId = authService.tenantId ?? 'default';
+      final result = await flowAdminService.sendSimulationMessage(
+        tenantId: tenantId,
+        message: message,
+        flowName: widget.draft.name,
+        phoneNumber: 'test-list-dialog',
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _history.add(<String, String>{
+          'role': 'bot',
+          'text': result.displayResponse,
+        });
+        if (result.state != null && result.state!.isNotEmpty) {
+          _currentStep = result.state;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _history.add(<String, String>{
+          'role': 'bot',
+          'text': '⚠️ Erro na simulação!\nErro: $e',
+        });
+      });
+    } finally {
+      if (mounted) setState(() => _sending = false);
+      _scrollToBottom();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: _kSurface,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: _kBorder)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Testes',
+                  style: TextStyle(
+                    color: _kText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _tab == 0 ? _kAccentSoft : _kCard,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => setState(() => _tab = 0),
+                        child: const Text('Teste'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _tab == 1 ? _kAccentSoft : _kCard,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () => setState(() => _tab = 1),
+                        child: const Text('Mapa da automa\u00e7\u00e3o'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _tab == 0 ? _buildChat() : _buildMap(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChat() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Envie uma mensagem para validar a conversa.',
+                  style: TextStyle(color: _kMuted, fontSize: 12),
+                ),
+              ),
+              _SmallBtn(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Reiniciar simula\u00e7\u00e3o',
+                onTap: _resetPreview,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _kSubCard,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 10,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: _kCard,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: _kBorder),
+                  ),
+                  child: const Text(
+                    'Pr\u00e9via da automa\u00e7\u00e3o',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _kMuted,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF07111F),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _kBorder),
+                    ),
+                    child: _history.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Nenhuma mensagem ainda.\nDigite abaixo para testar.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _kMuted,
+                                fontSize: 12,
+                                height: 1.5,
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: _scrollCtrl,
+                            itemCount: _history.length,
+                            itemBuilder: (_, index) {
+                              final row = _history[index];
+                              final isUser = row['role'] == 'user';
+                              return Align(
+                                alignment: isUser
+                                    ? Alignment.centerRight
+                                    : Alignment.centerLeft,
+                                child: Container(
+                                  constraints:
+                                      const BoxConstraints(maxWidth: 250),
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isUser ? _kAccentSoft : _kCard,
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: const Radius.circular(14),
+                                      topRight: const Radius.circular(14),
+                                      bottomLeft:
+                                          Radius.circular(isUser ? 14 : 4),
+                                      bottomRight:
+                                          Radius.circular(isUser ? 4 : 14),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    row['text'] ?? '',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _inputCtrl,
+                        style: const TextStyle(color: _kText, fontSize: 12),
+                        onSubmitted: (_) => _send(_inputCtrl.text),
+                        decoration: InputDecoration(
+                          hintText: 'Digite uma mensagem como cliente',
+                          hintStyle: const TextStyle(
+                            color: _kSubtle,
+                            fontSize: 12,
+                          ),
+                          filled: true,
+                          fillColor: _kInput,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: _kBorder),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: _kBorder),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: _kAccent),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _kAccentSoft,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      onPressed: _sending ? null : () => _send(_inputCtrl.text),
+                      icon: _sending
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.send_rounded, size: 16),
+                      label: Text(_sending ? 'Enviando' : 'Enviar'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMap() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: widget.draft.states.length,
+      itemBuilder: (_, index) {
+        final state = widget.draft.states[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: _kCard,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                state.name,
+                style: const TextStyle(
+                  color: _kText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (state.message.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  state.message,
+                  style: const TextStyle(color: _kMuted, fontSize: 12),
+                ),
+              ],
+              if (state.transitions.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ...state.transitions
+                    .where(
+                      (t) =>
+                          t.keywordCtrl.text.trim().isNotEmpty &&
+                          t.targetState.isNotEmpty,
+                    )
+                    .map(
+                      (t) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            const Text(
+                              '\u2192 ',
+                              style: TextStyle(color: _kSubtle),
+                            ),
+                            Expanded(
+                              child: Text(
+                                '"${t.keywordCtrl.text.trim()}" \u2192 ${t.targetState}',
+                                style: const TextStyle(
+                                  color: _kText,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 enum _FlowListAction { edit, test }
 

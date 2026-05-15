@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import datetime
 from typing import Any, Dict
@@ -123,6 +124,92 @@ class ConversationService:
 
         flow_result = await self.flow_service.execute_flow(enriched_message, session)
 
+        # --- Case 1: Flow wants AI to complete the response (fallback_ai) ---
+        if flow_result.requires_ai_fallback:
+            logger.info(
+                "Flow engine signaled requires_ai_fallback for message %s",
+                message.message_id,
+            )
+            tenant_settings = await self.tenant_settings_service.get_or_create(message.tenant_id)
+            if tenant_settings.ai_enabled:
+                # Pass flow context to AI so it can respond naturally
+                flow_metadata = flow_result.metadata or {}
+                ai_metadata = dict(message.metadata or {})
+                ai_metadata.update({
+                    "flow_state_message": flow_metadata.get("flow_state_message"),
+                    "options": flow_metadata.get("options"),
+                    "collected_data": flow_result.collected_data,
+                    "resolution_reason": "fallback_ai",
+                })
+                enriched_message_for_ai = enriched_message.model_copy(
+                    update={"metadata": ai_metadata}
+                )
+                ai_response = await self.ai_service.generate_response(
+                    enriched_message_for_ai,
+                    session,
+                    metadata_overrides=tenant_settings.as_ai_metadata(),
+                )
+                if ai_response.handled and ai_response.reply_text:
+                    flow_state_message = flow_metadata.get("flow_state_message")
+                    reply = self._compose_ai_fallback_reply(
+                        ai_response.reply_text,
+                        flow_state_message if isinstance(flow_state_message, str) else None,
+                    )
+                    source = "ai_fallback"
+                    combined_metadata = dict(flow_metadata)
+                    combined_metadata.update(ai_metadata)
+                    combined_metadata["source"] = source
+                    if intent_result.intent:
+                        combined_metadata["detected_intent"] = intent_result.intent
+                    persisted_intent = self._resolve_persisted_intent(
+                        intent_result=intent_result,
+                        fallback_intent=flow_result.detected_intent,
+                    )
+                    flow_name = str(flow_metadata.get("flow") or session.active_flow or "start")
+                    state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
+                    self._append_message(session, role="assistant", content=reply)
+                    session = await self.session_service.update_session(
+                        session,
+                        state_updates=flow_result.session_state,
+                        active_flow=flow_name,
+                        current_state=state_name,
+                        detected_intent=persisted_intent,
+                        last_flow=flow_name,
+                        phone_number_id=message.phone_number_id,
+                        display_phone_number=message.display_phone_number,
+                    )
+                    await self.message_service.append(
+                        tenant_id=message.tenant_id,
+                        session_id=session.session_id,
+                        direction="outgoing",
+                        role="assistant",
+                        content=reply,
+                        source=source,
+                        metadata=combined_metadata,
+                        phone_number_id=message.phone_number_id,
+                    )
+                    action = ConversationAction(
+                        source=source,
+                        reply_text=reply,
+                        tenant_id=message.tenant_id,
+                        phone_number=message.phone_number,
+                        metadata=combined_metadata,
+                        session_state=session.conversation_state,
+                        requires_handoff=flow_result.requires_handoff,
+                    )
+                    await self._log_interaction(
+                        message=message,
+                        session_id=session.session_id,
+                        flow_used=flow_name,
+                        state=state_name,
+                        user_message=message.content,
+                        bot_response=reply,
+                        source=source,
+                        started_at=started_at,
+                        detected_intent=persisted_intent,
+                    )
+                    return action
+
         if flow_result.handled and flow_result.reply_text:
             logger.info("Flow engine resolved message %s with reply", message.message_id)
             flow_metadata = flow_result.metadata or {}
@@ -159,6 +246,20 @@ class ConversationService:
             if intent_result.intent:
                 response_metadata["detected_intent"] = intent_result.intent
                 response_metadata["confidence"] = intent_result.confidence
+            if flow_result.smart_reentry:
+                response_metadata["smart_reentry"] = True
+            if flow_result.collected_data:
+                response_metadata["collected_data"] = flow_result.collected_data
+
+            # Enrich handoff with context summary
+            if flow_result.requires_handoff:
+                handoff_summary = self._build_handoff_summary(
+                    session=session,
+                    intent=persisted_intent,
+                    collected_data=flow_result.collected_data or {},
+                    contact_name=message.contact_name,
+                )
+                response_metadata["handoff_summary"] = handoff_summary
 
             action = ConversationAction(
                 source="flow",
@@ -304,6 +405,69 @@ class ConversationService:
         context["updated_at"] = datetime.utcnow().isoformat()
         session.context = context
 
+    @staticmethod
+    def _compose_ai_fallback_reply(
+        ai_reply: str,
+        flow_state_message: str | None,
+    ) -> str:
+        """Merge a natural AI intro with the canonical flow-state body."""
+        flow_msg = (flow_state_message or "").strip()
+        ai_reply = (ai_reply or "").strip()
+        if not flow_msg:
+            return ai_reply
+        if not ai_reply:
+            return flow_msg
+        if ConversationService._flow_content_in_reply(ai_reply, flow_msg):
+            return ai_reply
+        intro = ConversationService._extract_fallback_intro(ai_reply, flow_msg)
+        if intro:
+            return f"{intro}\n\n{flow_msg}"
+        return flow_msg
+
+    @staticmethod
+    def _flow_content_in_reply(ai_reply: str, flow_msg: str) -> bool:
+        anchors: list[str] = []
+        for line in flow_msg.splitlines():
+            cleaned = re.sub(r"[*_~`]", "", line).strip()
+            if len(cleaned) >= 12:
+                anchors.append(cleaned[:40].lower())
+        if not anchors:
+            return len(ai_reply) >= int(len(flow_msg) * 0.85)
+        hits = sum(1 for anchor in anchors if anchor in ai_reply.lower())
+        return hits >= max(1, min(2, len(anchors) // 2))
+
+    @staticmethod
+    def _extract_fallback_intro(ai_reply: str, flow_msg: str) -> str:
+        intro = re.sub(r"[*🗓📍🛵⏰]+\s*$", "", ai_reply, flags=re.UNICODE).strip()
+        intro = re.sub(r"\*+\s*$", "", intro).strip()
+
+        flow_lines_plain = [
+            re.sub(r"[*_~`]", "", line).strip().lower()
+            for line in flow_msg.splitlines()
+            if line.strip()
+        ]
+
+        kept: list[str] = []
+        for line in intro.splitlines():
+            plain = re.sub(r"[*_~`]", "", line).strip().lower()
+            if not plain or len(plain) <= 2:
+                continue
+            if any(
+                plain in flow_line or flow_line.startswith(plain[:30])
+                for flow_line in flow_lines_plain
+                if len(flow_line) > 10
+            ):
+                break
+            if plain.endswith(":") and not any(ch.isdigit() for ch in plain):
+                continue
+            kept.append(line.rstrip())
+
+        result = "\n".join(kept).strip()
+        if result:
+            return result
+        first_line = intro.split("\n")[0].strip()
+        return first_line
+
     def _with_detected_intent(
         self,
         message: NormalizedMessage,
@@ -356,4 +520,30 @@ class ConversationService:
                 response_time_ms=elapsed_ms,
             )
         )
+
+    def _build_handoff_summary(
+        self,
+        session,
+        intent: str | None,
+        collected_data: Dict[str, Any] | None,
+        contact_name: str | None,
+    ) -> str:
+        """Build a human-readable summary to send to the human agent."""
+        lines = ["*Resumo do atendimento automatizado:*"]
+        if contact_name:
+            lines.append(f"• Cliente: {contact_name}")
+        if intent:
+            lines.append(f"• Intenção identificada: {intent}")
+        if collected_data:
+            for key, value in collected_data.items():
+                lines.append(f"• {key}: {value}")
+        history = list(getattr(session, "conversation_history", []))
+        if history:
+            last_msgs = history[-4:]  # last 2 exchanges
+            lines.append("\n*Últimas mensagens:*")
+            for msg in last_msgs:
+                role_label = "Usuário" if getattr(msg, "role", "") == "user" else "Bot"
+                content = (getattr(msg, "content", "") or "")[:120]
+                lines.append(f"  [{role_label}] {content}")
+        return "\n".join(lines)
 

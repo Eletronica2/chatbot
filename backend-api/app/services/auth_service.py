@@ -1,4 +1,4 @@
-﻿"""Authentication and tenant access helpers for the admin panel."""
+"""Authentication and tenant access helpers for the admin panel."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -67,14 +67,19 @@ class AuthService:
 
     def authenticate_request(self, request: Request, *, required: bool = True) -> AuthenticatedUser | None:
         header = request.headers.get("authorization", "")
+        # logger.info(f"AUTH: Authenticating request to {request.url.path}. Header present: {bool(header)}")
         if not header.lower().startswith("bearer "):
             if required:
+                import logging
+                logging.getLogger("app.services.auth_service").warning(f"AUTH: Missing or invalid header for {request.url.path}: {header[:15]}...")
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
             return None
         token = header.split(" ", 1)[1].strip()
         try:
             payload = decode_access_token(token, secret_key=self.settings.APP_SECRET_KEY)
         except Exception as exc:
+            import logging
+            logging.getLogger("app.services.auth_service").error(f"AUTH: Token decode failed for {request.url.path}: {exc}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
         user = AuthenticatedUser(
             user_id=str(payload.get("sub") or ""),

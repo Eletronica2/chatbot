@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 
-const _kPageBg = Color(0xFF0B1120);
 const _kSurface = Color(0xFF1E293B);
 const _kBorder = Color(0xFF334155);
 const _kText = Colors.white;

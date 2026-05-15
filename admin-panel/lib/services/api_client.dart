@@ -1,4 +1,5 @@
-﻿import 'dart:convert';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:http/http.dart' as http;
 
@@ -28,11 +29,15 @@ class ApiClient {
 
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
     final uri = Uri.parse('$apiBaseUrl$path');
+    debugPrint('API_CLIENT: POST to $uri');
+    final headers = _headers();
+    debugPrint('API_CLIENT: POST to $uri. Headers: ${headers.keys.toList()}');
     final response = await _httpClient.post(
       uri,
-      headers: _headers(),
+      headers: headers,
       body: jsonEncode(body ?? {}),
     );
+    debugPrint('API_CLIENT: Response status: ${response.statusCode}');
     return _handleResponse(response);
   }
 
