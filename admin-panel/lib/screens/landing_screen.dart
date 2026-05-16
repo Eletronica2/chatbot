@@ -1,8 +1,11 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/commercial_contact.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/premium_ui.dart';
 import 'signup_dialog.dart';
@@ -74,6 +77,43 @@ class _LandingScreenState extends State<LandingScreen> {
     );
   }
 
+  Future<void> _openCommercialWhatsApp() async {
+    if (!isCommercialWhatsAppConfigured) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Configure o número em lib/config/commercial_contact.dart',
+            style: GoogleFonts.inter(fontSize: 13),
+          ),
+        ),
+      );
+      return;
+    }
+    final uri = commercialWhatsAppUri(
+      prefilledMessage: 'Olá! Quero saber mais sobre o atendimento inteligente com IA.',
+    );
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Não foi possível abrir o WhatsApp.',
+            style: GoogleFonts.inter(fontSize: 13),
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _contactExpertOrSignup() async {
+    if (isCommercialWhatsAppConfigured) {
+      await _openCommercialWhatsApp();
+      return;
+    }
+    _openSignup();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -122,7 +162,25 @@ class _LandingScreenState extends State<LandingScreen> {
                         Padding(
                           key: _pricingKey,
                           padding: const EdgeInsets.symmetric(horizontal: 64),
-                          child: _PlansSection(onCta: _openSignup),
+                          child: _PlansSection(
+                            onCta: _openSignup,
+                            onExpertTap: _contactExpertOrSignup,
+                          ),
+                        ),
+                        const SizedBox(height: 96),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 64),
+                          child: _ImplantationSection(),
+                        ),
+                        const SizedBox(height: 96),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 64),
+                          child: _DifferentiatorsSection(),
+                        ),
+                        const SizedBox(height: 96),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 64),
+                          child: _ComparisonSection(),
                         ),
                         const SizedBox(height: 96),
                         Padding(
@@ -140,8 +198,8 @@ class _LandingScreenState extends State<LandingScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 64),
                           child: _FinalCta(
-                            onPrimary: _openSignup,
-                            onSecondary: widget.onLoginTap,
+                            onRequestDemo: _openSignup,
+                            onWhatsApp: _openCommercialWhatsApp,
                           ),
                         ),
                         const SizedBox(height: 80),
@@ -577,7 +635,7 @@ class _HeroCopy extends StatelessWidget {
         SizedBox(
           width: 520,
           child: Text(
-            'Automatize atendimentos, aumente vendas, reduza custos e ofereça experiências incríveis com IA no WhatsApp — tudo em uma plataforma enterprise.',
+            'Automatize respostas, organize atendimentos e aumente suas vendas com IA no WhatsApp oficial — tecnologia premium e simples de usar.',
             style: GoogleFonts.inter(
               color: AppColors.textMuted,
               fontSize: 16,
@@ -651,10 +709,15 @@ class _PillBadge extends StatelessWidget {
 }
 
 class _SecondaryHeroBtn extends StatefulWidget {
-  const _SecondaryHeroBtn({required this.label, required this.onTap});
+  const _SecondaryHeroBtn({
+    required this.label,
+    required this.onTap,
+    this.icon = Icons.play_circle_outline,
+  });
 
   final String label;
   final VoidCallback onTap;
+  final IconData icon;
 
   @override
   State<_SecondaryHeroBtn> createState() => _SecondaryHeroBtnState();
@@ -688,7 +751,7 @@ class _SecondaryHeroBtnState extends State<_SecondaryHeroBtn> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.play_circle_outline, size: 18, color: AppColors.text),
+              Icon(widget.icon, size: 18, color: AppColors.text),
               const SizedBox(width: 10),
               Text(
                 widget.label,
@@ -1755,22 +1818,27 @@ class _ChartPainter extends CustomPainter {
 // ============================================================================
 
 class _PlansSection extends StatelessWidget {
-  const _PlansSection({required this.onCta});
+  const _PlansSection({
+    required this.onCta,
+    required this.onExpertTap,
+  });
 
   final VoidCallback onCta;
+  final VoidCallback onExpertTap;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const _SectionEyebrow(text: 'PREÇOS', accent: AppColors.accentCyan),
+        const _SectionEyebrow(text: 'PLANOS', accent: AppColors.accentCyan),
         const SizedBox(height: 14),
-        _SectionHeadline(first: 'Planos para todos os ', highlight: 'tamanhos'),
+        _SectionHeadline(first: 'Atendimento inteligente ', highlight: 'com IA'),
         const SizedBox(height: 14),
         SizedBox(
-          width: 560,
+          width: 620,
           child: Text(
-            'Escolha o plano ideal para o momento do seu negócio. Mude de plano quando quiser.',
+            'Veja o que está incluso, valores e implantação profissional. Sem jargão técnico — '
+            'uma solução moderna para atender melhor e vender mais pelo WhatsApp.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textMuted,
@@ -1782,83 +1850,104 @@ class _PlansSection extends StatelessWidget {
         const SizedBox(height: 40),
         LayoutBuilder(
           builder: (context, c) {
-            final cols = c.maxWidth >= 1180 ? 4 : (c.maxWidth >= 760 ? 2 : 1);
+            final cols = c.maxWidth >= 1100 ? 3 : 1;
             const items = [
               _PlanCardData(
-                name: 'Starter',
-                tagline: 'Perfeito para começar',
-                price: 'R\$ 79',
+                name: 'Start',
+                tagline:
+                    'Automatize seu WhatsApp com IA e agilize o atendimento do seu negócio.',
+                price: 'R\$ 197',
                 period: '/mês',
                 features: [
                   '1 número WhatsApp',
-                  'Até 1.000 mensagens/mês',
-                  'IA avançada',
-                  'Fluxos básicos',
-                  'Relatórios',
-                  'Suporte por e-mail',
+                  'Atendimento automático inteligente',
+                  'Fluxos personalizados',
+                  'IA contextual básica',
+                  'Painel administrativo',
+                  'Até 1.000 conversas/mês',
+                  'Suporte padrão',
                 ],
                 accent: AppColors.accentBlue,
+                ctaLabel: 'Começar agora',
               ),
               _PlanCardData(
-                name: 'Growth',
-                tagline: 'Para negócios em crescimento',
-                price: 'R\$ 179',
+                name: 'Professional',
+                tagline:
+                    'Atendimento humanizado com IA avançada e automações completas para empresas em crescimento.',
+                price: 'R\$ 397',
                 period: '/mês',
                 features: [
-                  '3 números WhatsApp',
-                  'Até 10.000 mensagens/mês',
-                  'IA avançada',
-                  'Fluxos inteligentes',
-                  'Relatórios avançados',
-                  'Suporte prioritário',
+                  'Tudo do Start',
+                  'IA contextual avançada',
+                  'Smart reentry',
+                  'Fluxos ilimitados',
+                  'Transferência para atendente',
+                  'Dashboard e métricas',
+                  'Até 5.000 conversas/mês',
+                  'Múltiplos atendentes',
+                  'Prioridade no suporte',
                 ],
                 accent: AppColors.primary,
                 highlighted: true,
                 badge: 'Mais escolhido',
+                ctaLabel: 'Quero automatizar meu atendimento',
               ),
               _PlanCardData(
-                name: 'Pro',
-                tagline: 'Para equipes e empresas',
-                price: 'R\$ 399',
-                period: '/mês',
-                features: [
-                  '10 números WhatsApp',
-                  'Até 50.000 mensagens/mês',
-                  'IA avançada + Treinamento',
-                  'Integrações',
-                  'Relatórios avançados',
-                  'Suporte prioritário',
-                ],
-                accent: AppColors.accentPurple,
-              ),
-              _PlanCardData(
-                name: 'Enterprise',
-                tagline: 'Solução completa e personalizada',
+                name: 'Business',
+                tagline:
+                    'Solução completa para operações maiores com IA avançada, integrações e atendimento escalável.',
                 price: 'Sob consulta',
                 period: '',
                 features: [
-                  'Números ilimitados',
-                  'Mensagens ilimitadas',
-                  'IA personalizada',
-                  'Integrações completas',
-                  'Relatórios completos',
-                  'Onboarding exclusivo',
+                  'Tudo do Professional',
+                  'Integrações personalizadas',
+                  'Multiunidades',
+                  'API',
+                  'Webhooks',
+                  'IA avançada personalizada',
+                  'Alto volume de conversas',
+                  'SLA prioritário',
+                  'Suporte premium',
                 ],
                 accent: AppColors.accentCyan,
+                expertContact: true,
+                ctaLabel: 'Falar com especialista',
               ),
             ];
             const spacing = 20.0;
-            return Wrap(
-              spacing: spacing,
-              runSpacing: spacing,
-              alignment: WrapAlignment.center,
-              children: [
-                for (final p in items)
-                  SizedBox(
-                    width: (c.maxWidth - spacing * (cols - 1)) / cols,
-                    child: _PlanCard(data: p, onCta: onCta),
-                  ),
-              ],
+            if (cols == 1) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) const SizedBox(height: spacing),
+                    _PlanCard(
+                      data: items[i],
+                      onCta: onCta,
+                      onExpertTap: onExpertTap,
+                      stretchFeatureArea: false,
+                    ),
+                  ],
+                ],
+              );
+            }
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < items.length; i++) ...[
+                    if (i > 0) SizedBox(width: spacing),
+                    Expanded(
+                      child: _PlanCard(
+                        data: items[i],
+                        onCta: onCta,
+                        onExpertTap: onExpertTap,
+                        stretchFeatureArea: true,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             );
           },
         ),
@@ -1877,6 +1966,8 @@ class _PlanCardData {
     required this.accent,
     this.highlighted = false,
     this.badge,
+    this.ctaLabel,
+    this.expertContact = false,
   });
 
   final String name;
@@ -1887,13 +1978,23 @@ class _PlanCardData {
   final Color accent;
   final bool highlighted;
   final String? badge;
+  final String? ctaLabel;
+  final bool expertContact;
 }
 
 class _PlanCard extends StatefulWidget {
-  const _PlanCard({required this.data, required this.onCta});
+  const _PlanCard({
+    required this.data,
+    required this.onCta,
+    required this.onExpertTap,
+    required this.stretchFeatureArea,
+  });
 
   final _PlanCardData data;
   final VoidCallback onCta;
+  final VoidCallback onExpertTap;
+  /// Quando true (desktop em linha), o bloco de recursos ocupa espaço livre e alinha o CTA ao rodapé.
+  final bool stretchFeatureArea;
 
   @override
   State<_PlanCard> createState() => _PlanCardState();
@@ -1956,7 +2057,7 @@ class _PlanCardState extends State<_PlanCard> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: widget.stretchFeatureArea ? MainAxisSize.max : MainAxisSize.min,
           children: [
             Row(
               children: [
@@ -2003,6 +2104,7 @@ class _PlanCardState extends State<_PlanCard> {
                 color: AppColors.textMuted,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w500,
+                height: 1.45,
               ),
             ),
             const SizedBox(height: 22),
@@ -2019,7 +2121,7 @@ class _PlanCardState extends State<_PlanCard> {
                     widget.data.price,
                     style: GoogleFonts.inter(
                       color: Colors.white,
-                      fontSize: 32,
+                      fontSize: widget.data.period.isEmpty ? 26 : 32,
                       fontWeight: FontWeight.w800,
                       letterSpacing: -1.2,
                       height: 1,
@@ -2041,35 +2143,52 @@ class _PlanCardState extends State<_PlanCard> {
               ],
             ),
             const SizedBox(height: 22),
-            ...widget.data.features.map(
-              (f) => Padding(
-                padding: const EdgeInsets.only(bottom: 9),
-                child: Row(
+            Builder(
+              builder: (context) {
+                final featureColumn = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_rounded, size: 16, color: accent),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        f,
-                        style: GoogleFonts.inter(
-                          color: AppColors.textMuted,
-                          fontSize: 13,
-                          height: 1.4,
+                    for (final f in widget.data.features)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 9),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.check_rounded, size: 16, color: accent),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                f,
+                                style: GoogleFonts.inter(
+                                  color: AppColors.textMuted,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
                   ],
-                ),
-              ),
+                );
+                if (!widget.stretchFeatureArea) return featureColumn;
+                return Expanded(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: featureColumn,
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
               child: _PlanCta(
-                label: widget.data.name == 'Enterprise' ? 'Falar com especialista' : 'Começar',
+                label: widget.data.ctaLabel ?? 'Começar agora',
                 highlighted: highlight,
                 accent: accent,
-                onTap: widget.onCta,
+                onTap: widget.data.expertContact ? widget.onExpertTap : widget.onCta,
               ),
             ),
           ],
@@ -2141,14 +2260,473 @@ class _PlanCtaState extends State<_PlanCta> {
           ),
           child: Text(
             widget.label,
+            textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              color: AppColors.text,
+              color: widget.highlighted ? Colors.white : AppColors.text,
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.1,
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ImplantationSection extends StatelessWidget {
+  const _ImplantationSection();
+
+  static const _items = [
+    'Configuração oficial do WhatsApp',
+    'Criação dos fluxos personalizados',
+    'Ajuste das respostas automáticas',
+    'Configuração da IA',
+    'Testes completos',
+    'Publicação do atendimento',
+    'Treinamento inicial',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final compact = c.maxWidth < 720;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFF151A26).withValues(alpha: 0.92),
+                        const Color(0xFF0C1018).withValues(alpha: 0.96),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 28 : 40,
+                  vertical: compact ? 32 : 40,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x22000000),
+                      blurRadius: 48,
+                      offset: Offset(0, 20),
+                    ),
+                  ],
+                ),
+                child: compact
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: _bodyChildren(),
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 5, child: _introColumn()),
+                          const SizedBox(width: 36),
+                          Expanded(flex: 6, child: _checklistColumn()),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  List<Widget> _bodyChildren() => [
+        _introColumn(),
+        const SizedBox(height: 28),
+        _checklistColumn(),
+      ];
+
+  Widget _introColumn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionEyebrow(text: 'IMPLANTAÇÃO', accent: AppColors.primary),
+        const SizedBox(height: 12),
+        Text(
+          'Implantação personalizada',
+          style: GoogleFonts.inter(
+            color: AppColors.text,
+            fontSize: 28,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+            letterSpacing: -0.8,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Antes da ativação do sistema, realizamos toda a configuração inicial do seu atendimento inteligente.',
+          style: GoogleFonts.inter(
+            color: AppColors.textMuted,
+            fontSize: 14.5,
+            height: 1.55,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'O investimento inicial é definido após entender seu cenário — complexidade e integrações influenciam o valor.',
+          style: GoogleFonts.inter(
+            color: AppColors.textSoft,
+            fontSize: 13,
+            height: 1.5,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _checklistColumn() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'O que fazemos na entrega',
+          style: GoogleFonts.inter(
+            color: AppColors.text,
+            fontSize: 14,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 16),
+        for (final line in _items) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  line,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 14,
+                    height: 1.45,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _DifferentiatorsSection extends StatelessWidget {
+  const _DifferentiatorsSection();
+
+  static final _tiles = [
+    (Icons.schedule_rounded, 'Atendimento 24h'),
+    (Icons.psychology_alt_outlined, 'IA humanizada'),
+    (Icons.forum_outlined, 'Conversa natural'),
+    (Icons.verified_outlined, 'WhatsApp oficial'),
+    (Icons.support_agent_rounded, 'Transferência para humano'),
+    (Icons.touch_app_outlined, 'Painel simples de usar'),
+    (Icons.account_tree_outlined, 'Fluxos inteligentes'),
+    (Icons.insights_outlined, 'Métricas em tempo real'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _SectionEyebrow(text: 'DIFERENCIAIS', accent: AppColors.accentBlue),
+        const SizedBox(height: 14),
+        _SectionHeadline(first: 'Por que escolher ', highlight: 'atendimento com IA'),
+        const SizedBox(height: 14),
+        Text(
+          'Tecnologia moderna, linguagem natural e equipe por trás — sem parecer ferramenta amadora.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            color: AppColors.textMuted,
+            fontSize: 14.5,
+            height: 1.5,
+          ),
+        ),
+        const SizedBox(height: 28),
+        LayoutBuilder(
+          builder: (context, c) {
+            final w = c.maxWidth;
+            final cols = w >= 1000 ? 4 : (w >= 560 ? 2 : 1);
+            const gap = 12.0;
+            final tileW = (w - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final t in _tiles)
+                  SizedBox(
+                    width: tileW,
+                    child: _DiffCard(icon: t.$1, label: t.$2),
+                  ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _DiffCard extends StatefulWidget {
+  const _DiffCard({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  State<_DiffCard> createState() => _DiffCardState();
+}
+
+class _DiffCardState extends State<_DiffCard> {
+  bool _hover = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: _hover ? const Color(0xFF141926) : const Color(0xFF10141D),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _hover
+                ? AppColors.primary.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.06),
+          ),
+          boxShadow: _hover
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(widget.icon, size: 18, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.label,
+                style: GoogleFonts.inter(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ComparisonSection extends StatelessWidget {
+  const _ComparisonSection();
+
+  static const _traditional = [
+    'Demora para responder',
+    'Perde clientes na fila',
+    'Respostas repetitivas e cansativas',
+    'Depende totalmente do atendente online',
+    'Pouca visibilidade do que está na fila ou nos pedidos',
+    'Picos de demanda sobrecarregam a equipe',
+  ];
+
+  static const _withAi = [
+    'Responde na hora com inteligência',
+    'Atendimento 24 horas por dia',
+    'Conversa natural e contextual',
+    'Organiza filas e prioridades',
+    'Reduz tempo médio de resposta',
+    'Aumenta conversão e vendas',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const _SectionEyebrow(text: 'COMPARATIVO', accent: AppColors.accentPurple),
+        const SizedBox(height: 14),
+        _SectionHeadline(first: 'Do tradicional ao ', highlight: 'inteligente'),
+        const SizedBox(height: 36),
+        LayoutBuilder(
+          builder: (context, c) {
+            final stack = c.maxWidth < 800;
+            if (stack) {
+              return Column(
+                children: [
+                  _CompareCard(
+                    title: 'Atendimento tradicional',
+                    negative: true,
+                    lines: _traditional,
+                    stretchBody: false,
+                  ),
+                  const SizedBox(height: 16),
+                  _CompareCard(
+                    title: 'Atendimento com IA',
+                    negative: false,
+                    lines: _withAi,
+                    stretchBody: false,
+                  ),
+                ],
+              );
+            }
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _CompareCard(
+                      title: 'Atendimento tradicional',
+                      negative: true,
+                      lines: _traditional,
+                      stretchBody: true,
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: _CompareCard(
+                      title: 'Atendimento com IA',
+                      negative: false,
+                      lines: _withAi,
+                      stretchBody: true,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CompareCard extends StatelessWidget {
+  const _CompareCard({
+    required this.title,
+    required this.negative,
+    required this.lines,
+    required this.stretchBody,
+  });
+
+  final String title;
+  final bool negative;
+  final List<String> lines;
+  final bool stretchBody;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = negative ? const Color(0xFFEF4444) : AppColors.success;
+    final linesBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final line in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  negative ? Icons.cancel_outlined : Icons.check_circle_rounded,
+                  size: 17,
+                  color: accent,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    line,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      height: 1.42,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: negative
+              ? [const Color(0xFF1A1215), const Color(0xFF120E12)]
+              : [const Color(0xFF101B17), const Color(0xFF0C1412)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: negative ? 0.35 : 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: stretchBody ? MainAxisSize.max : MainAxisSize.min,
+        children: [
+          Text(
+            title,
+            style: GoogleFonts.inter(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (stretchBody)
+            Expanded(
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: linesBlock,
+              ),
+            )
+          else
+            linesBlock,
+        ],
       ),
     );
   }
@@ -2431,10 +3009,13 @@ class _LogoMark extends StatelessWidget {
 // ============================================================================
 
 class _FinalCta extends StatelessWidget {
-  const _FinalCta({required this.onPrimary, required this.onSecondary});
+  const _FinalCta({
+    required this.onRequestDemo,
+    required this.onWhatsApp,
+  });
 
-  final VoidCallback onPrimary;
-  final VoidCallback onSecondary;
+  final VoidCallback onRequestDemo;
+  final VoidCallback onWhatsApp;
 
   @override
   Widget build(BuildContext context) {
@@ -2460,24 +3041,25 @@ class _FinalCta extends StatelessWidget {
               colors: [Color(0xFFF4F5F7), Color(0xFFBFC4D1)],
             ).createShader(rect),
             child: Text(
-              'Pronto para transformar\nseu atendimento?',
+              'Transforme seu WhatsApp em um\natendimento inteligente',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
                 color: Colors.white,
-                fontSize: 40,
+                fontSize: 36,
                 fontWeight: FontWeight.w800,
-                height: 1.1,
-                letterSpacing: -1.2,
+                height: 1.12,
+                letterSpacing: -1.1,
               ),
             ),
           ),
           const SizedBox(height: 14),
           Text(
-            'Comece em minutos. Sem cartão de crédito. Suporte humano de verdade.',
+            'Automatize respostas, organize atendimentos e aumente suas vendas com IA.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               color: AppColors.textMuted,
               fontSize: 15,
+              height: 1.5,
             ),
           ),
           const SizedBox(height: 28),
@@ -2486,8 +3068,17 @@ class _FinalCta extends StatelessWidget {
             runSpacing: 14,
             alignment: WrapAlignment.center,
             children: [
-              _PrimaryPill(label: 'Cadastrar-se grátis', onTap: onPrimary, big: true, icon: Icons.bolt_rounded),
-              _SecondaryHeroBtn(label: 'Já tenho conta', onTap: onSecondary),
+              _PrimaryPill(
+                label: 'Solicitar demonstração',
+                onTap: onRequestDemo,
+                big: true,
+                icon: Icons.calendar_month_rounded,
+              ),
+              _SecondaryHeroBtn(
+                label: 'Falar no WhatsApp',
+                icon: Icons.phone_android_rounded,
+                onTap: onWhatsApp,
+              ),
             ],
           ),
         ],
@@ -2526,7 +3117,7 @@ class _LandingFooter extends StatelessWidget {
                     const _BrandMark(),
                     const SizedBox(height: 14),
                     Text(
-                      'A plataforma enterprise de atendimento inteligente para WhatsApp. Construída para escalar com sua operação.',
+                      'Atendimento inteligente com IA para WhatsApp. Construído para profissionalizar sua operação e escalar resultados.',
                       style: GoogleFonts.inter(
                         color: AppColors.textMuted,
                         fontSize: 13,
