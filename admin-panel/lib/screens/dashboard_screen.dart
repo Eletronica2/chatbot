@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/conversation.dart';
 import '../services/auth_service.dart';
@@ -6,13 +7,13 @@ import '../services/conversation_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/conversation_list.dart';
+import '../widgets/premium_ui.dart';
 import '../widgets/ui_kit.dart';
 import 'actions_screen.dart';
 import 'backoffice_screen.dart';
 import 'billing_hub_screen.dart';
 import 'conversation_detail_screen.dart';
 import 'overview_screen.dart';
-import 'settings_hub_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -31,12 +32,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navActions = 'actions';
   static const String _navClients = 'clients';
   static const String _navBilling = 'billing';
-  static const String _navSettings = 'settings';
-
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
   String _selectedNav = _navHome;
+  String _conversationFilter = 'all';
   final TextEditingController _searchCtrl = TextEditingController();
 
   List<AppSidebarItem> get _sidebarItems {
@@ -73,12 +73,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         helper: 'Planos, uso mensal e assinatura',
         visible: authService.isSuperadmin,
       ),
-      const AppSidebarItem(
-        id: _navSettings,
-        label: 'Configurações',
-        icon: Icons.tune_rounded,
-        helper: 'IA, contexto da empresa e ajustes gerais',
-      ),
     ];
   }
 
@@ -113,14 +107,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _applyFilter(String query) {
     final normalized = query.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      _filteredConversations = List<Conversation>.from(_allConversations);
-      return;
-    }
     _filteredConversations = _allConversations.where((conversation) {
-      return conversation.phoneNumber.toLowerCase().contains(normalized) ||
+      final matchesQuery = normalized.isEmpty ||
+          conversation.phoneNumber.toLowerCase().contains(normalized) ||
           conversation.lastMessage.toLowerCase().contains(normalized);
+      return matchesQuery && _matchesConversationFilter(conversation);
     }).toList();
+  }
+
+  bool _matchesConversationFilter(Conversation conversation) {
+    return switch (_conversationFilter) {
+      'pending' => conversation.unreadCount > 0 ||
+          conversation.humanHandoffPending,
+      'ai' => conversation.aiEnabled,
+      'human' => !conversation.aiEnabled ||
+          conversation.humanHandoffPending,
+      _ => true,
+    };
+  }
+
+  void _setConversationFilter(String filter) {
+    setState(() {
+      _conversationFilter = filter;
+      _applyFilter(_searchCtrl.text);
+    });
   }
 
   void _onSearchChanged(String value) {
@@ -174,14 +184,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               color: AppColors.background,
               child: Column(
                 children: [
-                  _ShellHeader(
-                    title: _pageTitle,
-                    subtitle: _pageSubtitle,
-                    companyLabel: authService.tenantId ?? '-',
-                    onRefresh: _selectedNav == _navConversations
-                        ? _refreshConversations
-                        : null,
-                  ),
+                  if (_selectedNav != _navHome)
+                    _ShellHeader(
+                      title: _pageTitle,
+                      subtitle: _pageSubtitle,
+                      companyLabel: authService.tenantId ?? '-',
+                      onRefresh: _selectedNav == _navConversations
+                          ? _refreshConversations
+                          : null,
+                    ),
                   Expanded(child: _buildCurrentPage()),
                 ],
               ),
@@ -204,8 +215,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Clientes';
       case _navBilling:
         return 'Cobrança';
-      case _navSettings:
-        return 'Configurações';
       default:
         return 'Central de Ação';
     }
@@ -223,8 +232,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
         return 'Gerencie plano, uso, cobrança e saúde financeira da operação.';
-      case _navSettings:
-        return 'Ajuste IA, modo de operação e atalhos importantes da empresa em foco.';
       default:
         return 'Seu resumo operacional do dia.';
     }
@@ -261,17 +268,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
         );
-      case _navSettings:
-        return KeyedSubtree(
-          key: ValueKey<String>('settings-${authService.tenantId}'),
-          child: SettingsHubScreen(
-            onOpenAutomations: () => _selectNav(_navAutomations),
-            onOpenBilling:
-                authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
-            onOpenClients:
-                authService.isSuperadmin ? () => _selectNav(_navClients) : null,
-          ),
-        );
       default:
         return KeyedSubtree(
           key: ValueKey<String>('home-${authService.tenantId}'),
@@ -280,7 +276,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onOpenAutomations: () => _selectNav(_navAutomations),
             onOpenBilling:
                 authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
-            onOpenSettings: () => _selectNav(_navSettings),
             onOpenClients:
                 authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
@@ -289,115 +284,160 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildConversationsPage() {
-    return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-      child: Column(
-        children: [
-          AppPanelCard(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final compact = constraints.maxWidth < 980;
-                final searchField = SizedBox(
-                  width: compact ? double.infinity : 360,
-                  child: TextField(
-                    controller: _searchCtrl,
-                    onChanged: _onSearchChanged,
-                    decoration: const InputDecoration(
-                      hintText: 'Buscar por número, nome ou última mensagem...',
-                      prefixIcon: Icon(Icons.search_rounded),
-                    ),
-                  ),
-                );
-
-                final intro = const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Inbox estilo WhatsApp',
-                      style: TextStyle(
-                        color: AppColors.text,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
+    return PremiumPageBackground(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(36, 28, 36, 36),
+        child: Column(
+          children: [
+            PremiumGlassCard(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 980;
+                  final searchField = SizedBox(
+                    width: compact ? double.infinity : 420,
+                    child: TextField(
+                      controller: _searchCtrl,
+                      onChanged: _onSearchChanged,
+                      decoration: const InputDecoration(
+                        hintText: 'Buscar por número ou última mensagem...',
+                        prefixIcon: Icon(Icons.search_rounded),
                       ),
                     ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Veja quem está aguardando, abra a conversa e responda com mais contexto em menos cliques.',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
-                    ),
-                  ],
-                );
+                  );
 
-                if (compact) {
-                  return Column(
+                  final intro = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      intro,
-                      const SizedBox(height: 16),
-                      searchField,
+                      Text(
+                        'Inbox operacional',
+                        style: GoogleFonts.inter(
+                          color: AppColors.text,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        'Fila de atendimento, contexto e prioridade em uma experiência premium.',
+                        style: GoogleFonts.inter(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                          height: 1.45,
+                        ),
+                      ),
                     ],
                   );
-                }
 
-                return Row(
-                  children: [
-                    Expanded(child: intro),
-                    const SizedBox(width: 16),
-                    searchField,
-                  ],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: AppPanelCard(
-              padding: EdgeInsets.zero,
-              child: FutureBuilder<List<Conversation>>(
-                future: _futureConversations,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return AppEmptyState(
-                      icon: Icons.cloud_off_rounded,
-                      title: 'Não foi possível carregar as conversas',
-                      message: snapshot.error.toString(),
-                      action: FilledButton.icon(
-                        onPressed: _refreshConversations,
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: const Text('Tentar novamente'),
+                  final filters = Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      PremiumFilterChip(
+                        label: 'Todos',
+                        selected: _conversationFilter == 'all',
+                        onTap: () => _setConversationFilter('all'),
                       ),
+                      PremiumFilterChip(
+                        label: 'Pendentes',
+                        icon: Icons.priority_high_rounded,
+                        selected: _conversationFilter == 'pending',
+                        onTap: () => _setConversationFilter('pending'),
+                      ),
+                      PremiumFilterChip(
+                        label: 'IA ativa',
+                        icon: Icons.auto_awesome_rounded,
+                        selected: _conversationFilter == 'ai',
+                        onTap: () => _setConversationFilter('ai'),
+                      ),
+                      PremiumFilterChip(
+                        label: 'Humano',
+                        icon: Icons.support_agent_rounded,
+                        selected: _conversationFilter == 'human',
+                        onTap: () => _setConversationFilter('human'),
+                      ),
+                    ],
+                  );
+
+                  if (compact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        intro,
+                        const SizedBox(height: 18),
+                        searchField,
+                        const SizedBox(height: 14),
+                        filters,
+                      ],
                     );
                   }
-                  if (_filteredConversations.isEmpty) {
-                    return AppEmptyState(
-                      icon: _searchCtrl.text.trim().isEmpty
-                          ? Icons.mark_chat_unread_outlined
-                          : Icons.search_off_rounded,
-                      title: _searchCtrl.text.trim().isEmpty
-                          ? 'Nenhuma conversa ainda'
-                          : 'Nada encontrado',
-                      message: _searchCtrl.text.trim().isEmpty
-                          ? 'As conversas vão aparecer aqui assim que chegarem mensagens no WhatsApp.'
-                          : 'Tente mudar o termo pesquisado para encontrar a conversa desejada.',
-                    );
-                  }
-                  return ConversationList(
-                    conversations: _filteredConversations,
-                    onSelectConversation: _openConversation,
+
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            intro,
+                            const SizedBox(height: 16),
+                            filters,
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 24),
+                      searchField,
+                    ],
                   );
                 },
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.lg),
+            Expanded(
+              child: PremiumGlassCard(
+                padding: EdgeInsets.zero,
+                child: FutureBuilder<List<Conversation>>(
+                  future: _futureConversations,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (snapshot.hasError) {
+                      return AppEmptyState(
+                        icon: Icons.cloud_off_rounded,
+                        title: 'Não foi possível carregar as conversas',
+                        message: snapshot.error.toString(),
+                        action: FilledButton.icon(
+                          onPressed: _refreshConversations,
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          label: const Text('Tentar novamente'),
+                        ),
+                      );
+                    }
+                    if (_filteredConversations.isEmpty) {
+                      return PremiumEmptyPanel(
+                        icon: _searchCtrl.text.trim().isEmpty
+                            ? Icons.mark_chat_unread_outlined
+                            : Icons.search_off_rounded,
+                        title: _searchCtrl.text.trim().isEmpty
+                            ? 'Nenhuma conversa nesta fila'
+                            : 'Nada encontrado',
+                        description: _searchCtrl.text.trim().isEmpty
+                            ? 'As conversas aparecem aqui assim que chegarem mensagens no WhatsApp.'
+                            : 'Ajuste a busca ou escolha outro filtro para localizar a conversa.',
+                        accent: AppColors.accentBlue,
+                      );
+                    }
+                    return ConversationList(
+                      conversations: _filteredConversations,
+                      onSelectConversation: _openConversation,
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -419,51 +459,92 @@ class _ShellHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 18),
+      padding: const EdgeInsets.fromLTRB(28, 22, 28, 20),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.72),
-        border: const Border(bottom: BorderSide(color: AppColors.border)),
+        color: const Color(0xFF06080F).withValues(alpha: 0.55),
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 860;
           final companyChip = Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
             decoration: BoxDecoration(
-              color: AppColors.surfaceAlt,
+              color: Colors.white.withValues(alpha: 0.03),
               borderRadius: AppRadius.pill,
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
-            child: Text(
-              'Empresa em foco: $companyLabel',
-              style: const TextStyle(
-                color: AppColors.text,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  companyLabel,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              ],
             ),
           );
 
-          final refreshButton = onRefresh == null
-              ? const SizedBox.shrink()
-              : FilledButton.icon(
-                  onPressed: onRefresh,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Atualizar'),
-                );
+          final titleColumn = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.inter(
+                  color: AppColors.text,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.6,
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: GoogleFonts.inter(
+                  color: AppColors.textMuted,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          );
 
           if (compact) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AppSectionHeader(title: title, subtitle: subtitle),
+                titleColumn,
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: [
                     companyChip,
-                    if (onRefresh != null) refreshButton,
+                    if (onRefresh != null)
+                      PremiumGhostPill(
+                        label: 'Atualizar',
+                        icon: Icons.refresh_rounded,
+                        onTap: onRefresh!,
+                      ),
                   ],
                 ),
               ],
@@ -472,14 +553,16 @@ class _ShellHeader extends StatelessWidget {
 
           return Row(
             children: [
-              Expanded(
-                child: AppSectionHeader(title: title, subtitle: subtitle),
-              ),
+              Expanded(child: titleColumn),
               const SizedBox(width: 16),
               companyChip,
               if (onRefresh != null) ...[
                 const SizedBox(width: 10),
-                refreshButton,
+                PremiumGhostPill(
+                  label: 'Atualizar',
+                  icon: Icons.refresh_rounded,
+                  onTap: onRefresh!,
+                ),
               ],
             ],
           );

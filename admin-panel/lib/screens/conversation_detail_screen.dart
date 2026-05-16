@@ -7,6 +7,7 @@ import '../models/message.dart';
 import '../services/conversation_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/premium_ui.dart';
 import '../widgets/ui_kit.dart';
 
 class ConversationDetailScreen extends StatefulWidget {
@@ -133,8 +134,10 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
+      backgroundColor: const Color(0xFF05060B),
+      body: PremiumPageBackground(
+        intensity: AmbientIntensity.soft,
+        child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(
@@ -147,6 +150,32 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                   _loadFlowState();
                 },
               ),
+              if (widget.conversation.humanHandoffPending) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.12),
+                    borderRadius: AppRadius.md,
+                    border: Border.all(
+                      color: AppColors.warning.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 20),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Cliente aguardando atendimento humano. Responda abaixo para continuar a conversa.',
+                          style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Expanded(
                 child: LayoutBuilder(
@@ -187,6 +216,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -203,7 +233,7 @@ class _ConversationHeader extends StatelessWidget {
   final VoidCallback onRefresh;
 
   static const List<Color> _palette = <Color>[
-    Color(0xFF7C8CFF),
+    Color(0xFFF5A623),
     Color(0xFF48C0FF),
     Color(0xFF19C37D),
     Color(0xFFFFB84D),
@@ -283,16 +313,24 @@ class _ConversationHeader extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     AppStatusChip(
-                      label: conversation.aiEnabled ? 'IA ativa' : 'Atendimento humano',
-                      icon: conversation.aiEnabled
-                          ? Icons.auto_awesome_rounded
-                          : Icons.support_agent_rounded,
-                      backgroundColor: conversation.aiEnabled
-                          ? AppColors.success.withValues(alpha: 0.14)
-                          : AppColors.warning.withValues(alpha: 0.16),
-                      foregroundColor: conversation.aiEnabled
-                          ? AppColors.success
-                          : AppColors.warning,
+                      label: conversation.humanHandoffPending
+                          ? 'Pendente atendimento'
+                          : (conversation.aiEnabled ? 'IA ativa' : 'Atendimento humano'),
+                      icon: conversation.humanHandoffPending
+                          ? Icons.support_agent_rounded
+                          : (conversation.aiEnabled
+                              ? Icons.auto_awesome_rounded
+                              : Icons.support_agent_rounded),
+                      backgroundColor: conversation.humanHandoffPending
+                          ? AppColors.warning.withValues(alpha: 0.16)
+                          : (conversation.aiEnabled
+                              ? AppColors.success.withValues(alpha: 0.14)
+                              : AppColors.warning.withValues(alpha: 0.16)),
+                      foregroundColor: conversation.humanHandoffPending
+                          ? AppColors.warning
+                          : (conversation.aiEnabled
+                              ? AppColors.success
+                              : AppColors.warning),
                     ),
                     AppStatusChip(
                       label: 'Atualização ${conversation.formattedUpdatedAt}',

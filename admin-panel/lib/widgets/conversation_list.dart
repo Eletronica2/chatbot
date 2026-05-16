@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/conversation.dart';
 import '../theme/app_tokens.dart';
@@ -18,9 +19,9 @@ class ConversationList extends StatelessWidget {
     return Container(
       color: Colors.transparent,
       child: ListView.separated(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         itemCount: conversations.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 8),
+        separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
           return _ConversationTile(
             conversation: conversations[index],
@@ -49,7 +50,7 @@ class _ConversationTileState extends State<_ConversationTile> {
   bool _hovered = false;
 
   static const List<Color> _palette = <Color>[
-    Color(0xFF7C8CFF),
+    Color(0xFFF5A623),
     Color(0xFF48C0FF),
     Color(0xFF19C37D),
     Color(0xFFFFB84D),
@@ -70,6 +71,7 @@ class _ConversationTileState extends State<_ConversationTile> {
   Widget build(BuildContext context) {
     final conversation = widget.conversation;
     final hasUnread = conversation.unreadCount > 0;
+    final needsHuman = conversation.humanHandoffPending;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -78,17 +80,23 @@ class _ConversationTileState extends State<_ConversationTile> {
         onTap: widget.onTap,
         borderRadius: AppRadius.lg,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          duration: AppDurations.fast,
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            color: _hovered ? AppColors.surfaceAlt : AppColors.surface,
-            borderRadius: AppRadius.lg,
+            gradient: _hovered ? AppGradients.glassPanel : null,
+            color: _hovered
+                ? null
+                : AppColors.background.withValues(alpha: 0.28),
+            borderRadius: AppRadius.xl,
             border: Border.all(
-              color: hasUnread
-                  ? AppColors.primary.withValues(alpha: 0.26)
-                  : AppColors.border,
+              color: needsHuman
+                  ? AppColors.warning.withValues(alpha: 0.42)
+                  : hasUnread
+                      ? AppColors.primary.withValues(alpha: 0.24)
+                      : AppColors.borderSubtle.withValues(alpha: 0.62),
             ),
-            boxShadow: _hovered ? AppShadows.hover : null,
+            boxShadow: _hovered ? AppShadows.panelHover : null,
           ),
           child: Row(
             children: [
@@ -96,11 +104,11 @@ class _ConversationTileState extends State<_ConversationTile> {
                 clipBehavior: Clip.none,
                 children: [
                   CircleAvatar(
-                    radius: 24,
+                    radius: 23,
                     backgroundColor: _avatarColor(conversation.phoneNumber),
                     child: Text(
                       _initials(conversation.phoneNumber),
-                      style: const TextStyle(
+                      style: GoogleFonts.inter(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
@@ -119,7 +127,10 @@ class _ConversationTileState extends State<_ConversationTile> {
                             ? AppColors.success
                             : AppColors.warning,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.surface, width: 2),
+                        border: Border.all(
+                          color: AppColors.background,
+                          width: 2,
+                        ),
                       ),
                     ),
                   ),
@@ -136,18 +147,19 @@ class _ConversationTileState extends State<_ConversationTile> {
                           child: Text(
                             conversation.phoneNumber,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               color: AppColors.text,
                               fontSize: 14,
                               fontWeight:
-                                  hasUnread ? FontWeight.w800 : FontWeight.w600,
+                                  hasUnread ? FontWeight.w700 : FontWeight.w600,
+                              letterSpacing: -0.1,
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           conversation.formattedUpdatedAt,
-                          style: TextStyle(
+                          style: GoogleFonts.inter(
                             color: hasUnread
                                 ? AppColors.primarySoft
                                 : AppColors.textSoft,
@@ -167,7 +179,7 @@ class _ConversationTileState extends State<_ConversationTile> {
                                 : conversation.lastMessage,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: GoogleFonts.inter(
                               color: AppColors.textMuted,
                               fontSize: 12,
                               height: 1.35,
@@ -187,8 +199,8 @@ class _ConversationTileState extends State<_ConversationTile> {
                             ),
                             child: Text(
                               conversation.unreadCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF1A1008),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -200,26 +212,33 @@ class _ConversationTileState extends State<_ConversationTile> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _ModePill(
-                          icon: conversation.aiEnabled
-                              ? Icons.auto_awesome_rounded
-                              : Icons.support_agent_rounded,
-                          label: conversation.aiEnabled
-                              ? 'IA ativa'
-                              : 'Atendimento humano',
-                          color: conversation.aiEnabled
-                              ? AppColors.success
-                              : AppColors.warning,
-                        ),
+                        if (needsHuman)
+                          const _ModePill(
+                            icon: Icons.support_agent_rounded,
+                            label: 'Pendente atendimento',
+                            color: AppColors.warning,
+                          )
+                        else
+                          _ModePill(
+                            icon: conversation.aiEnabled
+                                ? Icons.auto_awesome_rounded
+                                : Icons.support_agent_rounded,
+                            label: conversation.aiEnabled
+                                ? 'IA ativa'
+                                : 'Atendimento humano',
+                            color: conversation.aiEnabled
+                                ? AppColors.success
+                                : AppColors.warning,
+                          ),
                       ],
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(
+              Icon(
                 Icons.chevron_right_rounded,
-                color: AppColors.textSoft,
+                color: _hovered ? AppColors.textMuted : AppColors.textSoft,
               ),
             ],
           ),
@@ -259,7 +278,7 @@ class _ModePill extends StatelessWidget {
             style: TextStyle(
               color: color,
               fontSize: 11,
-              fontWeight: FontWeight.w700,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

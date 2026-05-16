@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/admin_audit_entry.dart';
@@ -10,22 +12,24 @@ import '../services/admin_audit_service.dart';
 import '../services/admin_tenant_service.dart';
 import '../services/auth_service.dart';
 import '../services/flow_admin_service.dart';
+import '../services/lead_service.dart';
 import '../services/subscription_service.dart';
 import '../services/tenant_user_service.dart';
 import '../services/whatsapp_account_service.dart';
+import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
-import 'settings_screen.dart';
+import '../widgets/premium_ui.dart';
+import 'backoffice_lead_proposal_flow.dart';
+import 'settings_screen.dart' show SettingsScreen, humanizeFlowName;
 
-const _kBg = Color(0xFF0B0F1A);
-const _kSurface = Color(0xFF121826);
 const _kCard = Color(0xFF182133);
 const _kInput = Color(0xFF101726);
 const _kBorder = Color(0xFF25304A);
 const _kText = Color(0xFFF5F7FF);
 const _kMuted = Color(0xFF98A4C0);
 const _kSubtle = Color(0xFF6E7B99);
-const _kAccent = Color(0xFF7C8CFF);
-const _kAccentSoft = Color(0xFF818CF8);
+const _kAccent = Color(0xFFF5A623);
+const _kAccentSoft = Color(0xFFFFC857);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
 
@@ -82,6 +86,40 @@ String _roleLabel(String value) {
   }
 }
 
+String _leadStatusLabel(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'new':
+      return 'Novo';
+    case 'contacted':
+      return 'Em contato';
+    case 'qualified':
+      return 'Qualificado';
+    case 'won':
+      return 'Fechado';
+    case 'lost':
+      return 'Perdido';
+    default:
+      return value.isEmpty ? 'Status' : value;
+  }
+}
+
+Color _leadStatusColor(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'new':
+      return const Color(0xFF38BDF8);
+    case 'contacted':
+      return const Color(0xFFF59E0B);
+    case 'qualified':
+      return const Color(0xFFA855F7);
+    case 'won':
+      return const Color(0xFF10B981);
+    case 'lost':
+      return const Color(0xFFEF4444);
+    default:
+      return const Color(0xFF94A3B8);
+  }
+}
+
 class BackofficeScreen extends StatefulWidget {
   const BackofficeScreen({
     super.key,
@@ -114,6 +152,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
 
   final TextEditingController _searchCtrl = TextEditingController();
   final TextEditingController _limitCtrl = TextEditingController();
+  final TextEditingController _leadSearchCtrl = TextEditingController();
 
   bool _loadingTenants = true;
   bool _loadingDetails = false;
@@ -122,6 +161,13 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   bool _savingUser = false;
   String? _settingDefaultAccountKey;
   String? _resettingUserId;
+
+  String _adminView = 'tenants';
+  bool _loadingLeads = false;
+  List<Lead> _leads = <Lead>[];
+  LeadSummary? _leadSummary;
+  String? _leadStatusFilter;
+  String? _updatingLeadId;
 
   List<TenantAdminSummary> _tenants = <TenantAdminSummary>[];
   List<TenantAdminSummary> _filteredTenants = <TenantAdminSummary>[];
@@ -154,7 +200,69 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   void dispose() {
     _searchCtrl.dispose();
     _limitCtrl.dispose();
+    _leadSearchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLeads() async {
+    setState(() => _loadingLeads = true);
+    try {
+      final search = _leadSearchCtrl.text.trim();
+      final results = await leadService.listLeads(
+        status: _leadStatusFilter,
+        search: search.isEmpty ? null : search,
+        limit: 200,
+      );
+      final summary = await leadService.summary();
+      if (!mounted) return;
+      setState(() {
+        _leads = results;
+        _leadSummary = summary;
+        _loadingLeads = false;
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() => _loadingLeads = false);
+      _showError('Não foi possível carregar os leads: $err');
+    }
+  }
+
+  Future<void> _updateLeadStatus(Lead lead, String status) async {
+    setState(() => _updatingLeadId = lead.id);
+    try {
+      final updated = await leadService.updateLead(leadId: lead.id, status: status);
+      if (!mounted) return;
+      setState(() {
+        _updatingLeadId = null;
+        _leads = _leads
+            .map((item) => item.id == updated.id ? updated : item)
+            .toList(growable: false);
+      });
+      _showOk('Status atualizado para ${_leadStatusLabel(updated.status)}.');
+      unawaited(_refreshLeadSummary());
+    } catch (err) {
+      if (!mounted) return;
+      setState(() => _updatingLeadId = null);
+      _showError('Falha ao atualizar lead: $err');
+    }
+  }
+
+  Future<void> _refreshLeadSummary() async {
+    try {
+      final summary = await leadService.summary();
+      if (!mounted) return;
+      setState(() => _leadSummary = summary);
+    } catch (_) {
+      // silent
+    }
+  }
+
+  void _switchAdminView(String view) {
+    if (_adminView == view) return;
+    setState(() => _adminView = view);
+    if (view == 'leads' && _leads.isEmpty && !_loadingLeads) {
+      _loadLeads();
+    }
   }
 
   Future<void> _loadTenants() async {
@@ -374,6 +482,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 error = null;
               });
 
+              final dialogNavigator = Navigator.of(dialogContext);
               try {
                 final created = await adminTenantService.createTenant(
                   tenantId: tenantIdCtrl.text.trim(),
@@ -386,7 +495,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                   monthlyMessageLimit: int.tryParse(limitCtrl.text.trim()),
                 );
                 if (!mounted) return;
-                Navigator.of(dialogContext).pop();
+                dialogNavigator.pop();
                 await _loadTenants();
                 await _selectTenant(created);
                 _showOk('Empresa criada com sucesso.');
@@ -532,6 +641,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               setState(() => _savingAccount = true);
               setDialogState(() => error = null);
 
+              final dialogNavigator = Navigator.of(dialogContext);
               try {
                 if (isEditing) {
                   await whatsAppAccountService.updateAccount(
@@ -562,7 +672,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                 }
 
                 if (!mounted) return;
-                Navigator.of(dialogContext).pop();
+                dialogNavigator.pop();
                 await _selectTenant(tenant);
                 _showOk(isEditing ? 'Conta atualizada com sucesso.' : 'Conta criada com sucesso.');
               } catch (err) {
@@ -680,6 +790,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               }
               setState(() => _savingUser = true);
               setDialogState(() => error = null);
+              final dialogNavigator = Navigator.of(dialogContext);
               try {
                 final result = await tenantUserService.inviteUser(
                   tenantId: tenant.tenantId,
@@ -688,7 +799,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                   role: role,
                 );
                 if (!mounted) return;
-                Navigator.of(dialogContext).pop();
+                dialogNavigator.pop();
                 await _selectTenant(tenant);
                 await _showActionTokenDialog(
                   title: 'Convite gerado',
@@ -784,6 +895,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               }
               setState(() => _savingUser = true);
               setDialogState(() => error = null);
+              final dialogNavigator = Navigator.of(dialogContext);
               try {
                 await tenantUserService.updateUser(
                   tenantId: tenant.tenantId,
@@ -793,7 +905,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                   status: status,
                 );
                 if (!mounted) return;
-                Navigator.of(dialogContext).pop();
+                dialogNavigator.pop();
                 await _selectTenant(tenant);
                 _showOk('Usuário atualizado com sucesso.');
               } catch (err) {
@@ -1015,13 +1127,26 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = authService.currentUser;
-    final content = Container(
-      color: _kSurface,
-      child: Row(
+    final Widget mainBody;
+    if (_adminView == 'leads') {
+      mainBody = _buildLeadsView();
+    } else if (_adminView == 'whatsapp') {
+      mainBody = _buildWhatsAppView();
+    } else {
+      mainBody = Row(
         children: [
           SizedBox(width: 350, child: _buildTenantsPanel()),
-          Container(width: 1, color: _kBorder),
+          Container(width: 1, color: Colors.white.withValues(alpha: 0.05)),
           Expanded(child: _buildDetailsPanel()),
+        ],
+      );
+    }
+    final content = PremiumPageBackground(
+      intensity: AmbientIntensity.soft,
+      child: Column(
+        children: [
+          _buildAdminViewSwitcher(),
+          Expanded(child: mainBody),
         ],
       ),
     );
@@ -1031,7 +1156,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _kBg,
+      backgroundColor: const Color(0xFF05060B),
       body: Row(
         children: [
           AppSidebar(
@@ -1082,6 +1207,519 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             onLogout: widget.onLogout,
           ),
           Expanded(child: content),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminViewSwitcher() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _AdminViewChip(
+            label: 'Empresas',
+            icon: Icons.apartment_rounded,
+            selected: _adminView == 'tenants',
+            onTap: () => _switchAdminView('tenants'),
+          ),
+          _AdminViewChip(
+            label: 'Leads',
+            icon: Icons.contact_mail_outlined,
+            selected: _adminView == 'leads',
+            onTap: () => _switchAdminView('leads'),
+            badge: _leadSummary?.byStatus['new'],
+          ),
+          _AdminViewChip(
+            label: 'WhatsApp',
+            icon: Icons.phone_iphone_rounded,
+            selected: _adminView == 'whatsapp',
+            onTap: () => _switchAdminView('whatsapp'),
+          ),
+          if (_adminView == 'leads') ...[
+            const SizedBox(width: 8),
+            _AdminViewSecondaryButton(
+              label: _loadingLeads ? 'Atualizando...' : 'Atualizar',
+              icon: Icons.refresh_rounded,
+              onTap: _loadingLeads ? null : _loadLeads,
+            ),
+          ],
+          if (_adminView == 'whatsapp') ...[
+            const SizedBox(width: 8),
+            _AdminViewSecondaryButton(
+              label: 'Vincular WhatsApp',
+              icon: Icons.add_link_rounded,
+              onTap: _selectedTenant == null || _isSystemTenantContext
+                  ? null
+                  : () => _showAccountDialog(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeadsView() {
+    if (_loadingLeads && _leads.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildLeadsSummary(),
+          const SizedBox(height: 16),
+          _buildLeadsFilters(),
+          const SizedBox(height: 16),
+          if (_leads.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(40),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F1421),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _kBorder),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.inbox_outlined, size: 40, color: _kSubtle),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Ainda não há leads',
+                    style: TextStyle(color: _kText, fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Quando alguém preencher o cadastro da landing, vai aparecer por aqui.',
+                    style: const TextStyle(color: _kMuted, fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            )
+          else
+            Column(
+              children: [
+                for (final lead in _leads) ...[
+                  _LeadCard(
+                    lead: lead,
+                    updating: _updatingLeadId == lead.id,
+                    onStatusChanged: (status) => _updateLeadStatus(lead, status),
+                    onGenerateProposal: () => showLeadProposalDialog(
+                          context,
+                          lead,
+                          onChanged: () {
+                            _loadLeads();
+                          },
+                        ),
+                    onRegisterCompany: () => showConvertLeadDialog(
+                          context,
+                          lead,
+                          onConverted: () {
+                            _loadLeads();
+                            _loadTenants();
+                          },
+                        ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhatsAppView() {
+    final tenants = _tenants
+        .where((t) => t.tenantId != authService.homeTenantId)
+        .toList(growable: false);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF172033), Color(0xFF111827)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.phone_iphone_rounded,
+                          color: AppColors.primary, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cadastros e vínculos de WhatsApp',
+                            style: TextStyle(
+                              color: _kText,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Vincule um número de WhatsApp Business a cada empresa, defina a conta principal e atualize tokens da Meta.',
+                            style: TextStyle(
+                              color: _kMuted,
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (tenants.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F1421),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _kBorder),
+              ),
+              child: const Center(
+                child: Text(
+                  'Cadastre uma empresa antes de vincular contas de WhatsApp.',
+                  style: TextStyle(color: _kMuted, fontSize: 13),
+                ),
+              ),
+            )
+          else
+            _buildWhatsAppTenantSelector(tenants),
+          const SizedBox(height: 16),
+          if (_loadingDetails && _selectedTenant != null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            _buildWhatsAppAccountsList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhatsAppTenantSelector(List<TenantAdminSummary> tenants) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1421),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Empresa selecionada',
+            style: TextStyle(color: _kSubtle, fontSize: 11, letterSpacing: 0.4),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: _kInput,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _kBorder),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedTenant?.tenantId,
+                isExpanded: true,
+                dropdownColor: _kCard,
+                iconEnabledColor: _kMuted,
+                style: const TextStyle(color: _kText, fontSize: 13),
+                hint: const Text(
+                  'Selecione uma empresa',
+                  style: TextStyle(color: _kSubtle, fontSize: 13),
+                ),
+                items: tenants
+                    .map(
+                      (tenant) => DropdownMenuItem<String>(
+                        value: tenant.tenantId,
+                        child: Text(
+                          '${tenant.name}  (${tenant.tenantId})',
+                          style: const TextStyle(color: _kText, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  final tenant = tenants.firstWhere(
+                    (t) => t.tenantId == value,
+                    orElse: () => tenants.first,
+                  );
+                  _selectTenant(tenant);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhatsAppAccountsList() {
+    final tenant = _selectedTenant;
+    if (tenant == null) {
+      return const SizedBox.shrink();
+    }
+    if (_isSystemTenantContext) {
+      return Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1421),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder),
+        ),
+        child: const Center(
+          child: Text(
+            'A empresa selecionada é o tenant do sistema. Selecione uma empresa cliente para gerenciar contas de WhatsApp.',
+            style: TextStyle(color: _kMuted, fontSize: 13),
+          ),
+        ),
+      );
+    }
+    if (_accounts.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F1421),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _kBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const Icon(Icons.phone_disabled_rounded, color: _kSubtle, size: 36),
+            const SizedBox(height: 12),
+            const Text(
+              'Nenhuma conta de WhatsApp vinculada',
+              style: TextStyle(color: _kText, fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Vincule um número da Meta Cloud API para ${tenant.name}.',
+              style: const TextStyle(color: _kMuted, fontSize: 12.5),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            PremiumAccentButton(
+              label: 'Vincular WhatsApp',
+              icon: Icons.add_link_rounded,
+              onPressed: () => _showAccountDialog(),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      children: [
+        for (final account in _accounts) ...[
+          _WhatsAppAccountCard(
+            account: account,
+            updatingDefault: _settingDefaultAccountKey == account.accountKey,
+            onEdit: () => _showAccountDialog(account: account),
+            onSetDefault: account.isDefault
+                ? null
+                : () => _setDefaultAccount(account),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLeadsSummary() {
+    final summary = _leadSummary;
+    final total = summary?.total ?? 0;
+    final byStatus = summary?.byStatus ?? const <String, int>{};
+    Widget chip(String key) {
+      final value = byStatus[key] ?? 0;
+      return _Tag(
+        label: '$value ${_leadStatusLabel(key).toLowerCase()}',
+        background: _leadStatusColor(key).withValues(alpha: 0.12),
+        foreground: _leadStatusColor(key),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF172033), Color(0xFF111827)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.trending_up_rounded, color: _kAccentSoft, size: 18),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Pipeline comercial',
+                      style: TextStyle(color: _kText, fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Leads capturados pela landing page aguardando contato e qualificação.',
+                      style: TextStyle(color: _kMuted, fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '$total',
+                style: const TextStyle(
+                  color: _kText,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              chip('new'),
+              chip('contacted'),
+              chip('qualified'),
+              chip('won'),
+              chip('lost'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLeadsFilters() {
+    const statuses = ['new', 'contacted', 'qualified', 'won', 'lost'];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1421),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _kBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _leadSearchCtrl,
+                  style: const TextStyle(color: _kText, fontSize: 13),
+                  onSubmitted: (_) => _loadLeads(),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por empresa, nome, e-mail ou WhatsApp',
+                    hintStyle: const TextStyle(color: _kSubtle, fontSize: 13),
+                    prefixIcon: const Icon(Icons.search_rounded, color: _kMuted, size: 18),
+                    filled: true,
+                    fillColor: _kInput,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: _kBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: _kBorder),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: _kAccent, width: 1.2),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              PremiumAccentButton(
+                label: 'Filtrar',
+                icon: Icons.filter_alt_outlined,
+                onPressed: _loadingLeads ? null : _loadLeads,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _LeadFilterChip(
+                label: 'Todos',
+                selected: _leadStatusFilter == null,
+                onTap: () {
+                  setState(() => _leadStatusFilter = null);
+                  _loadLeads();
+                },
+              ),
+              for (final status in statuses)
+                _LeadFilterChip(
+                  label: _leadStatusLabel(status),
+                  color: _leadStatusColor(status),
+                  selected: _leadStatusFilter == status,
+                  onTap: () {
+                    setState(() => _leadStatusFilter = status);
+                    _loadLeads();
+                  },
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -1604,8 +2242,9 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
 
     final subscription = _subscription;
     final usagePercent = subscription?.usagePercent ?? 0;
-    final canDowngrade = _planOptions.indexOf(_planValue) > 0;
-    final canUpgrade = _planOptions.indexOf(_planValue) >= 0 && _planOptions.indexOf(_planValue) < _planOptions.length - 1;
+    final planIndex = _planOptions.indexOf(_planValue);
+    final canDowngrade = planIndex > 0;
+    final canUpgrade = _planOptions.contains(_planValue) && planIndex < _planOptions.length - 1;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -2066,7 +2705,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    flow.name,
+                                    humanizeFlowName(flow.name),
                                     style: const TextStyle(color: _kText, fontSize: 14, fontWeight: FontWeight.w700),
                                   ),
                                   const SizedBox(height: 4),
@@ -2428,6 +3067,631 @@ class _DialogSelect extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AdminViewChip extends StatelessWidget {
+  const _AdminViewChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+    this.badge,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+  final int? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : _kMuted;
+    final border = selected ? Colors.transparent : _kBorder;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? null : const Color(0xFF111727),
+            gradient: selected ? AppGradients.premiumOrange : null,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: border),
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 22,
+                      spreadRadius: -6,
+                      offset: const Offset(0, 6),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: selected ? Colors.white : fg, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : fg,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              if (badge != null && badge! > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? Colors.white.withValues(alpha: 0.22)
+                        : AppColors.primary,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '$badge',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdminViewSecondaryButton extends StatelessWidget {
+  const _AdminViewSecondaryButton({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF111727),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: enabled ? _kText : _kSubtle, size: 15),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                style: TextStyle(
+                  color: enabled ? _kText : _kSubtle,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LeadFilterChip extends StatelessWidget {
+  const _LeadFilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.color,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? Colors.white : _kMuted;
+    // Default selecionado usa gradient premium (sem cor custom).
+    // Quando recebe `color` (status do lead), preserva tinta para distinguir status.
+    final usePremium = selected && color == null;
+    final base = color ?? AppColors.primary;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: usePremium
+                ? null
+                : (selected ? base.withValues(alpha: 0.18) : const Color(0xFF111727)),
+            gradient: usePremium ? AppGradients.premiumOrange : null,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: usePremium
+                  ? Colors.transparent
+                  : (selected ? base : _kBorder),
+            ),
+            boxShadow: usePremium
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 18,
+                      spreadRadius: -6,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: usePremium
+                  ? Colors.white
+                  : (selected ? base : fg),
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LeadCard extends StatelessWidget {
+  const _LeadCard({
+    required this.lead,
+    required this.updating,
+    required this.onStatusChanged,
+    required this.onGenerateProposal,
+    required this.onRegisterCompany,
+  });
+
+  final Lead lead;
+  final bool updating;
+  final ValueChanged<String> onStatusChanged;
+  final VoidCallback onGenerateProposal;
+  final VoidCallback onRegisterCompany;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _leadStatusColor(lead.status);
+    final createdLabel = lead.createdAt == null
+        ? '-'
+        : DateFormat("dd/MM 'às' HH:mm").format(lead.createdAt!.toLocal());
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1421),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _kBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x18000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lead.company,
+                      style: const TextStyle(
+                        color: _kText,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        if ((lead.segment ?? '').isNotEmpty)
+                          Text(
+                            lead.segment!,
+                            style: const TextStyle(color: _kMuted, fontSize: 12),
+                          ),
+                        if (lead.monthlyVolume != null && lead.monthlyVolume!.isNotEmpty)
+                          Text(
+                            '• ${lead.monthlyVolume}',
+                            style: const TextStyle(color: _kSubtle, fontSize: 12),
+                          ),
+                        Text(
+                          '• Recebido $createdLabel',
+                          style: const TextStyle(color: _kSubtle, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _leadStatusLabel(lead.status),
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Icon(Icons.person_outline_rounded, color: _kSubtle, size: 15),
+              const SizedBox(width: 6),
+              Text(lead.name, style: const TextStyle(color: _kText, fontSize: 13)),
+              const SizedBox(width: 18),
+              const Icon(Icons.mail_outline_rounded, color: _kSubtle, size: 15),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  lead.email,
+                  style: const TextStyle(color: _kText, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 18),
+              const Icon(Icons.phone_iphone_rounded, color: _kSubtle, size: 15),
+              const SizedBox(width: 6),
+              Text(lead.whatsapp, style: const TextStyle(color: _kText, fontSize: 13)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF080B14),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _kBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'O que querem fazer no WhatsApp',
+                  style: TextStyle(color: _kSubtle, fontSize: 11, letterSpacing: 0.4),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  lead.objective,
+                  style: const TextStyle(color: _kText, fontSize: 13, height: 1.5),
+                ),
+                if ((lead.currentTools ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Ferramentas atuais',
+                    style: TextStyle(color: _kSubtle, fontSize: 11, letterSpacing: 0.4),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    lead.currentTools!,
+                    style: const TextStyle(color: _kMuted, fontSize: 12.5, height: 1.4),
+                  ),
+                ],
+                if ((lead.bestContactTime ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 14, color: _kSubtle),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Melhor horário: ${lead.bestContactTime}',
+                        style: const TextStyle(color: _kMuted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              PremiumAccentButton(
+                label: 'Gerar proposta',
+                icon: Icons.request_quote_rounded,
+                dense: true,
+                onPressed: updating ? null : onGenerateProposal,
+              ),
+              OutlinedButton.icon(
+                onPressed: updating ? null : onRegisterCompany,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _kMuted,
+                  side: const BorderSide(color: _kBorder),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                icon: const Icon(Icons.apartment_rounded, size: 18),
+                label: const Text(
+                  'Cadastrar empresa',
+                  style:
+                      TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              const Text(
+                'Atualizar status:',
+                style: TextStyle(color: _kSubtle, fontSize: 11.5),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final status in const ['new', 'contacted', 'qualified', 'won', 'lost'])
+                      _LeadStatusButton(
+                        label: _leadStatusLabel(status),
+                        color: _leadStatusColor(status),
+                        active: lead.status == status,
+                        onTap: updating || lead.status == status
+                            ? null
+                            : () => onStatusChanged(status),
+                      ),
+                  ],
+                ),
+              ),
+              if (updating) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: _kAccentSoft),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LeadStatusButton extends StatelessWidget {
+  const _LeadStatusButton({
+    required this.label,
+    required this.color,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final Color color;
+  final bool active;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: active ? color.withValues(alpha: 0.18) : const Color(0xFF111727),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: active ? color : _kBorder),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: active ? color : (enabled ? _kMuted : _kSubtle),
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WhatsAppAccountCard extends StatelessWidget {
+  const _WhatsAppAccountCard({
+    required this.account,
+    required this.updatingDefault,
+    required this.onEdit,
+    required this.onSetDefault,
+  });
+
+  final WhatsAppAccountModel account;
+  final bool updatingDefault;
+  final VoidCallback onEdit;
+  final VoidCallback? onSetDefault;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusActive = account.status == 'active';
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F1421),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: account.isDefault ? AppColors.primary.withValues(alpha: 0.5) : _kBorder,
+        ),
+        boxShadow: account.isDefault
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  blurRadius: 24,
+                  spreadRadius: -8,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.phone_iphone_rounded, color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      account.displayName,
+                      style: const TextStyle(color: _kText, fontSize: 15, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${account.displayPhoneNumber}  |  ${account.phoneNumberId}',
+                      style: const TextStyle(color: _kMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              _Tag(
+                label: statusActive ? 'Ativa' : 'Inativa',
+                background: statusActive ? const Color(0xFF064E3B) : const Color(0xFF7F1D1D),
+                foreground: statusActive ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
+              ),
+              const SizedBox(width: 8),
+              if (account.isDefault)
+                const _Tag(
+                  label: 'Principal',
+                  background: Color(0xFF312E81),
+                  foreground: Color(0xFFC7D2FE),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 14,
+            runSpacing: 6,
+            children: [
+              Text(
+                'Identificador: ${account.accountKey}',
+                style: const TextStyle(color: _kSubtle, fontSize: 11),
+              ),
+              Text(
+                account.maskedAccessToken == null
+                    ? 'Token salvo: não'
+                    : 'Token: ${account.maskedAccessToken}',
+                style: const TextStyle(color: _kSubtle, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Editar'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _kText,
+                  side: const BorderSide(color: _kBorder),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onSetDefault == null || updatingDefault
+                    ? null
+                    : onSetDefault,
+                icon: updatingDefault
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.star_outline_rounded, size: 16),
+                label: Text(account.isDefault ? 'Conta principal' : 'Definir como principal'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _kText,
+                  side: const BorderSide(color: _kBorder),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

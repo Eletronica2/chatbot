@@ -109,6 +109,10 @@ class FlowLoader:
         metadata = data.get("metadata")
         if metadata is not None and not isinstance(metadata, dict):
             raise FlowValidationError("'metadata' must be a mapping if provided")
+        merged_metadata: dict = dict(metadata or {})
+        business_hours = data.get("business_hours")
+        if isinstance(business_hours, dict):
+            merged_metadata["business_hours"] = business_hours
 
         # Parse natural language extensions
         intent_aliases = self._parse_intent_aliases(data.get("intent_aliases"))
@@ -122,7 +126,7 @@ class FlowLoader:
             description=data.get("description"),
             start_state=start_state,
             states=states,
-            metadata=metadata or {},
+            metadata=merged_metadata,
             intent_aliases=intent_aliases,
             global_transitions=global_transitions,
             fallback_ai=fallback_ai,

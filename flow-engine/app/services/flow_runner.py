@@ -6,6 +6,7 @@ import unicodedata
 from typing import Any, Dict, List, Optional
 
 from app.domain.flow import FlowDefinition, FlowExecutionRequest, FlowExecutionResponse, FlowState
+from app.services.business_hours import apply_contextual_cta
 
 
 class FlowRunner:
@@ -127,6 +128,8 @@ class FlowRunner:
 
         # 3. Check if current state or flow has fallback_ai enabled
         if current_state.fallback_ai or definition.fallback_ai:
+            bh = (definition.metadata or {}).get("business_hours")
+            flow_msg = apply_contextual_cta(current_state.message or "", bh)
             resp = FlowExecutionResponse(
                 handled=True,
                 reply_text=None,  # AI will fill this
@@ -137,7 +140,7 @@ class FlowRunner:
                     "state": current_state.state,
                     "resolution_reason": "fallback_ai",
                     "options": [o.model_dump() for o in current_state.options],
-                    "flow_state_message": current_state.message,
+                    "flow_state_message": flow_msg,
                 },
                 collected_data=collected_data,
                 requires_ai_fallback=True,
@@ -202,12 +205,15 @@ class FlowRunner:
             )
 
         options = [option.model_dump() for option in state.options]
+        raw_message = state.message or ""
+        business_hours = (definition.metadata or {}).get("business_hours")
+        personalized = apply_contextual_cta(raw_message, business_hours)
         metadata: Dict[str, Any] = {
             "flow": definition.name,
             "state": state.state,
             "options": options,
             "hook": state.hook,
-            "flow_state_message": state.message,
+            "flow_state_message": personalized,
         }
         if detected_intent:
             metadata["detected_intent"] = detected_intent
@@ -219,8 +225,8 @@ class FlowRunner:
             metadata["collected_data"] = collected_data
 
         return FlowExecutionResponse(
-            handled=bool((state.message or "").strip() or options),
-            reply_text=state.message,
+            handled=bool(personalized.strip() or options),
+            reply_text=personalized or None,
             detected_intent=detected_intent,
             session_state=session_state,
             metadata=metadata,

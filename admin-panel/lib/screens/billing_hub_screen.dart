@@ -5,8 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/billing_summary.dart';
 import '../services/auth_service.dart';
 import '../services/billing_service.dart';
+import '../widgets/premium_ui.dart';
 
-const _kBg = Color(0xFF0B0F1A);
 const _kSurface = Color(0xFF121826);
 const _kCard = Color(0xFF182133);
 const _kCardAlt = Color(0xFF101726);
@@ -14,7 +14,7 @@ const _kBorder = Color(0xFF25304A);
 const _kText = Color(0xFFF5F7FF);
 const _kMuted = Color(0xFF98A4C0);
 const _kSubtle = Color(0xFF6E7B99);
-const _kAccent = Color(0xFF7C8CFF);
+const _kAccent = Color(0xFFF5A623);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
 
@@ -149,11 +149,14 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isSystemHomeContext) {
-      return _SystemBillingState(onOpenBackoffice: widget.onOpenBackoffice);
+      return PremiumPageBackground(
+        intensity: AmbientIntensity.soft,
+        child: _SystemBillingState(onOpenBackoffice: widget.onOpenBackoffice),
+      );
     }
 
-    return Container(
-      color: _kBg,
+    return PremiumPageBackground(
+      intensity: AmbientIntensity.soft,
       child: FutureBuilder<BillingSummaryModel>(
         future: _future,
         builder: (context, snapshot) {

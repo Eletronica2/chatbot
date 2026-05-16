@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:admin_panel/screens/dashboard_screen.dart';
+import 'package:admin_panel/screens/landing_screen.dart';
 import 'package:admin_panel/screens/login_screen.dart';
 import 'package:admin_panel/screens/token_action_screen.dart';
 import 'package:admin_panel/services/auth_service.dart';
@@ -21,6 +22,7 @@ class AdminPanelApp extends StatefulWidget {
 
 class _AdminPanelAppState extends State<AdminPanelApp> {
   bool _isAuthenticated = authService.isAuthenticated;
+  bool _showLogin = false;
   String? _routeOverride;
 
   void _handleLogin() =>
@@ -28,7 +30,10 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
 
   void _handleLogout() {
     authService.logout();
-    setState(() => _isAuthenticated = false);
+    setState(() {
+      _isAuthenticated = false;
+      _showLogin = false;
+    });
   }
 
   void _backToLogin() {
@@ -80,8 +85,15 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
       themeMode: ThemeMode.dark,
       home: tokenAction ??
           (_isAuthenticated
-          ? DashboardScreen(onLogout: _handleLogout)
-          : LoginScreen(onLogin: _handleLogin)),
+              ? DashboardScreen(onLogout: _handleLogout)
+              : (_showLogin
+                  ? LoginScreen(
+                      onLogin: _handleLogin,
+                      onBackToLanding: () => setState(() => _showLogin = false),
+                    )
+                  : LandingScreen(
+                      onLoginTap: () => setState(() => _showLogin = true),
+                    ))),
     );
   }
 }

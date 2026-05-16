@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../services/auth_service.dart';
-
-const _kSurface = Color(0xFF1E293B);
-const _kBorder = Color(0xFF334155);
-const _kText = Colors.white;
-const _kMuted = Color(0xFF94A3B8);
-const _kAccent = Color(0xFF4F46E5);
-const _kDanger = Color(0xFFEF4444);
-const _kSuccess = Color(0xFF10B981);
+import '../theme/app_tokens.dart';
+import '../widgets/premium_ui.dart';
 
 enum TokenActionMode { acceptInvite, resetPassword }
 
@@ -44,7 +39,7 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
   String get _title => _isInvite ? 'Aceitar convite' : 'Redefinir senha';
 
   String get _subtitle => _isInvite
-      ? 'Defina uma senha para concluir o acesso ao painel do cliente.'
+      ? 'Defina uma senha para concluir o acesso ao painel.'
       : 'Cadastre uma nova senha para continuar usando o painel.';
 
   String get _primaryLabel => _isInvite ? 'Concluir convite' : 'Salvar nova senha';
@@ -59,7 +54,7 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (widget.token.trim().isEmpty) {
-      setState(() => _error = 'Token invalido ou ausente no link.');
+      setState(() => _error = 'Token inválido ou ausente no link.');
       return;
     }
 
@@ -90,43 +85,21 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF0F172A), Color(0xFF172554)],
+      backgroundColor: const Color(0xFF05060B),
+      body: PremiumPageBackground(
+        intensity: AmbientIntensity.vivid,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: PremiumGlassCard(
+                padding: const EdgeInsets.all(32),
+                child: _done ? _buildSuccessState() : _buildFormState(),
               ),
             ),
           ),
-          Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Container(
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: _kSurface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: _kBorder),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.35),
-                        blurRadius: 42,
-                        offset: const Offset(0, 20),
-                      ),
-                    ],
-                  ),
-                  child: _done ? _buildSuccessState() : _buildFormState(),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -144,12 +117,20 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: _kAccent,
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: AppGradients.premiumOrange,
+                  borderRadius: AppRadius.md,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.4),
+                      blurRadius: 18,
+                      spreadRadius: -4,
+                    ),
+                  ],
                 ),
                 child: Icon(
                   _isInvite ? Icons.person_add_alt_1_rounded : Icons.lock_reset_rounded,
                   color: Colors.white,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
@@ -159,16 +140,21 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
                   children: [
                     Text(
                       _title,
-                      style: const TextStyle(
-                        color: _kText,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w800,
+                      style: GoogleFonts.inter(
+                        color: AppColors.text,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _subtitle,
-                      style: const TextStyle(color: _kMuted, fontSize: 13),
+                      style: GoogleFonts.inter(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
                     ),
                   ],
                 ),
@@ -181,13 +167,14 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
           TextFormField(
             controller: _passwordCtrl,
             obscureText: _obscurePassword,
-            style: const TextStyle(color: _kText),
+            style: GoogleFonts.inter(color: AppColors.text, fontSize: 14),
             decoration: _inputDecoration('Digite sua nova senha').copyWith(
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: _kMuted,
+                  color: AppColors.textSoft,
+                  size: 18,
                 ),
               ),
             ),
@@ -204,13 +191,14 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
           TextFormField(
             controller: _confirmCtrl,
             obscureText: _obscureConfirm,
-            style: const TextStyle(color: _kText),
+            style: GoogleFonts.inter(color: AppColors.text, fontSize: 14),
             decoration: _inputDecoration('Repita a senha').copyWith(
               suffixIcon: IconButton(
                 onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
                 icon: Icon(
                   _obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: _kMuted,
+                  color: AppColors.textSoft,
+                  size: 18,
                 ),
               ),
             ),
@@ -227,40 +215,42 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _kDanger.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _kDanger.withValues(alpha: 0.35)),
+                color: AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: AppRadius.md,
+                border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
               ),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: _kDanger, fontSize: 13),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: GoogleFonts.inter(color: AppColors.danger, fontSize: 12.5),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
           const SizedBox(height: 22),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: FilledButton(
-              onPressed: _loading ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: _kAccent,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _loading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(_primaryLabel),
-            ),
+          _PrimaryActionButton(
+            label: _primaryLabel,
+            loading: _loading,
+            onTap: _loading ? null : _submit,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Center(
             child: TextButton(
               onPressed: widget.onBackToLogin,
-              child: const Text('Voltar para o login'),
+              child: Text(
+                'Voltar para o login',
+                style: GoogleFonts.inter(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],
@@ -273,43 +263,49 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: _kSuccess.withValues(alpha: 0.14),
-            borderRadius: BorderRadius.circular(999),
+            color: AppColors.success.withValues(alpha: 0.14),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.success.withValues(alpha: 0.35),
+                blurRadius: 28,
+                spreadRadius: -8,
+              ),
+            ],
           ),
-          child: const Icon(Icons.check_rounded, color: _kSuccess, size: 34),
+          child: const Icon(Icons.check_rounded, color: AppColors.success, size: 34),
         ),
         const SizedBox(height: 18),
         Text(
           _isInvite ? 'Acesso liberado' : 'Senha redefinida',
-          style: const TextStyle(
-            color: _kText,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
+          style: GoogleFonts.inter(
+            color: AppColors.text,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.6,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           _isInvite
-              ? 'Seu acesso foi ativado. Agora voce ja pode entrar no painel com o email convidado.'
+              ? 'Seu acesso foi ativado. Agora você já pode entrar no painel com o e-mail convidado.'
               : 'Sua nova senha foi salva com sucesso. Entre novamente no painel para continuar.',
           textAlign: TextAlign.center,
-          style: const TextStyle(color: _kMuted, fontSize: 13, height: 1.5),
+          style: GoogleFonts.inter(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            height: 1.55,
+          ),
         ),
         const SizedBox(height: 22),
-        SizedBox(
-          width: double.infinity,
-          height: 46,
-          child: FilledButton(
-            onPressed: widget.onBackToLogin,
-            style: FilledButton.styleFrom(
-              backgroundColor: _kAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Ir para o login'),
-          ),
+        _PrimaryActionButton(
+          label: 'Ir para o login',
+          loading: false,
+          onTap: widget.onBackToLogin,
         ),
       ],
     );
@@ -318,30 +314,31 @@ class _TokenActionScreenState extends State<TokenActionScreen> {
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF64748B)),
+      hintStyle: GoogleFonts.inter(color: AppColors.textSoft, fontSize: 14),
       filled: true,
-      fillColor: const Color(0xFF0F172A),
+      fillColor: const Color(0xFF080A12).withValues(alpha: 0.85),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kBorder),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kAccent, width: 2),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kDanger),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.danger),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: _kDanger, width: 2),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.danger, width: 1.4),
       ),
+      errorStyle: GoogleFonts.inter(color: AppColors.danger, fontSize: 11.5),
     );
   }
 }
@@ -355,7 +352,76 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(color: _kText, fontSize: 13, fontWeight: FontWeight.w600),
+      style: GoogleFonts.inter(
+        color: AppColors.textMuted,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+}
+
+class _PrimaryActionButton extends StatefulWidget {
+  const _PrimaryActionButton({
+    required this.label,
+    required this.onTap,
+    required this.loading,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+  final bool loading;
+
+  @override
+  State<_PrimaryActionButton> createState() => _PrimaryActionButtonState();
+}
+
+class _PrimaryActionButtonState extends State<_PrimaryActionButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: widget.onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: AppDurations.fast,
+          width: double.infinity,
+          height: 48,
+          decoration: BoxDecoration(
+            gradient: AppGradients.premiumOrange,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: _hovered ? 0.55 : 0.4),
+                blurRadius: _hovered ? 30 : 22,
+                spreadRadius: _hovered ? -4 : -8,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: widget.loading
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : Text(
+                  widget.label,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.1,
+                  ),
+                ),
+        ),
+      ),
     );
   }
 }

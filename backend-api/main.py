@@ -24,7 +24,9 @@ from app.api.routes import (
     flows_admin,
     health,
     internal_whatsapp,
+    leads,
     messages,
+    proposals,
     simulation,
     subscriptions,
     tenant_settings,
@@ -34,6 +36,9 @@ from app.config.settings import settings
 from app.db.mysql import MySQLDatabase
 from app.middlewares.tenant_middleware import TenantMiddleware
 from app.repositories.flow_catalog_repository import FlowCatalogRepository
+from app.repositories.flow_snapshot_repository import FlowSnapshotRepository
+from app.repositories.lead_repository import LeadRepository
+from app.repositories.proposal_repository import ProposalRepository
 from app.repositories.message_repository import MySQLMessageRepository
 from app.repositories.session_repository import MySQLSessionRepository
 from app.repositories.user_repository import UserRepository
@@ -54,7 +59,10 @@ from app.services.dependencies import (
     set_email_service,
     set_flow_catalog_service,
     set_flow_service,
+    set_flow_snapshot_repository,
+    set_lead_service,
     set_message_service,
+    set_proposal_service,
     set_session_service,
     set_subscription_service,
     set_tenant_admin_service,
@@ -69,7 +77,9 @@ from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.services.flow_catalog_service import FlowCatalogService
 from app.services.flow_service import FlowService
+from app.services.lead_service import LeadService
 from app.services.message_service import MessageService
+from app.services.proposal_service import ProposalService
 from app.services.session_service import SessionService
 from app.services.subscription_service import SubscriptionService
 from app.services.tenant_settings_service import TenantSettingsService
@@ -100,6 +110,9 @@ async def lifespan(app: FastAPI):
     user_repository = UserRepository(database)
     whatsapp_account_repository = WhatsAppAccountRepository(database)
     flow_catalog_repository = FlowCatalogRepository(database)
+    flow_snapshot_repository = FlowSnapshotRepository(database)
+    lead_repository = LeadRepository(database)
+    proposal_repository = ProposalRepository(database)
 
     session_service = SessionService(session_repository)
     flow_service = FlowService(settings.FLOW_ENGINE_URL, settings.FLOW_ENGINE_TIMEOUT)
@@ -172,6 +185,22 @@ async def lifespan(app: FastAPI):
     actions_service = FlowActionsService(database)
     set_actions_service(actions_service)
 
+    lead_service = LeadService(
+        repository=lead_repository,
+        email_service=email_service,
+        settings=settings,
+    )
+    set_lead_service(lead_service)
+    set_flow_snapshot_repository(flow_snapshot_repository)
+
+    proposal_service = ProposalService(
+        repository=proposal_repository,
+        lead_service=lead_service,
+        tenant_admin_service=tenant_admin_service,
+        tenant_user_service=tenant_user_service,
+    )
+    set_proposal_service(proposal_service)
+
     await _sync_default_flows(flow_service, flow_catalog_service)
     await tenant_admin_service.ensure_bootstrap_tenant(
         tenant_id=settings.BOOTSTRAP_COMPANY_TENANT_ID,
@@ -225,6 +254,8 @@ app.include_router(whatsapp_accounts.router)
 app.include_router(internal_whatsapp.router)
 app.include_router(flow_routes.router)
 app.include_router(actions.router)
+app.include_router(leads.router)
+app.include_router(proposals.router)
 
 
 @app.get("/")

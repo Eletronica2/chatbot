@@ -1,4 +1,4 @@
-﻿"""Conversation monitoring endpoints for admin panel."""
+"""Conversation monitoring endpoints for admin panel."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -35,6 +35,7 @@ async def list_conversations(
         context = session.context or {}
         history = session.conversation_history or []
         last_history_message = history[-1].content if history else None
+        human_handoff_pending = bool(context.get("human_handoff_pending"))
         rows.append(
             {
                 "id": session.key,
@@ -44,7 +45,9 @@ async def list_conversations(
                 "last_message": last_history_message or context.get("last_message", ""),
                 "updated_at": session.last_interaction.isoformat(),
                 "unread_count": int(context.get("unread_count", 0) or 0),
-                "ai_enabled": True,
+                "ai_enabled": not human_handoff_pending,
+                "human_handoff_pending": human_handoff_pending,
+                "human_handoff_reason": context.get("human_handoff_reason"),
                 "detected_intent": session.detected_intent,
                 "display_phone_number": session.display_phone_number,
                 "phone_number_id": session.phone_number_id,
@@ -183,6 +186,10 @@ async def send_reply(
     context["last_message"] = text
     context["last_role"] = "assistant"
     context["updated_at"] = datetime.utcnow().isoformat()
+    context.pop("human_handoff_pending", None)
+    context.pop("human_handoff_reason", None)
+    context.pop("human_handoff_at", None)
+    context["unread_count"] = 0
     session.context = context
     session = await session_service.update_session(session)
     await message_service.append(

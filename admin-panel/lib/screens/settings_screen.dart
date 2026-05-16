@@ -2,23 +2,58 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:yaml/yaml.dart';
 
+import '../services/actions_service.dart';
 import '../services/auth_service.dart';
 import '../services/flow_admin_service.dart';
 import '../services/tenant_service.dart';
+import '../widgets/premium_ui.dart';
 
-const _kBg = Color(0xFF0F172A);
-const _kSurface = Color(0xFF111827);
-const _kCard = Color(0xFF1F2937);
-const _kInput = Color(0xFF0F172A);
-const _kSubCard = Color(0xFF020617);
-const _kBorder = Color(0xFF374151);
-const _kText = Color(0xFFE2E8F0);
-const _kMuted = Color(0xFF94A3B8);
-const _kSubtle = Color(0xFF64748B);
-const _kAccent = Color(0xFF7C8CFF);
-const _kAccentSoft = Color(0xFF818CF8);
-const _kSuccess = Color(0xFF10B981);
-const _kDanger = Color(0xFFEF4444);
+const _kBg = Color(0xFF0A0C10);
+const _kSurface = Color(0xFF12161F);
+const _kCard = Color(0xFF1A2030);
+const _kInput = Color(0xFF0E1219);
+const _kSubCard = Color(0xFF0D1018);
+const _kBorder = Color(0xFF2E3A52);
+const _kText = Color(0xFFF8F6F2);
+const _kMuted = Color(0xFFA8B0C4);
+const _kSubtle = Color(0xFF6E7A94);
+const _kAccent = Color(0xFFF5A623);
+const _kAccentSoft = Color(0xFFFFC857);
+const _kSuccess = Color(0xFF2DD4A8);
+const _kDanger = Color(0xFFFF6B6B);
+
+/// Converte um identificador tecnico (snake_case ou kebab-case) em um nome
+/// amigavel em Title Case. Quando uma `description`/`displayName` for fornecida
+/// e nao estiver vazia, ela e preferida.
+String humanizeFlowName(String? technicalName, {String? displayName}) {
+  final display = (displayName ?? '').trim();
+  if (display.isNotEmpty) {
+    return display;
+  }
+  final raw = (technicalName ?? '').trim();
+  if (raw.isEmpty) return 'Automa\u00e7\u00e3o';
+  final tokens = raw
+      .replaceAll(RegExp(r'[_\-]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim()
+      .split(' ');
+  final lowered = {
+    'da', 'de', 'do', 'das', 'dos', 'e', 'para', 'pra', 'em', 'com', 'a', 'o',
+    'as', 'os', 'no', 'na', 'nos', 'nas',
+  };
+  final buffer = <String>[];
+  for (var i = 0; i < tokens.length; i++) {
+    final token = tokens[i].trim();
+    if (token.isEmpty) continue;
+    final lower = token.toLowerCase();
+    if (i > 0 && lowered.contains(lower)) {
+      buffer.add(lower);
+    } else {
+      buffer.add(lower[0].toUpperCase() + lower.substring(1));
+    }
+  }
+  return buffer.join(' ');
+}
 
 class _OptionDraft {
   final TextEditingController labelCtrl;
@@ -45,6 +80,25 @@ class _TransitionDraft {
   void dispose() => keywordCtrl.dispose();
 }
 
+/// Chave virtual usada quando a etapa deve encaminhar para um atendente humano.
+/// Selecionada por padrao no dropdown de Acoes.
+const String _kHandoffActionKey = 'handoff';
+
+/// Item de menu para o dropdown de Acoes do editor.
+class _ActionOption {
+  const _ActionOption({
+    required this.key,
+    required this.label,
+    required this.type,
+    required this.icon,
+  });
+
+  final String key;
+  final String label;
+  final String type;
+  final IconData icon;
+}
+
 class _StateDraft {
   final TextEditingController nameCtrl;
   final TextEditingController msgCtrl;
@@ -52,8 +106,14 @@ class _StateDraft {
   final List<_OptionDraft> options;
   final List<_TransitionDraft> transitions;
   bool requiresHandoff;
+  bool humanTone;
   bool expanded;
   Offset position;
+
+  /// Chave da acao selecionada no dropdown de Acoes.
+  /// - `_kHandoffActionKey` => encaminha para atendente (default)
+  /// - Qualquer outro valor => corresponde a uma `flow_actions` cadastrada.
+  String selectedActionKey;
 
   _StateDraft({
     String name = '',
@@ -62,13 +122,19 @@ class _StateDraft {
     List<_OptionDraft>? options,
     List<_TransitionDraft>? transitions,
     this.requiresHandoff = false,
+    this.humanTone = false,
     this.expanded = false,
     this.position = Offset.zero,
+    String? selectedActionKey,
   })  : nameCtrl = TextEditingController(text: name),
         msgCtrl = TextEditingController(text: message),
         hookActionCtrl = TextEditingController(text: hookAction),
         options = options ?? <_OptionDraft>[],
-        transitions = transitions ?? <_TransitionDraft>[];
+        transitions = transitions ?? <_TransitionDraft>[],
+        selectedActionKey = selectedActionKey ??
+            (hookAction.trim().isNotEmpty
+                ? hookAction.trim()
+                : (requiresHandoff ? _kHandoffActionKey : _kHandoffActionKey));
 
   String get name => nameCtrl.text.trim();
 
@@ -91,15 +157,18 @@ class _FlowDraft {
   final TextEditingController nameCtrl;
   final TextEditingController descCtrl;
   String startState;
+  final Map<String, dynamic> preservedYamlBlocks;
   final List<_StateDraft> states;
 
   _FlowDraft({
     required String name,
     String description = '',
     this.startState = '',
+    Map<String, dynamic>? preservedYamlBlocks,
     List<_StateDraft>? states,
   })  : nameCtrl = TextEditingController(text: name),
         descCtrl = TextEditingController(text: description),
+        preservedYamlBlocks = preservedYamlBlocks ?? <String, dynamic>{},
         states = states ?? <_StateDraft>[];
 
   String get name => nameCtrl.text.trim();
@@ -145,7 +214,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loadingFlows = true;
   _FlowDraft? _draft;
   bool _saving = false;
+  bool _restoring = false;
+  FlowYamlDetail? _draftDetail;
   bool _aiEnabled = false;
+  String _automationFilter = 'all';
   bool _sendingSimulation = false;
   int _rightPanelTab = 0;
   String? _previewCurrentStep;
@@ -223,16 +295,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _draft?.dispose();
       _draft = null;
+      _draftDetail = null;
     });
 
     try {
-      final yaml = await flowAdminService.getFlowYaml(name);
-      final draft = _parseYaml(name, yaml);
+      final detail = await flowAdminService.getFlowDetail(name);
+      final draft = _parseYaml(name, detail.yamlContent);
       if (!mounted) {
         return;
       }
       setState(() {
         _draft = draft;
+        _draftDetail = detail;
       });
       _resetPreview(draft);
     } catch (error) {
@@ -253,6 +327,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final data = doc;
       final name = data['name']?.toString() ?? fallback;
       final description = data['description']?.toString() ?? '';
+      final rootFallbackAi = data['fallback_ai'] == true;
+      final preserved = <String, dynamic>{};
+      for (final key in <String>[
+        'business_hours',
+        'intent_aliases',
+        'global_transitions',
+      ]) {
+        if (data.containsKey(key)) {
+          preserved[key] = _yamlToPlain(data[key]);
+        }
+      }
       final rawStartState =
           (data['start_state'] ?? data['start'])?.toString() ?? '';
       final statesMap = data['states'];
@@ -272,6 +357,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : _humanizeStateId(stateId);
           final message = stateData['message']?.toString() ?? '';
           final requiresHandoff = stateData['requires_handoff'] == true;
+          final stateFallbackAi = stateData['fallback_ai'] == true;
+          final isGreetingState = stateId.contains('boas') ||
+              stateId.contains('greeting') ||
+              stateId.contains('saudacao');
+          final humanTone = stateFallbackAi ||
+              (rootFallbackAi && isGreetingState && stateData['fallback_ai'] != false);
           final hookData = stateData['hook'];
           final hookAction = hookData is Map
               ? (hookData['action'] ?? hookData['name'])?.toString() ?? ''
@@ -340,6 +431,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               options: options,
               transitions: transitions,
               requiresHandoff: requiresHandoff,
+              humanTone: humanTone,
             ),
           );
           idToDisplay[stateId] = userFacingName;
@@ -370,11 +462,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
         startState: startDisplay.isEmpty && states.isNotEmpty
             ? states.first.name
             : startDisplay,
+        preservedYamlBlocks: preserved,
         states: states,
       );
     } catch (_) {
       return _FlowDraft(name: fallback);
     }
+  }
+
+  dynamic _yamlToPlain(dynamic value) {
+    if (value is YamlMap) {
+      return value.map((k, v) => MapEntry(k.toString(), _yamlToPlain(v)));
+    }
+    if (value is YamlList) {
+      return value.map(_yamlToPlain).toList();
+    }
+    return value;
+  }
+
+  void _writePreservedYamlBlocks(StringBuffer buffer, _FlowDraft draft) {
+    for (final entry in draft.preservedYamlBlocks.entries) {
+      buffer.writeln('${entry.key}:');
+      _dumpYamlValue(buffer, entry.value, 2);
+      buffer.writeln();
+    }
+  }
+
+  void _dumpYamlValue(StringBuffer buffer, dynamic value, int indent) {
+    final pad = ' ' * indent;
+    if (value is Map) {
+      for (final entry in value.entries) {
+        final key = entry.key.toString();
+        final child = entry.value;
+        if (child is Map) {
+          buffer.writeln('$pad$key:');
+          _dumpYamlValue(buffer, child, indent + 2);
+        } else if (child is List) {
+          buffer.writeln('$pad$key:');
+          _dumpYamlValue(buffer, child, indent + 2);
+        } else {
+          buffer.writeln('$pad$key: ${_yamlScalar(child)}');
+        }
+      }
+      return;
+    }
+    if (value is List) {
+      for (final item in value) {
+        if (item is Map || item is List) {
+          buffer.writeln('$pad-');
+          _dumpYamlValue(buffer, item, indent + 2);
+        } else {
+          buffer.writeln('$pad- ${_yamlScalar(item)}');
+        }
+      }
+    }
+  }
+
+  String _yamlScalar(dynamic value) {
+    if (value == null) {
+      return 'null';
+    }
+    if (value is bool || value is num) {
+      return value.toString();
+    }
+    final text = value.toString();
+    if (text.isEmpty ||
+        text.contains(':') ||
+        text.contains('#') ||
+        text.contains('"') ||
+        text.contains('\n')) {
+      return '"${_esc(text)}"';
+    }
+    return text;
   }
 
   String _slugify(String value) {
@@ -570,7 +729,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (hasConfiguredOptions || hasConfiguredTransitions) {
-      return 'Nenhuma proxima etapa foi encontrada para "$message". Revise os botoes ou as respostas digitadas desta etapa.';
+      return 'Nenhuma proxima etapa foi encontrada para "$message". Revise os atalhos ou as respostas digitadas desta etapa.';
     }
 
     return 'Esta etapa nao possui proximos passos configurados para continuar o teste.';
@@ -613,7 +772,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _previewHistory.add(<String, String>{
           'role': 'bot',
-          'text': result.botResponse,
+          'text': result.displayResponse,
+          'source': result.source ?? '',
+          'mode': result.responseModeLabel,
+          'low_cost': result.isLowCostResponse ? '1' : '0',
         });
         if (result.state != null && result.state!.isNotEmpty) {
            _previewCurrentStep = result.state;
@@ -656,6 +818,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       buffer.writeln('description: "${_esc(draft.description)}"');
     }
     buffer.writeln('start_state: $start');
+    buffer.writeln('fallback_ai: false');
+    _writePreservedYamlBlocks(buffer, draft);
     buffer.writeln('states:');
 
     for (final state in draft.states) {
@@ -670,14 +834,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (state.message.isNotEmpty) {
         buffer.writeln('    message: "${_esc(state.message)}"');
       }
-      if (state.requiresHandoff) {
+      // Acao selecionada via dropdown unico:
+      // - 'handoff' (default)  -> escreve requires_handoff: true
+      // - qualquer outra chave -> escreve hook.action: <chave>
+      final selectedAction = state.selectedActionKey.trim();
+      if (selectedAction.isEmpty || selectedAction == _kHandoffActionKey) {
         buffer.writeln('    requires_handoff: true');
-      }
-      if (state.hookActionCtrl.text.trim().isNotEmpty) {
+      } else {
         buffer.writeln('    hook:');
-        buffer.writeln(
-          '      action: "${_esc(state.hookActionCtrl.text.trim())}"',
-        );
+        buffer.writeln('      action: "${_esc(selectedAction)}"');
       }
 
       final options =
@@ -785,7 +950,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final hasLabel = option.labelCtrl.text.trim().isNotEmpty;
         if (hasLabel && option.targetState.trim().isEmpty) {
           _showErr(
-            'Defina a proxima etapa para o botao "${option.labelCtrl.text.trim()}" na etapa "${state.name}".',
+            'Defina a proxima etapa para o atalho "${option.labelCtrl.text.trim()}" na etapa "${state.name}".',
           );
           return;
         }
@@ -804,9 +969,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return;
       }
       _resetPreview(draft);
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      try {
+        final detail = await flowAdminService.getFlowDetail(draft.name);
+        if (mounted) {
+          setState(() => _draftDetail = detail);
+        }
+      } catch (_) {
+        // silent: snapshot indicator stays stale until next open
+      }
+      messenger.showSnackBar(
         SnackBar(
-          content: Text('Automa\u00e7\u00e3o "${draft.name}" salva com sucesso!'),
+          content: Text('Automa\u00e7\u00e3o "${humanizeFlowName(draft.name)}" salva com sucesso!'),
           backgroundColor: _kSuccess,
         ),
       );
@@ -817,6 +991,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _restoreFlowToBase() async {
+    final draft = _draft;
+    if (draft == null) return;
+    final detail = _draftDetail;
+    if (detail == null || !detail.hasBaseSnapshot) {
+      _showErr('Nao existe versao base salva para este fluxo.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => _RestoreBaseDialog(flowName: draft.name),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _restoring = true);
+    try {
+      final restoredYaml = await flowAdminService.restoreBase(draft.name);
+      await flowAdminService.reloadFlows();
+      if (!mounted) return;
+      final parsed = _parseYaml(draft.name, restoredYaml);
+      final updatedDetail = await flowAdminService.getFlowDetail(draft.name);
+      if (!mounted) return;
+      setState(() {
+        _draft?.dispose();
+        _draft = parsed;
+        _draftDetail = updatedDetail;
+      });
+      _resetPreview(parsed);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Automa\u00e7\u00e3o "${humanizeFlowName(draft.name)}" restaurada para a vers\u00e3o base.'),
+          backgroundColor: _kSuccess,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      _showErr('Erro ao restaurar base: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _restoring = false);
       }
     }
   }
@@ -1091,7 +1310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         width: 36,
                         height: 36,
                         decoration: BoxDecoration(
-                          color: const Color(0x1F818CF8),
+                          color: const Color(0x1FF5A623),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
@@ -1164,7 +1383,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Voce vai comecar com uma etapa inicial em branco. Depois, no editor, basta preencher a mensagem, adicionar botoes e ligar a etapa aos proximos passos.',
+                                  'Voce vai comecar com uma etapa inicial em branco. Depois, preencha a mensagem, adicione atalhos opcionais e ligue a etapa aos proximos passos.',
                                   style: TextStyle(
                                     color: _kMuted,
                                     fontSize: 12,
@@ -1358,16 +1577,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     await _showAutomationDialog(
       title: 'Editar automa\u00e7\u00e3o',
-      subtitle: draft.name,
+      subtitle: humanizeFlowName(draft.name),
       width: 1200,
       height: 820,
-      child: _FlowEditorView(
-        key: ValueKey('editor-${draft.name}'),
-        draft: draft,
-        saving: _saving,
-        onSave: _save,
-        autoOptionId: _autoOptionId,
-        onChanged: _handleDraftChanged,
+      child: StatefulBuilder(
+        builder: (context, _) => _FlowEditorView(
+          key: ValueKey('editor-${draft.name}'),
+          draft: draft,
+          saving: _saving,
+          onSave: _save,
+          autoOptionId: _autoOptionId,
+          onChanged: _handleDraftChanged,
+          hasBaseSnapshot: _draftDetail?.hasBaseSnapshot ?? false,
+          isBaseVersion: _draftDetail?.isBaseVersion ?? true,
+          restoring: _restoring,
+          onRestoreBase: (_draftDetail?.hasBaseSnapshot ?? false) ? _restoreFlowToBase : null,
+        ),
       ),
     );
   }
@@ -1379,16 +1604,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     await _showAutomationDialog(
       title: 'Editar automa\u00e7\u00e3o',
-      subtitle: draft.name,
+      subtitle: humanizeFlowName(draft.name),
       width: 1200,
       height: 820,
-      child: _FlowEditorView(
-        key: ValueKey('editor-${draft.name}'),
-        draft: draft,
-        saving: _saving,
-        onSave: _save,
-        autoOptionId: _autoOptionId,
-        onChanged: _handleDraftChanged,
+      child: StatefulBuilder(
+        builder: (context, _) => _FlowEditorView(
+          key: ValueKey('editor-${draft.name}'),
+          draft: draft,
+          saving: _saving,
+          onSave: _save,
+          autoOptionId: _autoOptionId,
+          onChanged: _handleDraftChanged,
+          hasBaseSnapshot: _draftDetail?.hasBaseSnapshot ?? false,
+          isBaseVersion: _draftDetail?.isBaseVersion ?? true,
+          restoring: _restoring,
+          isCreating: true,
+          onRestoreBase: (_draftDetail?.hasBaseSnapshot ?? false) ? _restoreFlowToBase : null,
+        ),
       ),
     );
   }
@@ -1401,7 +1633,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     await _showAutomationDialog(
       title: 'Testar automa\u00e7\u00e3o',
-      subtitle: draft.name,
+      subtitle: humanizeFlowName(draft.name),
       width: 960,
       height: 760,
       child: _FlowTestView(draft: draft),
@@ -1488,16 +1720,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      color: _kBg,
+    final content = PremiumPageBackground(
       child: SafeArea(
         child: SingleChildScrollView(
-          child: Align(
-            alignment: Alignment.topCenter,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1280),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SizedBox(
+                width: constraints.maxWidth,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(36, 32, 36, 36),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1509,7 +1740,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
               ),
-            ),
+              );
+            },
           ),
         ),
       ),
@@ -1572,30 +1804,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
 
-    final actionButton = FilledButton.icon(
-      style: FilledButton.styleFrom(
-        backgroundColor: _kAccentSoft,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      ),
-      onPressed: _isSystemAdminHomeContext ? null : _showNewFlowDialog,
-      icon: const Icon(Icons.add_rounded, size: 18),
-      label: const Text('Nova automa\u00e7\u00e3o'),
-    );
-
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 760) {
+        final compact = constraints.maxWidth < 760;
+        final actionButton = PremiumAccentButton(
+          label: 'Nova automa\u00e7\u00e3o',
+          icon: Icons.add_rounded,
+          onPressed: _isSystemAdminHomeContext ? null : _showNewFlowDialog,
+          expand: compact,
+        );
+        if (compact) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               titleBlock,
               const SizedBox(height: 16),
-              SizedBox(width: double.infinity, child: actionButton),
+              actionButton,
             ],
           );
         }
-
         return Row(
           children: [
             Expanded(child: titleBlock),
@@ -1646,6 +1873,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: _kMuted,
                     fontSize: 13,
                   ),
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    PremiumFilterChip(
+                      label: 'Todos',
+                      selected: _automationFilter == 'all',
+                      onTap: () => setState(() => _automationFilter = 'all'),
+                    ),
+                    PremiumFilterChip(
+                      label: 'IA habilitada',
+                      icon: Icons.auto_awesome_rounded,
+                      selected: _automationFilter == 'ai',
+                      onTap: () => setState(() => _automationFilter = 'ai'),
+                    ),
+                    PremiumFilterChip(
+                      label: 'Com início',
+                      icon: Icons.flag_outlined,
+                      selected: _automationFilter == 'start',
+                      onTap: () => setState(() => _automationFilter = 'start'),
+                    ),
+                    PremiumFilterChip(
+                      label: 'Recentes',
+                      icon: Icons.schedule_rounded,
+                      selected: _automationFilter == 'recent',
+                      onTap: () => setState(() => _automationFilter = 'recent'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -1738,8 +1995,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   List<Widget> _buildAutomationRows() {
+    final visibleFlows = _flows.where((flow) {
+      return switch (_automationFilter) {
+        'ai' => _aiEnabled,
+        'start' => (flow.startState ?? '').trim().isNotEmpty,
+        _ => true,
+      };
+    }).toList();
+    if (_automationFilter == 'recent') {
+      visibleFlows.sort((a, b) => b.name.compareTo(a.name));
+    }
+
     final rows = <Widget>[
-      for (final flow in _flows)
+      for (final flow in visibleFlows)
         _FlowListItem(
           flow: flow,
           onEdit: () => _openFlowEditorDialog(flow.name),
@@ -2031,40 +2299,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             controller: _simulationScrollCtrl,
                             itemCount: _previewHistory.length,
                             itemBuilder: (_, index) {
-                              final row = _previewHistory[index];
-                              final isUser = row['role'] == 'user';
-                              return Align(
-                                alignment: isUser
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 250),
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isUser ? _kAccentSoft : _kCard,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(14),
-                                      topRight: const Radius.circular(14),
-                                      bottomLeft:
-                                          Radius.circular(isUser ? 14 : 4),
-                                      bottomRight:
-                                          Radius.circular(isUser ? 4 : 14),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    row['text'] ?? '',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
+                              return _SimulationChatBubble(
+                                row: _previewHistory[index],
                               );
                             },
                           ),
@@ -2220,6 +2456,106 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+// ── Bolha de chat do simulador com chip de origem (roteiro / IA) ─────────────
+
+class _SimulationChatBubble extends StatelessWidget {
+  const _SimulationChatBubble({required this.row});
+
+  final Map<String, String> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = row['role'] == 'user';
+    final mode = row['mode']?.trim() ?? '';
+    final lowCost = row['low_cost'] == '1';
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Container(
+            constraints: const BoxConstraints(maxWidth: 250),
+            margin: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isUser ? _kAccentSoft : _kCard,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(14),
+                topRight: const Radius.circular(14),
+                bottomLeft: Radius.circular(isUser ? 14 : 4),
+                bottomRight: Radius.circular(isUser ? 4 : 14),
+              ),
+            ),
+            child: Text(
+              row['text'] ?? '',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                height: 1.4,
+              ),
+            ),
+          ),
+          if (!isUser && mode.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _SimulationModeChip(
+                label: mode,
+                lowCost: lowCost,
+              ),
+            )
+          else
+            const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+class _SimulationModeChip extends StatelessWidget {
+  const _SimulationModeChip({
+    required this.label,
+    required this.lowCost,
+  });
+
+  final String label;
+  final bool lowCost;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = lowCost
+        ? _kSuccess.withValues(alpha: 0.15)
+        : _kAccent.withValues(alpha: 0.15);
+    final fg = lowCost ? _kSuccess : _kAccentSoft;
+    final icon = lowCost ? Icons.savings_outlined : Icons.auto_awesome_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: fg.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: fg,
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2382,6 +2718,9 @@ class _FlowTestViewState extends State<_FlowTestView> {
         _history.add(<String, String>{
           'role': 'bot',
           'text': result.displayResponse,
+          'source': result.source ?? '',
+          'mode': result.responseModeLabel,
+          'low_cost': result.isLowCostResponse ? '1' : '0',
         });
         if (result.state != null && result.state!.isNotEmpty) {
           _currentStep = result.state;
@@ -2539,40 +2878,8 @@ class _FlowTestViewState extends State<_FlowTestView> {
                             controller: _scrollCtrl,
                             itemCount: _history.length,
                             itemBuilder: (_, index) {
-                              final row = _history[index];
-                              final isUser = row['role'] == 'user';
-                              return Align(
-                                alignment: isUser
-                                    ? Alignment.centerRight
-                                    : Alignment.centerLeft,
-                                child: Container(
-                                  constraints:
-                                      const BoxConstraints(maxWidth: 250),
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isUser ? _kAccentSoft : _kCard,
-                                    borderRadius: BorderRadius.only(
-                                      topLeft: const Radius.circular(14),
-                                      topRight: const Radius.circular(14),
-                                      bottomLeft:
-                                          Radius.circular(isUser ? 14 : 4),
-                                      bottomRight:
-                                          Radius.circular(isUser ? 4 : 14),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    row['text'] ?? '',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                ),
+                              return _SimulationChatBubble(
+                                row: _history[index],
                               );
                             },
                           ),
@@ -2779,7 +3086,7 @@ class _FlowListItemState extends State<_FlowListItem> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      flow.name,
+                      humanizeFlowName(flow.name),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -2908,6 +3215,11 @@ class _FlowEditorView extends StatefulWidget {
     required this.onSave,
     required this.autoOptionId,
     required this.onChanged,
+    this.hasBaseSnapshot = false,
+    this.isBaseVersion = true,
+    this.restoring = false,
+    this.isCreating = false,
+    this.onRestoreBase,
   });
 
   final _FlowDraft draft;
@@ -2915,6 +3227,11 @@ class _FlowEditorView extends StatefulWidget {
   final VoidCallback onSave;
   final String Function(String label, int index) autoOptionId;
   final VoidCallback onChanged;
+  final bool hasBaseSnapshot;
+  final bool isBaseVersion;
+  final bool restoring;
+  final bool isCreating;
+  final VoidCallback? onRestoreBase;
 
   @override
   State<_FlowEditorView> createState() => _FlowEditorViewState();
@@ -2926,10 +3243,34 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
   // Whether the side panel is showing the quick-guide instead of a node config
   bool _showGuide = true;
 
+  // Acoes disponiveis para o dropdown "Acoes" (carregadas em initState).
+  List<FlowAction> _flowActions = const [];
+  bool _loadingActions = false;
+
   @override
   void initState() {
     super.initState();
     _autoLayoutIfNeeded();
+    _loadFlowActions();
+  }
+
+  Future<void> _loadFlowActions() async {
+    if (_loadingActions) return;
+    setState(() => _loadingActions = true);
+    try {
+      final list = await actionsService.listActions();
+      if (!mounted) return;
+      setState(() {
+        _flowActions = list;
+      });
+    } catch (_) {
+      // Carregamento das acoes e best-effort. Em falha mantemos lista vazia
+      // — o dropdown continua exibindo "Encaminhar para atendente" como default.
+    } finally {
+      if (mounted) {
+        setState(() => _loadingActions = false);
+      }
+    }
   }
 
   // Give default positions to nodes that have none (Offset.zero)
@@ -3044,10 +3385,17 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               ),
               // ── Side panel ─────────────────────────────────────────
               Container(
-                width: 360,
-                decoration: const BoxDecoration(
+                width: 420,
+                decoration: BoxDecoration(
                   color: _kSurface,
-                  border: Border(left: BorderSide(color: _kBorder)),
+                  border: const Border(left: BorderSide(color: _kBorder)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      blurRadius: 28,
+                      offset: const Offset(-8, 0),
+                    ),
+                  ],
                 ),
                 child: _buildSidePanel(draft),
               ),
@@ -3080,7 +3428,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: const Color(0x1F818CF8),
+                  color: const Color(0x1FF5A623),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: _kBorder),
                 ),
@@ -3138,6 +3486,8 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               setState(() {});
               widget.onChanged();
             },
+            flowActions: _flowActions,
+            loadingActions: _loadingActions,
             sidePanelMode: true,
           ),
         ),
@@ -3179,7 +3529,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
           _buildGuidePanelTip(
             icon: Icons.arrow_forward_rounded,
             title: 'Conex\u00f5es autom\u00e1ticas',
-            desc: 'As setas aparecem automaticamente conforme voc\u00ea configura bot\u00f5es e regras de texto dentro de cada etapa.',
+            desc: 'As setas aparecem conforme voc\u00ea configura atalhos e regras de texto em cada etapa.',
           ),
           _buildGuidePanelTip(
             icon: Icons.touch_app_rounded,
@@ -3275,9 +3625,96 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
     );
   }
 
+  Widget _buildVersionBar() {
+    final hasBase = widget.hasBaseSnapshot;
+    final isBase = widget.isBaseVersion;
+    final canRestore = hasBase && !isBase && widget.onRestoreBase != null;
+
+    // Quando ainda não existe um snapshot base (primeira edição), não mostramos
+    // nenhum card de versão — o snapshot é criado automaticamente ao salvar.
+    if (!hasBase) {
+      return const SizedBox.shrink();
+    }
+
+    final Color badgeColor;
+    final IconData badgeIcon;
+    final String badgeLabel;
+    final String badgeHint;
+    if (isBase) {
+      badgeColor = _kSuccess;
+      badgeIcon = Icons.verified_outlined;
+      badgeLabel = 'Versão base';
+      badgeHint = 'Esta automação está igual à versão entregue pela plataforma.';
+    } else {
+      badgeColor = const Color(0xFFF59E0B);
+      badgeIcon = Icons.edit_note_rounded;
+      badgeLabel = 'Personalizada';
+      badgeHint = 'Você fez ajustes — restaure para voltar à versão base sempre que quiser.';
+    }
+
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(badgeIcon, size: 14, color: badgeColor),
+              const SizedBox(width: 6),
+              Text(
+                badgeLabel,
+                style: TextStyle(
+                  color: badgeColor,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.2,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            badgeHint,
+            style: const TextStyle(color: _kSubtle, fontSize: 12, height: 1.4),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ),
+        if (canRestore) ...[
+          const SizedBox(width: 12),
+          TextButton.icon(
+            onPressed: widget.restoring ? null : widget.onRestoreBase,
+            icon: widget.restoring
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: _kAccentSoft),
+                  )
+                : const Icon(Icons.restore_rounded, size: 16, color: _kAccentSoft),
+            label: Text(
+              widget.restoring ? 'Restaurando...' : 'Restaurar para base',
+              style: const TextStyle(
+                color: _kAccentSoft,
+                fontWeight: FontWeight.w700,
+                fontSize: 12.5,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildTopBar(_FlowDraft draft) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
       decoration: const BoxDecoration(
         color: _kSurface,
         border: Border(bottom: BorderSide(color: _kBorder)),
@@ -3289,21 +3726,26 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          SizedBox(
-            width: 220,
-            child: _LabeledField(
-              label: 'Nome da automa\u00e7\u00e3o',
-              child: _DarkField(
-                controller: draft.nameCtrl,
-                hint: 'Ex: Atendimento da loja',
-                onChanged: widget.onChanged,
+          if (widget.isCreating) ...[
+            SizedBox(
+              width: 220,
+              child: _LabeledField(
+                label: 'Nome da automa\u00e7\u00e3o',
+                child: _DarkField(
+                  controller: draft.nameCtrl,
+                  hint: 'Ex: Atendimento da loja',
+                  onChanged: widget.onChanged,
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 14),
+            const SizedBox(width: 14),
+          ],
           Expanded(
             flex: 2,
             child: _LabeledField(
@@ -3359,31 +3801,16 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
             ),
           ),
           const SizedBox(width: 24),
-          SizedBox(
-            height: 36,
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: _kAccentSoft,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              onPressed: widget.saving ? null : widget.onSave,
-              icon: widget.saving
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.save_rounded, size: 16),
-              label: Text(widget.saving ? 'Salvando...' : 'Salvar automa\u00e7\u00e3o'),
-            ),
+          PremiumAccentButton(
+            label: widget.saving ? 'Salvando...' : 'Salvar automa\u00e7\u00e3o',
+            icon: widget.saving ? null : Icons.save_rounded,
+            onPressed: widget.saving ? null : widget.onSave,
+            dense: true,
           ),
+        ],
+      ),
+          const SizedBox(height: 12),
+          _buildVersionBar(),
         ],
       ),
     );
@@ -3679,7 +4106,7 @@ class _CanvasNodeState extends State<_CanvasNode> {
             boxShadow: [
               BoxShadow(
                 color: widget.isSelected
-                    ? const Color(0x407C8CFF)
+                    ? const Color(0x40F5A623)
                     : const Color(0x40000000),
                 blurRadius: widget.isDragging ? 24 : 10,
                 offset: Offset(0, widget.isDragging ? 10 : 4),
@@ -3694,7 +4121,7 @@ class _CanvasNodeState extends State<_CanvasNode> {
                 padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
                 decoration: BoxDecoration(
                   color: widget.isSelected
-                      ? const Color(0x1F818CF8)
+                      ? const Color(0x1FF5A623)
                       : const Color(0xFF111827),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
                 ),
@@ -3705,7 +4132,7 @@ class _CanvasNodeState extends State<_CanvasNode> {
                       height: 26,
                       decoration: BoxDecoration(
                         color: widget.isSelected
-                            ? const Color(0x337C8CFF)
+                            ? const Color(0x33F5A623)
                             : _kSurface,
                         borderRadius: BorderRadius.circular(7),
                         border: Border.all(color: _kBorder),
@@ -3776,8 +4203,8 @@ class _CanvasNodeState extends State<_CanvasNode> {
                   children: [
                     if (optCount > 0)
                       _NodeChip(
-                        icon: Icons.smart_button_rounded,
-                        label: '$optCount bot\u00e3o${optCount != 1 ? "s" : ""}',
+                        icon: Icons.shortcut_rounded,
+                        label: '$optCount atalho${optCount != 1 ? "s" : ""}',
                         color: _kAccent,
                       ),
                     if (trCount > 0)
@@ -3861,13 +4288,13 @@ class _FlowArrowPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF4B6BFF)
+      ..color = const Color(0xFF6B9B8A)
       ..strokeWidth = 1.8
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
     final arrowPaint = Paint()
-      ..color = const Color(0xFF4B6BFF)
+      ..color = const Color(0xFF6B9B8A)
       ..style = PaintingStyle.fill;
 
     final String? selectedName = selectedIndex != null && selectedIndex! < states.length
@@ -3999,6 +4426,8 @@ class _StateCard extends StatefulWidget {
     required this.onToggleExpanded,
     required this.onDelete,
     required this.onChanged,
+    required this.flowActions,
+    required this.loadingActions,
     this.sidePanelMode = false,
   });
 
@@ -4010,6 +4439,8 @@ class _StateCard extends StatefulWidget {
   final ValueChanged<bool> onToggleExpanded;
   final VoidCallback onDelete;
   final VoidCallback onChanged;
+  final List<FlowAction> flowActions;
+  final bool loadingActions;
   final bool sidePanelMode;
 
   @override
@@ -4018,13 +4449,17 @@ class _StateCard extends StatefulWidget {
 
 class _StateCardState extends State<_StateCard> {
   bool _hovered = false;
+  int _openSection = 0;
 
+  // Atalhos foram removidos da UI; mantidos somente para compat YAML legada.
+  // ignore: unused_element
   void _addOption() {
     final nextValue = 'opcao_${widget.state.options.length + 1}';
     setState(() => widget.state.options.add(_OptionDraft(value: nextValue)));
     widget.onChanged();
   }
 
+  // ignore: unused_element
   void _removeOption(int index) {
     widget.state.options.removeAt(index).dispose();
     setState(() {});
@@ -4127,10 +4562,15 @@ class _StateCardState extends State<_StateCard> {
   Widget _buildBasicsSection(_StateDraft state) {
     return _EditorPanel(
       icon: Icons.chat_bubble_outline_rounded,
-      title: '1. Conteudo da etapa',
+      title: '1. Mensagem desta etapa',
       description:
           'Defina o nome interno desta etapa e a mensagem principal que o cliente vai receber ao entrar nela.',
-      child: Column(
+      child: _buildBasicsSectionBody(state),
+    );
+  }
+
+  Widget _buildBasicsSectionBody(_StateDraft state) {
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _LabeledField(
@@ -4178,87 +4618,173 @@ class _StateCardState extends State<_StateCard> {
             ),
           ),
         ],
-      ),
     );
   }
 
   Widget _buildActionsSection(_StateDraft state) {
     return _EditorPanel(
       icon: Icons.settings_suggest_outlined,
-      title: '4. Acoes adicionais',
+      title: '4. A\u00e7\u00f5es',
       description:
-          'Use estes recursos so quando esta etapa precisar sair do bot e seguir para atendimento humano ou para uma integracao.',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
+          'Selecione a a\u00e7\u00e3o que esta etapa executa quando ativa.',
+      child: _buildActionsSectionBody(state),
+    );
+  }
+
+  /// Lista os itens disponiveis no dropdown de Acoes.
+  /// Sempre incluiu o item virtual "Encaminhar para atendente" (chave handoff).
+  List<_ActionOption> _availableActionOptions() {
+    final options = <_ActionOption>[
+      const _ActionOption(
+        key: _kHandoffActionKey,
+        label: 'Encaminhar para atendente',
+        type: 'Padr\u00e3o do sistema',
+        icon: Icons.support_agent_rounded,
+      ),
+    ];
+    for (final action in widget.flowActions) {
+      options.add(
+        _ActionOption(
+          key: action.name,
+          label: action.name,
+          type: action.actionType.label,
+          icon: _iconForActionType(action.actionType),
+        ),
+      );
+    }
+    return options;
+  }
+
+  IconData _iconForActionType(ActionType type) {
+    switch (type) {
+      case ActionType.sendImage:
+        return Icons.image_outlined;
+      case ActionType.sendLink:
+        return Icons.link_rounded;
+      case ActionType.sendDocument:
+        return Icons.description_outlined;
+      case ActionType.httpRequest:
+        return Icons.api_rounded;
+      case ActionType.delay:
+        return Icons.schedule_rounded;
+    }
+  }
+
+  Widget _buildActionsSectionBody(_StateDraft state) {
+    final options = _availableActionOptions();
+    final knownKeys = options.map((o) => o.key).toSet();
+    var currentKey = state.selectedActionKey.trim();
+    if (currentKey.isEmpty || !knownKeys.contains(currentKey)) {
+      // Caso a acao referenciada nao exista mais (ex: foi removida do tenant),
+      // adicionamos como opcao temporaria para nao perder a referencia ao salvar.
+      if (currentKey.isNotEmpty && currentKey != _kHandoffActionKey) {
+        options.add(
+          _ActionOption(
+            key: currentKey,
+            label: currentKey,
+            type: 'A\u00e7\u00e3o desconhecida (n\u00e3o cadastrada)',
+            icon: Icons.help_outline_rounded,
+          ),
+        );
+      } else {
+        currentKey = _kHandoffActionKey;
+        state.selectedActionKey = _kHandoffActionKey;
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _LabeledField(
+          label: 'A\u00e7\u00e3o desta etapa',
+          child: Container(
             decoration: BoxDecoration(
               color: _kInput,
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _kBorder),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Encaminhar para atendente humano',
-                        style: TextStyle(
-                          color: _kText,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: currentKey,
+                isExpanded: true,
+                dropdownColor: _kCard,
+                iconEnabledColor: _kMuted,
+                style: const TextStyle(color: _kText, fontSize: 13),
+                borderRadius: BorderRadius.circular(10),
+                items: options
+                    .map(
+                      (option) => DropdownMenuItem<String>(
+                        value: option.key,
+                        child: Row(
+                          children: [
+                            Icon(option.icon, size: 16, color: _kAccentSoft),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    option.label,
+                                    style: const TextStyle(
+                                      color: _kText,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    option.type,
+                                    style: const TextStyle(
+                                      color: _kSubtle,
+                                      fontSize: 11,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Ative quando esta etapa deve parar o fluxo automatico e transferir a conversa.',
-                        style: TextStyle(
-                          color: _kMuted,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Switch(
-                  value: state.requiresHandoff,
-                  activeTrackColor: _kAccent,
-                  onChanged: (value) {
-                    setState(() => state.requiresHandoff = value);
-                    widget.onChanged();
-                  },
-                ),
-              ],
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() {
+                    state.selectedActionKey = value;
+                    // Mantemos requiresHandoff/hookActionCtrl em sincronia para
+                    // compatibilidade com partes do app que ainda leem esses
+                    // campos diretamente (ex: badge "encaminha humano" no canvas).
+                    state.requiresHandoff = value == _kHandoffActionKey;
+                    state.hookActionCtrl.text =
+                        value == _kHandoffActionKey ? '' : value;
+                  });
+                  widget.onChanged();
+                },
+              ),
             ),
           ),
-          const SizedBox(height: 14),
-          _LabeledField(
-            label: 'Acao no sistema (opcional)',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _DarkField(
-                  controller: state.hookActionCtrl,
-                  hint: 'Ex: consultar_pedido',
-                  onChanged: widget.onChanged,
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Preencha somente se esta etapa precisar chamar uma integracao externa.',
-                  style: TextStyle(color: _kSubtle, fontSize: 11),
-                ),
-              ],
+        ),
+        const SizedBox(height: 8),
+        if (widget.loadingActions)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Carregando a\u00e7\u00f5es dispon\u00edveis...',
+              style: TextStyle(color: _kSubtle, fontSize: 11),
+            ),
+          )
+        else if (widget.flowActions.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(top: 4),
+            child: Text(
+              'Cadastre a\u00e7\u00f5es em "A\u00e7\u00f5es" para enriquecer esta lista (envio de imagem, link, integra\u00e7\u00e3o HTTP etc.).',
+              style: TextStyle(color: _kSubtle, fontSize: 11, height: 1.4),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -4334,7 +4860,7 @@ class _StateCardState extends State<_StateCard> {
                         height: 42,
                         decoration: BoxDecoration(
                           color: state.expanded
-                              ? const Color(0x1F818CF8)
+                              ? const Color(0x1FF5A623)
                               : _kSurface,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: _kBorder),
@@ -4395,7 +4921,7 @@ class _StateCardState extends State<_StateCard> {
                               children: [
                                 _StateSummaryChip(
                                   icon: Icons.list_alt_rounded,
-                                  label: '$buttonsCount botoes',
+                                  label: '$buttonsCount atalhos',
                                 ),
                                 _StateSummaryChip(
                                   icon: Icons.keyboard_rounded,
@@ -4451,8 +4977,6 @@ class _StateCardState extends State<_StateCard> {
                     children: [
                       _buildBasicsSection(state),
                       const SizedBox(height: 16),
-                      _buildOptionsSection(state),
-                      const SizedBox(height: 16),
                       _buildTransitionsSection(state),
                       const SizedBox(height: 16),
                       _buildActionsSection(state),
@@ -4466,18 +4990,13 @@ class _StateCardState extends State<_StateCard> {
     );
   }
 
-  Widget _buildOptionsSection(_StateDraft state) {
-    return _EditorPanel(
-      icon: Icons.list_alt_rounded,
-      title: '2. Botoes e escolhas rapidas',
-      description:
-          'Use botoes quando quiser mostrar opcoes clicaveis para o cliente. Cada botao precisa apontar para a proxima etapa.',
-      action: _DashedActionButton(
-        icon: Icons.add_rounded,
-        label: 'Adicionar botao',
-        onTap: _addOption,
-      ),
-      child: AnimatedSwitcher(
+  // Os atalhos de resposta foram removidos da UI (substituidos por "Regras de
+  // texto" e o dropdown de "A\u00e7\u00f5es"). Mantemos o body abaixo apenas como
+  // referencia historica (nao chamado de lugar nenhum) para nao quebrar
+  // fluxos antigos no YAML — `_OptionDraft` continua sendo serializado.
+  // ignore: unused_element
+  Widget _buildOptionsSectionBody(_StateDraft state) {
+    return AnimatedSwitcher(
         duration: const Duration(milliseconds: 220),
         transitionBuilder: (child, animation) {
           final offset = Tween<Offset>(
@@ -4494,7 +5013,7 @@ class _StateCardState extends State<_StateCard> {
                 key: const ValueKey('options-empty'),
                 icon: Icons.touch_app_outlined,
                 message:
-                    'Nenhum botao configurado ainda. Adicione um botao para oferecer escolhas rapidas ao cliente.',
+                    'Nenhum atalho configurado. Deixe vazio para conversa 100% livre por texto.',
               )
             : Column(
                 key: const ValueKey('options-list'),
@@ -4517,11 +5036,11 @@ class _StateCardState extends State<_StateCard> {
                           children: [
                             _StateSummaryChip(
                               icon: Icons.touch_app_outlined,
-                              label: 'Botao ${index + 1}',
+                              label: 'Atalho ${index + 1}',
                             ),
                             const Spacer(),
                             Tooltip(
-                              message: 'Remover botao',
+                              message: 'Remover atalho',
                               child: InkWell(
                                 onTap: () => _removeOption(index),
                                 borderRadius: BorderRadius.circular(6),
@@ -4545,7 +5064,7 @@ class _StateCardState extends State<_StateCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Texto do botao',
+                                  'O que o cliente pode dizer',
                                   style: TextStyle(
                                     color: _kSubtle,
                                     fontSize: 11,
@@ -4622,7 +5141,6 @@ class _StateCardState extends State<_StateCard> {
                   );
                 }),
               ),
-      ),
     );
   }
 
@@ -4631,17 +5149,22 @@ class _StateCardState extends State<_StateCard> {
       icon: Icons.keyboard_rounded,
       title: '3. Regras para texto digitado',
       description:
-          'Use quando o cliente pode escrever algo em vez de clicar em um botao. Cada regra envia a conversa para outra etapa.',
+          'Use quando o cliente pode escrever livremente. Cada regra envia a conversa para outra etapa.',
       action: _DashedActionButton(
         icon: Icons.add_rounded,
         label: 'Adicionar regra',
         onTap: _addTransition,
       ),
-      child: state.transitions.isEmpty
+      child: _buildTransitionsSectionBody(state),
+    );
+  }
+
+  Widget _buildTransitionsSectionBody(_StateDraft state) {
+    return state.transitions.isEmpty
           ? _buildEmptySectionState(
               icon: Icons.keyboard_rounded,
               message:
-                  'Nenhuma regra de texto configurada. Pode deixar vazio se este passo usar somente botoes.',
+                  'Nenhuma regra de texto configurada. Pode deixar vazio se este passo usar somente atalhos.',
             )
           : Column(
               children: List.generate(state.transitions.length, (index) {
@@ -4789,22 +5312,143 @@ class _StateCardState extends State<_StateCard> {
                   ),
                 );
               }),
+    );
+  }
+
+  Widget _buildAccordionSection({
+    required int index,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Widget child,
+    Widget? headerAction,
+  }) {
+    final isOpen = _openSection == index;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isOpen ? _kCard : _kSubCard.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isOpen ? _kAccent.withValues(alpha: 0.45) : _kBorder,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => setState(() => _openSection = index),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: isOpen
+                            ? _kAccent.withValues(alpha: 0.18)
+                            : _kSurface,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${index + 1}',
+                        style: TextStyle(
+                          color: isOpen ? _kAccentSoft : _kMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              color: isOpen ? _kText : _kMuted,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (!isOpen) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: _kSubtle,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (headerAction != null && isOpen) ...[
+                      headerAction,
+                      const SizedBox(width: 6),
+                    ],
+                    Icon(
+                      isOpen
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      color: _kMuted,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
             ),
+          ),
+          if (isOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: child,
+            ),
+        ],
+      ),
     );
   }
 
   Widget _buildSidePanelContent(_StateDraft state) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       children: [
-        _buildBasicsSection(state),
-        const SizedBox(height: 12),
-        _buildOptionsSection(state),
-        const SizedBox(height: 12),
-        _buildTransitionsSection(state),
-        const SizedBox(height: 12),
-        _buildActionsSection(state),
-        const SizedBox(height: 20),
+        _buildAccordionSection(
+          index: 0,
+          icon: Icons.chat_bubble_outline_rounded,
+          title: 'Mensagem desta etapa',
+          subtitle: 'Texto que o cliente recebe',
+          child: _buildBasicsSectionBody(state),
+        ),
+        _buildAccordionSection(
+          index: 1,
+          icon: Icons.keyboard_rounded,
+          title: 'Regras de texto',
+          subtitle: 'Quando o cliente escreve livremente',
+          headerAction: _DashedActionButton(
+            icon: Icons.add_rounded,
+            label: 'Regra',
+            onTap: _addTransition,
+          ),
+          child: _buildTransitionsSectionBody(state),
+        ),
+        _buildAccordionSection(
+          index: 2,
+          icon: Icons.bolt_rounded,
+          title: 'A\u00e7\u00f5es',
+          subtitle: 'O que esta etapa executa',
+          child: _buildActionsSectionBody(state),
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -4947,9 +5591,23 @@ class _EditorPanel extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: _kSubCard,
+        gradient: LinearGradient(
+          colors: [
+            _kCard,
+            _kSubCard.withValues(alpha: 0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: _kBorder),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x22000000),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -4961,7 +5619,7 @@ class _EditorPanel extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0x1F818CF8),
+                  color: const Color(0x1FF5A623),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: _kAccentSoft, size: 18),
@@ -5069,4 +5727,190 @@ class _DarkField extends StatelessWidget {
 
   }
 
+}
+
+class _RestoreBaseDialog extends StatefulWidget {
+  const _RestoreBaseDialog({required this.flowName});
+
+  final String flowName;
+
+  @override
+  State<_RestoreBaseDialog> createState() => _RestoreBaseDialogState();
+}
+
+class _RestoreBaseDialogState extends State<_RestoreBaseDialog> {
+  late final String _expectedConfirmation;
+  final TextEditingController _confirmCtrl = TextEditingController();
+  bool _matches = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _expectedConfirmation =
+        'RESTAURAR ${humanizeFlowName(widget.flowName).toUpperCase()}';
+    _confirmCtrl.addListener(_onChanged);
+  }
+
+  void _onChanged() {
+    final value = _confirmCtrl.text.trim();
+    final matches = value == _expectedConfirmation;
+    if (matches != _matches) {
+      setState(() => _matches = matches);
+    }
+  }
+
+  @override
+  void dispose() {
+    _confirmCtrl.removeListener(_onChanged);
+    _confirmCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _kSurface,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _kBorder),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _kAccentSoft.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.restore_rounded, color: _kAccentSoft),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Restaurar para a versão base',
+                      style: TextStyle(
+                        color: _kText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Esta ação substitui a automação atual de "${humanizeFlowName(widget.flowName)}" pela versão original entregue pela plataforma. '
+                'Todos os seus ajustes serão sobrescritos. Esta operação não pode ser desfeita automaticamente.',
+                style: const TextStyle(color: _kMuted, fontSize: 13, height: 1.55),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F1308),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF92400E)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Icon(Icons.warning_amber_rounded, color: Color(0xFFFCD34D), size: 18),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Recomendamos salvar manualmente antes (ou copiar o YAML) caso queira preservar os ajustes atuais.',
+                        style: TextStyle(
+                          color: Color(0xFFFDE68A),
+                          fontSize: 12.5,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'Para confirmar, digite exatamente:',
+                style: const TextStyle(color: _kSubtle, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              SelectableText(
+                _expectedConfirmation,
+                style: const TextStyle(
+                  color: _kAccentSoft,
+                  fontFamily: 'monospace',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _confirmCtrl,
+                style: const TextStyle(color: _kText, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Digite o texto acima para liberar a ação',
+                  hintStyle: const TextStyle(color: _kSubtle, fontSize: 12.5),
+                  filled: true,
+                  fillColor: const Color(0xFF0F1421),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _kBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _kBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: _matches ? _kSuccess : _kAccent,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text(
+                      'Cancelar',
+                      style: TextStyle(color: _kMuted),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _matches ? _kAccentSoft : _kBorder,
+                      foregroundColor: _matches ? Colors.white : _kSubtle,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    onPressed: _matches
+                        ? () => Navigator.of(context).pop(true)
+                        : null,
+                    icon: const Icon(Icons.restore_rounded, size: 16),
+                    label: const Text('Restaurar base agora'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

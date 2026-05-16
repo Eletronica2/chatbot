@@ -23,6 +23,9 @@ from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
 from app.services.tenant_user_service import TenantUserService
 from app.services.flow_actions_service import FlowActionsService
+from app.services.lead_service import LeadService
+from app.services.proposal_service import ProposalService
+from app.repositories.flow_snapshot_repository import FlowSnapshotRepository
 
 _conversation_service: Optional[ConversationService] = None
 _flow_service: Optional[FlowService] = None
@@ -41,6 +44,9 @@ _tenant_user_service: Optional[TenantUserService] = None
 _email_service: Optional[EmailService] = None
 _billing_service: Optional[BillingService] = None
 _dashboard_service: Optional[DashboardService] = None
+_lead_service: Optional[LeadService] = None
+_proposal_service: Optional[ProposalService] = None
+_flow_snapshot_repository: Optional[FlowSnapshotRepository] = None
 
 
 def set_conversation_service(service: ConversationService) -> None:
@@ -347,4 +353,55 @@ def actions_service_dependency(
     service: FlowActionsService = Depends(get_actions_service),
 ) -> FlowActionsService:
     return service
+
+
+def set_lead_service(service: LeadService) -> None:
+    global _lead_service
+    _lead_service = service
+
+
+def get_lead_service() -> LeadService:
+    if _lead_service is None:
+        raise RuntimeError("LeadService not configured")
+    return _lead_service
+
+
+def lead_service_dependency(
+    service: LeadService = Depends(get_lead_service),
+) -> LeadService:
+    return service
+
+
+def set_proposal_service(service: ProposalService) -> None:
+    global _proposal_service
+    _proposal_service = service
+
+
+def get_proposal_service() -> ProposalService:
+    if _proposal_service is None:
+        raise RuntimeError("ProposalService not configured")
+    return _proposal_service
+
+
+def proposal_service_dependency(
+    service: ProposalService = Depends(get_proposal_service),
+) -> ProposalService:
+    return service
+
+
+def set_flow_snapshot_repository(repository: FlowSnapshotRepository) -> None:
+    global _flow_snapshot_repository
+    _flow_snapshot_repository = repository
+
+
+def get_flow_snapshot_repository() -> FlowSnapshotRepository:
+    if _flow_snapshot_repository is None:
+        raise RuntimeError("FlowSnapshotRepository not configured")
+    return _flow_snapshot_repository
+
+
+def flow_snapshot_repository_dependency(
+    repository: FlowSnapshotRepository = Depends(get_flow_snapshot_repository),
+) -> FlowSnapshotRepository:
+    return repository
 

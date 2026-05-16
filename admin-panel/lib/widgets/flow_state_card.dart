@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../models/flow_state.dart';
 
@@ -45,7 +45,7 @@ class FlowStateCard extends StatelessWidget {
                   _Chip(
                     label: flowState.flowName,
                     bg: const Color(0xFFEEF2FF),
-                    fg: const Color(0xFF4F46E5),
+                    fg: const Color(0xFFF5A623),
                   ),
                   const Spacer(),
                   Container(

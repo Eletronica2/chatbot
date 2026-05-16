@@ -10,23 +10,31 @@ class AppPanelCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(AppSpacing.lg),
     this.backgroundColor,
     this.borderRadius = AppRadius.lg,
+    this.elevated = false,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
   final BorderRadius borderRadius;
+  final bool elevated;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 180),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       padding: padding,
       decoration: BoxDecoration(
-        color: backgroundColor ?? AppColors.surface,
+        gradient: elevated ? AppGradients.glassPanel : null,
+        color: elevated ? null : (backgroundColor ?? AppColors.surface),
         borderRadius: borderRadius,
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        border: Border.all(
+          color: elevated
+              ? AppColors.border.withValues(alpha: 0.85)
+              : AppColors.border,
+        ),
+        boxShadow: elevated ? AppShadows.hover : AppShadows.card,
       ),
       child: child,
     );
@@ -165,10 +173,13 @@ class _AppMetricCardState extends State<AppMetricCard> {
           width: 250,
           padding: const EdgeInsets.all(AppSpacing.lg),
           decoration: BoxDecoration(
-            color: _hovered ? AppColors.surfaceAlt : AppColors.surface,
+            gradient: _hovered ? AppGradients.glassPanel : null,
+            color: _hovered ? null : AppColors.surface,
             borderRadius: AppRadius.lg,
             border: Border.all(
-              color: _hovered ? widget.accent.withValues(alpha: 0.5) : AppColors.border,
+              color: _hovered
+                  ? widget.accent.withValues(alpha: 0.55)
+                  : AppColors.border,
             ),
             boxShadow: _hovered ? AppShadows.hover : AppShadows.card,
           ),

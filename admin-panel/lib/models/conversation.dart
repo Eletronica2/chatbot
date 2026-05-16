@@ -1,4 +1,4 @@
-﻿import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 
 class Conversation {
   Conversation({
@@ -9,6 +9,7 @@ class Conversation {
     required this.updatedAt,
     required this.unreadCount,
     required this.aiEnabled,
+    this.humanHandoffPending = false,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class Conversation {
   final DateTime updatedAt;
   final int unreadCount;
   final bool aiEnabled;
+  final bool humanHandoffPending;
 
   String get formattedUpdatedAt => DateFormat('dd/MM HH:mm').format(updatedAt);
 
@@ -30,6 +32,7 @@ class Conversation {
       updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
       unreadCount: json['unread_count'] is int ? json['unread_count'] as int : int.tryParse(json['unread_count']?.toString() ?? '0') ?? 0,
       aiEnabled: json['ai_enabled'] == true,
+      humanHandoffPending: json['human_handoff_pending'] == true,
     );
   }
 

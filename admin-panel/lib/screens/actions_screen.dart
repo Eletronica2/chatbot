@@ -2,19 +2,21 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../services/actions_service.dart';
+import '../theme/app_tokens.dart';
+import '../widgets/premium_ui.dart';
 
 // ── Colors (shared with admin panel theme) ──────────────────────────────────
 
-const _kBg = Color(0xFF0B0F1A);
 const _kSurface = Color(0xFF121826);
 const _kCard = Color(0xFF182133);
 const _kBorder = Color(0xFF25304A);
 const _kText = Color(0xFFF5F7FF);
 const _kMuted = Color(0xFF98A4C0);
 const _kSubtle = Color(0xFF6E7B99);
-const _kAccent = Color(0xFF7C8CFF);
+const _kAccent = Color(0xFFF5A623);
 const _kSuccess = Color(0xFF10B981);
 const _kDanger = Color(0xFFEF4444);
 
@@ -47,6 +49,7 @@ class ActionsScreen extends StatefulWidget {
 
 class _ActionsScreenState extends State<ActionsScreen> {
   late Future<List<FlowAction>> _future;
+  ActionType? _typeFilter;
 
   @override
   void initState() {
@@ -109,8 +112,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _kBg,
+    return PremiumPageBackground(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -127,7 +129,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
                     child: Text('Erro: ${snap.error}', style: const TextStyle(color: _kDanger)),
                   );
                 }
-                final actions = snap.data ?? [];
+                final actions = _visibleActions(snap.data ?? []);
                 if (actions.isEmpty) return _buildEmpty();
                 return _buildList(actions);
               },
@@ -138,72 +140,130 @@ class _ActionsScreenState extends State<ActionsScreen> {
     );
   }
 
+  List<FlowAction> _visibleActions(List<FlowAction> actions) {
+    final filter = _typeFilter;
+    if (filter == null) return actions;
+    return actions.where((action) => action.actionType == filter).toList();
+  }
+
   Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-      decoration: const BoxDecoration(
-        color: _kSurface,
-        border: Border(bottom: BorderSide(color: _kBorder)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _kAccent.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.bolt_rounded, color: _kAccent, size: 22),
-          ),
-          const SizedBox(width: 14),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ações', style: TextStyle(color: _kText, fontSize: 18, fontWeight: FontWeight.w700)),
-              Text('Gerencie ações reutilizáveis para seus fluxos', style: TextStyle(color: _kMuted, fontSize: 13)),
-            ],
-          ),
-          const Spacer(),
-          _PrimaryBtn(
-            label: 'Nova ação',
-            icon: Icons.add_rounded,
-            onTap: () => _openDialog(),
-          ),
-        ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(36, 32, 36, 20),
+      child: PremiumGlassCard(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 860;
+            final intro = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ações reutilizáveis',
+                  style: GoogleFonts.inter(
+                    color: AppColors.text,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Biblioteca operacional para imagens, links, documentos e requisições.',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            );
+            final filters = Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                PremiumFilterChip(
+                  label: 'Todas',
+                  selected: _typeFilter == null,
+                  onTap: () => setState(() => _typeFilter = null),
+                ),
+                for (final type in ActionType.values)
+                  PremiumFilterChip(
+                    label: type.label,
+                    icon: _typeIcon(type),
+                    selected: _typeFilter == type,
+                    onTap: () => setState(() => _typeFilter = type),
+                  ),
+              ],
+            );
+            final button = PremiumTextButton(
+              label: 'Nova ação',
+              icon: Icons.add_rounded,
+              primary: true,
+              onTap: () => _openDialog(),
+            );
+
+            if (compact) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  intro,
+                  const SizedBox(height: 16),
+                  filters,
+                  const SizedBox(height: 16),
+                  button,
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      intro,
+                      const SizedBox(height: 16),
+                      filters,
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 24),
+                button,
+              ],
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildEmpty() {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: _kAccent.withOpacity(0.08),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.bolt_rounded, color: _kAccent, size: 40),
-          ),
-          const SizedBox(height: 16),
-          const Text('Nenhuma ação cadastrada', style: TextStyle(color: _kText, fontSize: 16, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 6),
-          const Text('Crie ações reutilizáveis como envio de imagens, links ou requisições HTTP.',
-              style: TextStyle(color: _kMuted, fontSize: 13), textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-          _PrimaryBtn(label: 'Criar primeira ação', icon: Icons.add_rounded, onTap: () => _openDialog()),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(36),
+        child: PremiumEmptyPanel(
+          icon: Icons.bolt_outlined,
+          title: _typeFilter == null
+              ? 'Nenhuma ação cadastrada'
+              : 'Nenhuma ação neste filtro',
+          description:
+              'Crie ações reutilizáveis como envio de imagens, links ou requisições HTTP.',
+          accent: AppColors.primary,
+        ),
       ),
     );
   }
 
   Widget _buildList(List<FlowAction> actions) {
-    return ListView.separated(
-      padding: const EdgeInsets.all(24),
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(36, 4, 36, 36),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 520,
+        mainAxisExtent: 112,
+        mainAxisSpacing: 14,
+        crossAxisSpacing: 14,
+      ),
       itemCount: actions.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (ctx, i) => _ActionCard(
         action: actions[i],
         onEdit: () => _openDialog(existing: actions[i]),
@@ -225,20 +285,17 @@ class _ActionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = _typeColor(action.actionType);
     final icon = _typeIcon(action.actionType);
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _kBorder),
-      ),
+    return PremiumGlassCard(
+      padding: const EdgeInsets.all(18),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withValues(alpha: 0.12),
+              borderRadius: AppRadius.md,
+              border: Border.all(color: color.withValues(alpha: 0.22)),
             ),
             child: Icon(icon, color: color, size: 20),
           ),
@@ -247,30 +304,43 @@ class _ActionCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(action.name, style: const TextStyle(color: _kText, fontWeight: FontWeight.w600)),
+                Text(
+                  action.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: AppColors.text,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: color.withOpacity(0.3)),
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.pill,
+                    border: Border.all(color: color.withValues(alpha: 0.28)),
                   ),
                   child: Text(
                     action.actionType.label,
-                    style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: GoogleFonts.inter(
+                      color: color,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.edit_rounded, size: 18, color: _kMuted),
+            icon: const Icon(Icons.edit_rounded, size: 18, color: AppColors.textMuted),
             tooltip: 'Editar',
             onPressed: onEdit,
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, size: 18, color: _kDanger),
+            icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.danger),
             tooltip: 'Excluir',
             onPressed: onDelete,
           ),
@@ -539,9 +609,9 @@ class _ActionDialogState extends State<_ActionDialog> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: _kDanger.withOpacity(0.1),
+                          color: _kDanger.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: _kDanger.withOpacity(0.3)),
+                          border: Border.all(color: _kDanger.withValues(alpha: 0.3)),
                         ),
                         child: Text(_error!, style: const TextStyle(color: _kDanger, fontSize: 13)),
                       ),
@@ -566,7 +636,7 @@ class _ActionDialogState extends State<_ActionDialog> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: _kAccent.withOpacity(0.12),
+              color: _kAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Icon(Icons.bolt_rounded, color: _kAccent, size: 18),
@@ -615,7 +685,7 @@ class _ActionDialogState extends State<_ActionDialog> {
                 duration: const Duration(milliseconds: 150),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: selected ? color.withOpacity(0.15) : _kSurface,
+                  color: selected ? color.withValues(alpha: 0.15) : _kSurface,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: selected ? color : _kBorder,
@@ -679,9 +749,9 @@ class _ActionDialogState extends State<_ActionDialog> {
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              color: _kSuccess.withOpacity(0.08),
+              color: _kSuccess.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _kSuccess.withOpacity(0.3)),
+              border: Border.all(color: _kSuccess.withValues(alpha: 0.3)),
             ),
             alignment: Alignment.centerLeft,
             child: const Row(
@@ -847,6 +917,7 @@ class _ActionDialogState extends State<_ActionDialog> {
           const SizedBox(width: 12),
           _PrimaryBtn(
             label: _isEdit ? 'Salvar' : 'Criar ação',
+            icon: Icons.check_rounded,
             onTap: _saving ? null : _save,
             loading: _saving,
           ),

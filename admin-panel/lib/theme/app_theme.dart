@@ -11,53 +11,60 @@ class AdminAppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
-        secondary: AppColors.info,
+        onPrimary: Color(0xFF1C1008),
+        secondary: AppColors.accentSecondary,
         surface: AppColors.surface,
+        onSurface: AppColors.text,
         error: AppColors.danger,
       ),
     );
 
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme(base.textTheme).copyWith(
-      headlineLarge: GoogleFonts.outfit(
-        fontSize: 34,
-        fontWeight: FontWeight.w700,
-        color: AppColors.text,
-        height: 1.05,
-      ),
-      headlineMedium: GoogleFonts.outfit(
-        fontSize: 28,
+    final textTheme = GoogleFonts.interTextTheme(base.textTheme).copyWith(
+      headlineLarge: GoogleFonts.inter(
+        fontSize: 32,
         fontWeight: FontWeight.w700,
         color: AppColors.text,
         height: 1.1,
+        letterSpacing: -0.5,
       ),
-      titleLarge: GoogleFonts.outfit(
-        fontSize: 22,
+      headlineMedium: GoogleFonts.inter(
+        fontSize: 26,
         fontWeight: FontWeight.w700,
         color: AppColors.text,
+        height: 1.15,
+        letterSpacing: -0.3,
       ),
-      titleMedium: GoogleFonts.plusJakartaSans(
-        fontSize: 16,
-        fontWeight: FontWeight.w700,
+      titleLarge: GoogleFonts.inter(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
         color: AppColors.text,
       ),
-      bodyLarge: GoogleFonts.plusJakartaSans(
+      titleMedium: GoogleFonts.inter(
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: AppColors.text,
+      ),
+      bodyLarge: GoogleFonts.inter(
         fontSize: 14,
+        fontWeight: FontWeight.w400,
         color: AppColors.text,
         height: 1.55,
       ),
-      bodyMedium: GoogleFonts.plusJakartaSans(
+      bodyMedium: GoogleFonts.inter(
         fontSize: 13,
+        fontWeight: FontWeight.w400,
         color: AppColors.text,
         height: 1.5,
       ),
-      bodySmall: GoogleFonts.plusJakartaSans(
+      bodySmall: GoogleFonts.inter(
         fontSize: 12,
+        fontWeight: FontWeight.w400,
         color: AppColors.textMuted,
         height: 1.45,
       ),
-      labelLarge: GoogleFonts.plusJakartaSans(
+      labelLarge: GoogleFonts.inter(
         fontSize: 13,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w600,
         color: Colors.white,
       ),
     );
@@ -71,68 +78,54 @@ class AdminAppTheme {
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.surfaceAlt,
         contentTextStyle: textTheme.bodyMedium?.copyWith(color: AppColors.text),
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.md),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceAlt,
         hintStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textSoft),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: AppColors.textMuted),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        labelStyle: textTheme.bodySmall,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: AppRadius.md,
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: AppRadius.lg,
+          borderSide: const BorderSide(color: AppColors.borderSubtle),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadius.md,
-          borderSide: const BorderSide(color: AppColors.border),
+          borderRadius: AppRadius.lg,
+          borderSide: const BorderSide(color: AppColors.borderSubtle),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadius.md,
-          borderSide: const BorderSide(color: AppColors.primary, width: 1.6),
+          borderRadius: AppRadius.lg,
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: const Color(0xFF1C1008),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.md),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.text,
-          side: const BorderSide(color: AppColors.border),
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.md),
+          side: const BorderSide(color: AppColors.borderSubtle),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
         ),
-      ),
-      tooltipTheme: TooltipThemeData(
-        decoration: BoxDecoration(
-          color: AppColors.surfaceAlt,
-          borderRadius: AppRadius.sm,
-          border: Border.all(color: AppColors.border),
-        ),
-        textStyle: textTheme.bodySmall?.copyWith(color: AppColors.text),
-        waitDuration: const Duration(milliseconds: 250),
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.selected)) {
-            return Colors.white;
-          }
+          if (states.contains(WidgetState.selected)) return Colors.white;
           return AppColors.textMuted;
         }),
         trackColor: WidgetStateProperty.resolveWith<Color?>((states) {
-          if (states.contains(WidgetState.selected)) {
-            return AppColors.primary;
-          }
+          if (states.contains(WidgetState.selected)) return AppColors.primary;
           return AppColors.surfaceSoft;
         }),
       ),
     );
   }
 }
-

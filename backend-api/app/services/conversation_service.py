@@ -1,4 +1,4 @@
-﻿"""Coordinates orchestration between flow, AI, session and SaaS controls."""
+"""Coordinates orchestration between flow, AI, session and SaaS controls."""
 from __future__ import annotations
 
 import logging
@@ -62,34 +62,64 @@ class ConversationService:
 
         allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
         if not allowance.allowed:
-            blocked_reply = (
-                "Seu plano esta temporariamente bloqueado. "
-                "Atualize a assinatura para continuar usando o chatbot."
-                if allowance.reason == "subscription_inactive"
-                else "Seu limite mensal de mensagens foi atingido. "
-                "Faça upgrade do plano para continuar atendendo automaticamente."
+            handoff_reply = (
+                "Aguarde um momento — já vamos te responder! 🙋\n"
+                "Um atendente da casa vai continuar essa conversa com você."
             )
+            session = await self.session_service.get_or_create_session(
+                message.tenant_id,
+                message.phone_number,
+                phone_number_id=message.phone_number_id,
+                display_phone_number=message.display_phone_number,
+            )
+            self._append_message(session, role="user", content=message.content)
+            await self.message_service.append(
+                tenant_id=message.tenant_id,
+                session_id=session.session_id,
+                direction="incoming",
+                role="user",
+                content=message.content,
+                source="gateway",
+                metadata={
+                    **(message.metadata or {}),
+                    "handoff_reason": allowance.reason,
+                },
+                external_message_id=message.message_id,
+                phone_number_id=message.phone_number_id,
+            )
+            context = dict(session.context or {})
+            context["human_handoff_pending"] = True
+            context["human_handoff_reason"] = allowance.reason
+            context["human_handoff_at"] = datetime.utcnow().isoformat()
+            context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+            session = await self.session_service.update_session(
+                session,
+                context_updates=context,
+            )
+            handoff_metadata = {
+                "error": allowance.reason,
+                "human_handoff_pending": True,
+                "plan": allowance.subscription.plan,
+                "used_messages": allowance.used_messages,
+                "monthly_message_limit": allowance.subscription.monthly_message_limit,
+            }
             action = ConversationAction(
-                source="subscription",
-                reply_text=blocked_reply,
+                source="subscription_handoff",
+                reply_text=handoff_reply,
                 tenant_id=message.tenant_id,
                 phone_number=message.phone_number,
-                metadata={
-                    "error": allowance.reason,
-                    "plan": allowance.subscription.plan,
-                    "used_messages": allowance.used_messages,
-                    "monthly_message_limit": allowance.subscription.monthly_message_limit,
-                },
-                session_state={},
+                metadata=handoff_metadata,
+                session_state=session.conversation_state,
+                requires_handoff=True,
             )
             await self._log_interaction(
                 message=message,
-                session_id=f"{message.tenant_id}:{message.phone_number}",
+                session_id=session.session_id,
                 flow_used=None,
                 state=None,
                 user_message=message.content,
-                bot_response=blocked_reply,
-                source="subscription",
+                bot_response=handoff_reply,
+                source="subscription_handoff",
                 started_at=started_at,
                 detected_intent=None,
             )

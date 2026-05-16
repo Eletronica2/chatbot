@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_tokens.dart';
 
@@ -59,10 +60,19 @@ class AppSidebar extends StatelessWidget {
     final visibleItems = items.where((item) => item.visible).toList();
 
     return Container(
-      width: 304,
-      decoration: const BoxDecoration(
+      width: 276,
+      decoration: BoxDecoration(
         color: AppColors.sidebar,
-        border: Border(right: BorderSide(color: AppColors.border)),
+        border: Border(
+          right: BorderSide(color: AppColors.borderSubtle.withValues(alpha: 0.9)),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x28000000),
+            blurRadius: 32,
+            offset: Offset(4, 0),
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -70,14 +80,6 @@ class AppSidebar extends StatelessWidget {
             selected: homeSelected,
             onTap: onHomeTap,
           ),
-          if (activeTenantLabel != null && activeTenantLabel!.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: _CompanyFocusCard(
-                label: activeTenantLabel!,
-                userRole: userRole,
-              ),
-            ),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
@@ -150,25 +152,16 @@ class _SidebarBrandState extends State<_SidebarBrand> {
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              borderRadius: AppRadius.xl,
+              borderRadius: AppRadius.lg,
               border: Border.all(
                 color: widget.selected
-                    ? AppColors.primary.withValues(alpha: 0.65)
-                    : AppColors.border,
+                    ? AppColors.primary.withValues(alpha: 0.5)
+                    : Colors.transparent,
               ),
-              gradient: LinearGradient(
-                colors: [
-                  widget.selected || _hovered
-                      ? const Color(0xFF171F34)
-                      : AppColors.surface,
-                  const Color(0xFF0F1627),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: widget.selected || _hovered
-                  ? AppShadows.hover
-                  : AppShadows.card,
+              color: widget.selected || _hovered
+                  ? AppColors.surface.withValues(alpha: 0.85)
+                  : Colors.transparent,
+              boxShadow: widget.selected ? AppShadows.navActive : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,14 +173,7 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                       height: 46,
                       decoration: const BoxDecoration(
                         borderRadius: AppRadius.md,
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primary,
-                            AppColors.primaryStrong,
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        gradient: AppGradients.brandIcon,
                       ),
                       child: const Icon(
                         Icons.auto_awesome_rounded,
@@ -200,21 +186,20 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Central de Ação',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
+                            style: GoogleFonts.inter(
+                              color: AppColors.text,
+                              fontSize: 17,
                               fontWeight: FontWeight.w700,
+                              letterSpacing: -0.2,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           Text(
-                            interactive
-                                ? 'Clique para voltar ao painel principal'
-                                : 'Seu painel de operação do chatbot',
-                            style: const TextStyle(
-                              color: AppColors.textMuted,
+                            interactive ? 'Painel principal' : 'Operação',
+                            style: GoogleFonts.inter(
+                              color: AppColors.textSoft,
                               fontSize: 11,
                               height: 1.35,
                             ),
@@ -231,112 +216,10 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                       ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceSoft,
-                    borderRadius: AppRadius.md,
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.bolt_rounded, size: 15, color: AppColors.primarySoft),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Converse, automatize, acompanhe cobrança e gerencie empresas em um só lugar.',
-                          style: TextStyle(
-                            color: AppColors.text,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _CompanyFocusCard extends StatelessWidget {
-  const _CompanyFocusCard({
-    required this.label,
-    this.userRole,
-  });
-
-  final String label;
-  final String? userRole;
-
-  @override
-  Widget build(BuildContext context) {
-    final normalizedRole = (userRole ?? '').trim().toLowerCase();
-    final contextLabel = normalizedRole.contains('system')
-        ? 'Sistema'
-        : normalizedRole.contains('super')
-            ? 'Administrador SaaS'
-            : 'Empresa';
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.lg,
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceSoft,
-                  borderRadius: AppRadius.pill,
-                ),
-                child: Text(
-                  contextLabel,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.radar_rounded, color: AppColors.success, size: 16),
-            ],
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Empresa em foco',
-            style: TextStyle(
-              color: AppColors.textSoft,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -376,18 +259,26 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
             duration: const Duration(milliseconds: 160),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
+              gradient: selected
+                  ? LinearGradient(
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.14),
+                        AppColors.accentBlue.withValues(alpha: 0.08),
+                      ],
+                    )
+                  : null,
               color: selected
-                  ? AppColors.surface
+                  ? null
                   : (_hovering
-                      ? AppColors.surfaceAlt.withValues(alpha: 0.92)
+                      ? AppColors.surfaceAlt.withValues(alpha: 0.65)
                       : Colors.transparent),
               borderRadius: AppRadius.lg,
               border: Border.all(
                 color: selected
-                    ? AppColors.primary.withValues(alpha: 0.30)
+                    ? AppColors.primary.withValues(alpha: 0.35)
                     : Colors.transparent,
               ),
-              boxShadow: selected || _hovering ? AppShadows.hover : null,
+              boxShadow: selected ? AppShadows.navActive : null,
             ),
             child: Row(
               children: [

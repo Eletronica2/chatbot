@@ -3,6 +3,17 @@ description: "Atendimento humanizado e conversacional para a Pizzaria Bella Mass
 start_state: boas_vindas
 fallback_ai: true
 
+business_hours:
+  timezone: America/Sao_Paulo
+  schedule:
+    monday:    { open: "18:00", close: "23:00" }
+    tuesday:   { open: "18:00", close: "23:00" }
+    wednesday: { open: "18:00", close: "23:00" }
+    thursday:  { open: "18:00", close: "23:00" }
+    friday:    { open: "18:00", close: "00:00" }
+    saturday:  { open: "18:00", close: "00:00" }
+    sunday:    { open: "18:00", close: "22:00" }
+
 # ─────────────────────────────────────────────────────────────
 # ALIASES: frases naturais que o cliente pode dizer →
 #          mapeadas para um intent canônico.
@@ -426,7 +437,7 @@ states:
       🛵 *Delivery disponível* todos os dias!
       📍 *Retirada no local* — sem taxa de entrega
 
-      Tem mais alguma dúvida ou quer fazer um pedido? 😊
+      {cta_pedido}
     intent_triggers:
       - horario
     fallback_ai: true
