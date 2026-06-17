@@ -1,4 +1,4 @@
-﻿"""Backend API entrypoint."""
+"""Backend API entrypoint."""
 from __future__ import annotations
 
 import logging
@@ -31,6 +31,9 @@ from app.api.routes import (
     subscriptions,
     tenant_settings,
     whatsapp_accounts,
+    whatsapp_templates,
+    whatsapp_onboarding,
+    meta_callbacks,
 )
 from app.config.settings import settings
 from app.db.mysql import MySQLDatabase
@@ -70,6 +73,9 @@ from app.services.dependencies import (
     set_tenant_user_service,
     set_actions_service,
     set_whatsapp_account_service,
+    set_whatsapp_onboarding_service,
+    set_whatsapp_template_service,
+    set_meta_graph_service,
 )
 from app.services.admin_audit_service import AdminAuditService
 from app.services.tenant_admin_service import TenantAdminService
@@ -86,6 +92,9 @@ from app.services.tenant_settings_service import TenantSettingsService
 from app.services.tenant_user_service import TenantUserService
 from app.services.flow_actions_service import FlowActionsService
 from app.services.whatsapp_account_service import WhatsAppAccountService
+from app.services.whatsapp_onboarding_service import WhatsAppOnboardingService
+from app.services.whatsapp_template_service import WhatsAppTemplateService
+from app.services.meta_graph_service import MetaGraphService
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -134,6 +143,15 @@ async def lifespan(app: FastAPI):
         whatsapp_account_repository,
         TokenCipher(settings.APP_SECRET_KEY),
     )
+    meta_graph_service = MetaGraphService()
+    whatsapp_template_service = WhatsAppTemplateService(
+        meta_graph_service,
+        whatsapp_account_service,
+    )
+    whatsapp_onboarding_service = WhatsAppOnboardingService(
+        meta_graph_service,
+        whatsapp_account_service,
+    )
     flow_catalog_service = FlowCatalogService(flow_catalog_repository)
     tenant_user_service = TenantUserService(
         database=database,
@@ -178,6 +196,9 @@ async def lifespan(app: FastAPI):
     set_billing_service(billing_service)
     set_dashboard_service(dashboard_service)
     set_whatsapp_account_service(whatsapp_account_service)
+    set_meta_graph_service(meta_graph_service)
+    set_whatsapp_template_service(whatsapp_template_service)
+    set_whatsapp_onboarding_service(whatsapp_onboarding_service)
     set_flow_catalog_service(flow_catalog_service)
     set_tenant_admin_service(tenant_admin_service)
     set_tenant_user_service(tenant_user_service)
@@ -251,6 +272,9 @@ app.include_router(simulation.router)
 app.include_router(subscriptions.router)
 app.include_router(conversation_logs.router)
 app.include_router(whatsapp_accounts.router)
+app.include_router(whatsapp_templates.router)
+app.include_router(whatsapp_onboarding.router)
+app.include_router(meta_callbacks.router)
 app.include_router(internal_whatsapp.router)
 app.include_router(flow_routes.router)
 app.include_router(actions.router)

@@ -1,4 +1,4 @@
-﻿"""WhatsApp Gateway - Main Application."""
+"""WhatsApp Gateway - Main Application."""
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -9,6 +9,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
 from webhook import router as webhook_router
+from send_message import router as send_message_router
+from meta_proxy import router as meta_proxy_router
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
@@ -43,6 +45,8 @@ app.add_middleware(
 )
 
 app.include_router(webhook_router, tags=["Webhook"])
+app.include_router(send_message_router)
+app.include_router(meta_proxy_router)
 
 
 @app.get("/")

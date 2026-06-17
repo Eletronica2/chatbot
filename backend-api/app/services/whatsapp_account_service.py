@@ -1,4 +1,4 @@
-﻿"""Service for tenant WhatsApp account management and resolution."""
+"""Service for tenant WhatsApp account management and resolution."""
 from __future__ import annotations
 
 from app.domain.whatsapp_account import (
@@ -91,6 +91,16 @@ class WhatsAppAccountService:
     async def resolve_for_tenant(self, tenant_id: str) -> WhatsAppAccountSecret | None:
         row = await self.repository.resolve_active_account(tenant_id=tenant_id)
         if row is None:
+            return None
+        return self._to_secret(row)
+
+    async def resolve_for_account_key(
+        self,
+        tenant_id: str,
+        account_key: str,
+    ) -> WhatsAppAccountSecret | None:
+        row = await self.repository.get_for_tenant(tenant_id, account_key)
+        if row is None or str(row.get("status") or "") != "active":
             return None
         return self._to_secret(row)
 

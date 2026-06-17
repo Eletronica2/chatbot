@@ -1,21 +1,27 @@
-﻿"""WhatsApp Webhook handlers."""
+"""WhatsApp Webhook handlers."""
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import logging
 from datetime import datetime
 from typing import Optional
 
 import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from config import settings
 from meta_client import build_meta_client
+from phone_utils import normalize_whatsapp_to
 from schemas import (
     HealthResponse,
     MessageDirection,
     MessageType,
     NormalizedMessage,
+    OutgoingTemplateMessage,
     OutgoingTextMessage,
     WebhookPayload,
 )
@@ -86,7 +92,7 @@ def normalize_message(message, metadata, contacts, tenant_id: str) -> Normalized
     return NormalizedMessage(
         message_id=message.id,
         tenant_id=tenant_id,
-        phone_number=message.from_,
+        phone_number=normalize_whatsapp_to(message.from_),
         phone_number_id=metadata.phone_number_id,
         display_phone_number=metadata.display_phone_number,
         contact_name=contact_name,
@@ -177,7 +183,9 @@ async def forward_to_backend(message: NormalizedMessage, account_context: dict |
         action = response.json()
         reply_text = action.get("reply_text") if isinstance(action, dict) else None
         metadata = action.get("metadata") if isinstance(action, dict) else None
-        reply_to = (action.get("phone_number") if isinstance(action, dict) else None) or message.phone_number
+        reply_to = normalize_whatsapp_to(
+            (action.get("phone_number") if isinstance(action, dict) else None) or message.phone_number
+        )
         if not reply_text:
             return
 
@@ -209,6 +217,35 @@ async def forward_to_backend(message: NormalizedMessage, account_context: dict |
         logger.error("Unexpected error forwarding to backend: %s", exc)
 
 
+async def _handle_coexistence_event(field: str, value: dict | None) -> None:
+    if not isinstance(value, dict):
+        logger.info("Coexistence webhook field=%s ignored (empty value)", field)
+        return
+    logger.info("Coexistence webhook field=%s keys=%s", field, list(value.keys()))
+    if field == "smb_message_echoes":
+        messages = value.get("message_echoes") or value.get("messages") or []
+        logger.info("Coexistence message echoes count=%s", len(messages) if isinstance(messages, list) else 0)
+    elif field == "history":
+        history = value.get("history") or value.get("messages") or []
+        logger.info("Coexistence history chunks=%s", len(history) if isinstance(history, list) else 0)
+    elif field == "smb_app_state_sync":
+        contacts = value.get("contacts") or value.get("state") or []
+        logger.info("Coexistence app state sync items=%s", len(contacts) if isinstance(contacts, list) else 0)
+    elif field == "account_update":
+        event = value.get("event") or value.get("reason")
+        logger.warning("Coexistence account_update event=%s payload=%s", event, value)
+
+
+def _verify_webhook_signature(raw_body: bytes, signature_header: str | None) -> bool:
+    secret = (settings.META_APP_SECRET or "").strip()
+    if not secret:
+        return True
+    if not signature_header or not signature_header.startswith("sha256="):
+        return False
+    expected = hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature_header[7:], expected)
+
+
 async def process_webhook_message(message, metadata, contacts, tenant_id: str, account_context: dict | None):
     try:
         client = _build_client(account_context)
@@ -236,7 +273,7 @@ async def verify_webhook(
     if hub_mode == "subscribe":
         if hub_verify_token == settings.META_VERIFY_TOKEN or await _validate_verify_token(hub_verify_token or ""):
             logger.info("Webhook verified successfully")
-            return int(hub_challenge)
+            return PlainTextResponse(content=hub_challenge or "")
     logger.warning("Webhook verification failed")
     raise HTTPException(status_code=403, detail="Verification failed")
 
@@ -248,21 +285,64 @@ async def receive_webhook(
     tenant_id: str = Query(default=None),
 ):
     try:
-        body = await request.json()
-        payload = WebhookPayload(**body)
-        if payload.object != "whatsapp_business_account":
-            logger.warning("Unknown webhook object: %s", payload.object)
+        raw_body = await request.body()
+        if not _verify_webhook_signature(raw_body, request.headers.get("X-Hub-Signature-256")):
+            logger.warning("Webhook signature verification failed")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
+        body = json.loads(raw_body.decode("utf-8"))
+        if body.get("object") != "whatsapp_business_account":
+            logger.warning("Unknown webhook object: %s", body.get("object"))
             return {"status": "ignored"}
 
-        for entry in payload.entry:
-            for change in entry.changes:
-                if change.field != "messages":
-                    continue
-                value = change.value
-                if not value.messages:
+        from schemas import WebhookContact, WebhookMetadata, WebhookMessage
+
+        for entry in body.get("entry") or []:
+            for change in entry.get("changes") or []:
+                field = change.get("field")
+                value = change.get("value") or {}
+
+                if field in {"history", "smb_message_echoes", "smb_app_state_sync", "account_update"}:
+                    background_tasks.add_task(_handle_coexistence_event, field, value)
                     continue
 
-                account_context = await _resolve_account_context(phone_number_id=value.metadata.phone_number_id)
+                if field != "messages":
+                    continue
+
+                for status_item in value.get("statuses") or []:
+                    if not isinstance(status_item, dict):
+                        continue
+                    errors = status_item.get("errors") or []
+                    error_summary = None
+                    if errors and isinstance(errors[0], dict):
+                        error_summary = (
+                            f"#{errors[0].get('code')} {errors[0].get('title') or errors[0].get('message')}"
+                        )
+                    logger.info(
+                        "Webhook delivery status recipient=%s message_id=%s status=%s error=%s",
+                        status_item.get("recipient_id"),
+                        status_item.get("id"),
+                        status_item.get("status"),
+                        error_summary,
+                    )
+
+                messages = value.get("messages") or []
+                if not messages:
+                    continue
+
+                metadata = value.get("metadata") or {}
+                phone_number_id = metadata.get("phone_number_id")
+                if not phone_number_id:
+                    continue
+
+                account_context = await _resolve_account_context(phone_number_id=phone_number_id)
+                logger.info(
+                    "Webhook message metadata phone_number_id=%s display_phone_number=%s resolved_tenant=%s resolved_account=%s",
+                    phone_number_id,
+                    metadata.get("display_phone_number"),
+                    (account_context or {}).get("tenant_id"),
+                    (account_context or {}).get("account_key"),
+                )
                 current_tenant = (
                     (account_context or {}).get("tenant_id")
                     or tenant_id
@@ -271,20 +351,36 @@ async def receive_webhook(
                 if account_context is None:
                     account_context = _fallback_account_context(
                         tenant_id=current_tenant,
-                        phone_number_id=value.metadata.phone_number_id,
+                        phone_number_id=phone_number_id,
                     )
 
-                for message in value.messages:
+                parsed_metadata = WebhookMetadata(
+                    display_phone_number=str(metadata.get("display_phone_number") or ""),
+                    phone_number_id=str(phone_number_id),
+                )
+                contacts_raw = value.get("contacts") or []
+                contacts = [
+                    WebhookContact(wa_id=str(item.get("wa_id") or ""), profile=item.get("profile"))
+                    for item in contacts_raw
+                    if isinstance(item, dict)
+                ]
+
+                for message_data in messages:
+                    if not isinstance(message_data, dict):
+                        continue
+                    message = WebhookMessage(**message_data)
                     background_tasks.add_task(
                         process_webhook_message,
                         message,
-                        value.metadata,
-                        value.contacts,
+                        parsed_metadata,
+                        contacts,
                         current_tenant,
                         account_context,
                     )
 
         return {"status": "ok"}
+    except HTTPException:
+        raise
     except Exception as exc:
         logger.error("Error processing webhook: %s", exc)
         return {"status": "error", "message": str(exc)}
@@ -294,6 +390,14 @@ class SendMessageRequest(BaseModel):
     tenant_id: str | None = None
     to: str
     text: str
+    phone_number_id: str | None = None
+
+
+class SendTemplateRequest(BaseModel):
+    tenant_id: str | None = None
+    to: str
+    template_name: str
+    language_code: str = "pt_BR"
     phone_number_id: str | None = None
 
 
@@ -319,7 +423,38 @@ async def send_message(body: SendMessageRequest, request: Request):
     result = await client.send_text_message(OutgoingTextMessage(to=body.to, text=body.text))
     if not result.success:
         raise HTTPException(status_code=502, detail=f"Meta API error: {result.error}")
-    return {"ok": True}
+    return {"ok": True, "message_id": result.message_id}
+
+
+@router.post("/send-template")
+async def send_template(body: SendTemplateRequest, request: Request):
+    _assert_internal_api(request)
+    if not body.to or not body.template_name:
+        raise HTTPException(status_code=422, detail="to and template_name are required")
+
+    account_context = await _resolve_account_context(
+        tenant_id=body.tenant_id,
+        phone_number_id=body.phone_number_id,
+    )
+    if account_context is None:
+        account_context = _fallback_account_context(
+            tenant_id=body.tenant_id,
+            phone_number_id=body.phone_number_id,
+        )
+    client = _build_client(account_context)
+    if client is None:
+        raise HTTPException(status_code=502, detail="No WhatsApp account configured")
+
+    result = await client.send_template_message(
+        OutgoingTemplateMessage(
+            to=body.to,
+            template_name=body.template_name,
+            language_code=body.language_code,
+        )
+    )
+    if not result.success:
+        raise HTTPException(status_code=502, detail=f"Meta API error: {result.error}")
+    return {"ok": True, "message_id": result.message_id}
 
 
 @router.get("/health", response_model=HealthResponse)

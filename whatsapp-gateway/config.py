@@ -1,4 +1,4 @@
-﻿"""Configuration settings for WhatsApp Gateway."""
+"""Configuration settings for WhatsApp Gateway."""
 import os
 from functools import lru_cache
 
@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     META_VERIFY_TOKEN: str = "your_verify_token_here"
     META_ACCESS_TOKEN: str = "your_access_token_here"
     META_PHONE_NUMBER_ID: str = "your_phone_number_id"
+    META_APP_SECRET: str = ""
     META_API_VERSION: str = "v18.0"
     META_API_BASE_URL: str = "https://graph.facebook.com"
 

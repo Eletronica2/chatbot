@@ -67,6 +67,17 @@ class _ConversationTileState extends State<_ConversationTile> {
     return phone.length >= 2 ? phone.substring(phone.length - 2) : phone;
   }
 
+  String _formatPhone(String phone) {
+    final digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('55') && digits.length == 13) {
+      return '+${digits.substring(0, 2)} ${digits.substring(2, 4)} ${digits.substring(4, 9)}-${digits.substring(9)}';
+    }
+    if (digits.startsWith('55') && digits.length == 12) {
+      return '+${digits.substring(0, 2)} ${digits.substring(2, 4)} ${digits.substring(4, 8)}-${digits.substring(8)}';
+    }
+    return phone;
+  }
+
   @override
   Widget build(BuildContext context) {
     final conversation = widget.conversation;
@@ -145,7 +156,7 @@ class _ConversationTileState extends State<_ConversationTile> {
                       children: [
                         Expanded(
                           child: Text(
-                            conversation.phoneNumber,
+                            _formatPhone(conversation.phoneNumber),
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               color: AppColors.text,

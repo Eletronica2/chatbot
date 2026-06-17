@@ -1,4 +1,4 @@
-﻿"""Service responsible for managing conversation sessions."""
+"""Service responsible for managing conversation sessions."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 
 from app.domain.session import ConversationSession
 from app.repositories.session_repository import SessionRepository
+from app.utils.phone_utils import normalize_whatsapp_phone
 
 
 class SessionService:
@@ -22,7 +23,17 @@ class SessionService:
         phone_number_id: str | None = None,
         display_phone_number: str | None = None,
     ) -> ConversationSession:
+        raw_phone = phone_number
+        phone_number = normalize_whatsapp_phone(phone_number)
+
         session = await self.repository.get_session(tenant_id, phone_number)
+        if not session and raw_phone != phone_number:
+            legacy = await self.repository.get_session(tenant_id, raw_phone)
+            if legacy:
+                await self.repository.delete_session(tenant_id, raw_phone)
+                legacy.phone_number = phone_number
+                session = await self.repository.save_session(legacy)
+
         if session:
             changed = False
             if phone_number_id and session.phone_number_id != phone_number_id:

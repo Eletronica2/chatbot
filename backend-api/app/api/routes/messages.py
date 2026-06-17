@@ -1,4 +1,4 @@
-﻿"""Message-related API routes."""
+"""Message-related API routes."""
 from __future__ import annotations
 
 import logging
@@ -21,7 +21,11 @@ async def receive_incoming_message(
     conversation_service: ConversationService = Depends(conversation_service_dependency),
 ) -> ConversationAction:
     """Entry point for the WhatsApp Gateway."""
-    tenant_hint = getattr(request.state, "tenant_id", None)
+    tenant_hint = (
+        getattr(request.state, "tenant_id", None)
+        if "x-tenant-id" in request.headers
+        else None
+    )
     if tenant_hint and tenant_hint != payload.tenant_id:
         logger.debug(
             "Tenant override detected header=%s payload=%s",

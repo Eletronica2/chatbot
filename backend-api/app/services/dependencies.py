@@ -1,4 +1,4 @@
-﻿"""Service container helpers."""
+"""Service container helpers."""
 from __future__ import annotations
 
 from typing import Optional
@@ -18,6 +18,9 @@ from app.services.tenant_admin_service import TenantAdminService
 from app.services.tenant_settings_service import TenantSettingsService
 from app.services.conversation_log_service import ConversationLogService
 from app.services.whatsapp_account_service import WhatsAppAccountService
+from app.services.whatsapp_onboarding_service import WhatsAppOnboardingService
+from app.services.whatsapp_template_service import WhatsAppTemplateService
+from app.services.meta_graph_service import MetaGraphService
 from app.services.admin_audit_service import AdminAuditService
 from app.services.dashboard_service import DashboardService
 from app.services.email_service import EmailService
@@ -37,6 +40,9 @@ _conversation_log_service: Optional[ConversationLogService] = None
 _message_service: Optional[MessageService] = None
 _auth_service: Optional[AuthService] = None
 _whatsapp_account_service: Optional[WhatsAppAccountService] = None
+_whatsapp_template_service: Optional[WhatsAppTemplateService] = None
+_whatsapp_onboarding_service: Optional[WhatsAppOnboardingService] = None
+_meta_graph_service: Optional[MetaGraphService] = None
 _flow_catalog_service: Optional[FlowCatalogService] = None
 _tenant_admin_service: Optional[TenantAdminService] = None
 _admin_audit_service: Optional[AdminAuditService] = None
@@ -216,6 +222,51 @@ def get_whatsapp_account_service() -> WhatsAppAccountService:
 def whatsapp_account_service_dependency(
     service: WhatsAppAccountService = Depends(get_whatsapp_account_service),
 ) -> WhatsAppAccountService:
+    return service
+
+
+def set_meta_graph_service(service: MetaGraphService) -> None:
+    global _meta_graph_service
+    _meta_graph_service = service
+
+
+def get_meta_graph_service() -> MetaGraphService:
+    if _meta_graph_service is None:
+        raise RuntimeError("MetaGraphService not configured")
+    return _meta_graph_service
+
+
+def set_whatsapp_template_service(service: WhatsAppTemplateService) -> None:
+    global _whatsapp_template_service
+    _whatsapp_template_service = service
+
+
+def get_whatsapp_template_service() -> WhatsAppTemplateService:
+    if _whatsapp_template_service is None:
+        raise RuntimeError("WhatsAppTemplateService not configured")
+    return _whatsapp_template_service
+
+
+def whatsapp_template_service_dependency(
+    service: WhatsAppTemplateService = Depends(get_whatsapp_template_service),
+) -> WhatsAppTemplateService:
+    return service
+
+
+def set_whatsapp_onboarding_service(service: WhatsAppOnboardingService) -> None:
+    global _whatsapp_onboarding_service
+    _whatsapp_onboarding_service = service
+
+
+def get_whatsapp_onboarding_service() -> WhatsAppOnboardingService:
+    if _whatsapp_onboarding_service is None:
+        raise RuntimeError("WhatsAppOnboardingService not configured")
+    return _whatsapp_onboarding_service
+
+
+def whatsapp_onboarding_service_dependency(
+    service: WhatsAppOnboardingService = Depends(get_whatsapp_onboarding_service),
+) -> WhatsAppOnboardingService:
     return service
 
 

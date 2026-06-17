@@ -1,4 +1,4 @@
-﻿"""Application settings for Backend API."""
+"""Application settings for Backend API."""
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings
@@ -71,6 +71,16 @@ class Settings(BaseSettings):
 
     GATEWAY_API_URL: str = "http://whatsapp-gateway:40000"
     GATEWAY_API_TIMEOUT: int = 15
+
+    META_APP_ID: str = ""
+    META_APP_SECRET: str = ""
+    META_EMBEDDED_CONFIG_ID: str = ""
+    META_API_VERSION: str = "v22.0"
+    META_API_BASE_URL: str = "https://graph.facebook.com"
+    META_API_TIMEOUT: int = 30
+    META_VERIFY_TOKEN: str = "super-secret-webhook-token"
+    META_DATA_DELETION_BASE_URL: str = "https://eletronica2.github.io/chatbot/data-deletion.html"
+    META_TEST_RECIPIENT: str = "5534992665547"
 
     class Config:
         env_file = ".env"

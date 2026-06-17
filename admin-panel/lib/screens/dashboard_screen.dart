@@ -15,6 +15,7 @@ import 'billing_hub_screen.dart';
 import 'conversation_detail_screen.dart';
 import 'overview_screen.dart';
 import 'settings_screen.dart';
+import 'template_dispatch_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.onLogout});
@@ -32,6 +33,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navActions = 'actions';
   static const String _navClients = 'clients';
   static const String _navBilling = 'billing';
+  static const String _navTemplates = 'templates';
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
@@ -58,6 +60,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         label: 'Ações',
         icon: Icons.bolt_rounded,
         helper: 'Gerencie ações reutilizáveis: imagens, links, requisições HTTP',
+      ),
+      const AppSidebarItem(
+        id: _navTemplates,
+        label: 'Templates WhatsApp',
+        icon: Icons.campaign_rounded,
+        helper: 'Liste modelos aprovados e dispare testes para o destinatario Meta',
       ),
       AppSidebarItem(
         id: _navClients,
@@ -211,6 +219,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Automações';
       case _navActions:
         return 'Ações';
+      case _navTemplates:
+        return 'Templates WhatsApp';
       case _navClients:
         return 'Clientes';
       case _navBilling:
@@ -228,6 +238,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Organize a jornada do cliente em etapas, mensagens e respostas de um jeito simples de editar.';
       case _navActions:
         return 'Cadastre ações reutilizáveis — imagens, links, requisições HTTP e mais — para usar nos fluxos.';
+      case _navTemplates:
+        return 'Visualize modelos oficiais da Meta e envie testes para o numero cadastrado como destinatario.';
       case _navClients:
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
@@ -250,6 +262,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return KeyedSubtree(
           key: ValueKey<String>('actions-${authService.tenantId}'),
           child: const ActionsScreen(),
+        );
+      case _navTemplates:
+        return KeyedSubtree(
+          key: ValueKey<String>('templates-${authService.tenantId}'),
+          child: const TemplateDispatchScreen(),
         );
       case _navClients:
         return KeyedSubtree(

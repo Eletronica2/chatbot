@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Exclusão de dados | Atenda Ai</title>
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body>
+    <main class="legal-page">
+      <div class="container">
+        <section class="legal-hero">
+          <span class="eyebrow">Meta Data Deletion</span>
+          <h1>Solicitação de exclusão de dados</h1>
+          <p id="status-text">
+            Se você chegou aqui após solicitar exclusão de dados via Meta/Facebook, sua solicitação foi registrada.
+          </p>
+          <table class="meta-table" aria-label="Detalhes da solicitação">
+            <tr>
+              <td>Código de confirmação</td>
+              <td id="confirmation-code">—</td>
+            </tr>
+            <tr>
+              <td>Contato</td>
+              <td><a class="text-link" href="mailto:atendaai@gmail.com">atendaai@gmail.com</a></td>
+            </tr>
+          </table>
+          <p style="margin-top: 16px;">
+            Para acompanhar ou confirmar a exclusão, envie o código acima para nosso e-mail de privacidade.
+          </p>
+          <p><a class="text-link" href="privacy.html">Política de Privacidade</a></p>
+        </section>
+      </div>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("id") || params.get("confirmation_code");
+      if (code) {
+        document.getElementById("confirmation-code").textContent = code;
+        document.getElementById("status-text").textContent =
+          "Sua solicitação de exclusão de dados foi recebida pela Atenda Ai.";
+      }
+    </script>
+  </body>
+</html>

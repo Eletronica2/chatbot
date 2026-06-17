@@ -59,6 +59,8 @@ services:
       AI_ENGINE_URL: http://ai-engine:8003
       DATABASE_URL: mysql+pymysql://chatbot:chatbot@mysql:3306/chatbot
       INTERNAL_API_KEY: internal-chatbot-key
+      META_APP_ID: "873826165763092"
+      META_EMBEDDED_CONFIG_ID: "2257921298375333"
     depends_on:
       flow-engine:
         condition: service_healthy

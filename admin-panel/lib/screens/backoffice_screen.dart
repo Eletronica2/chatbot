@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +19,7 @@ import '../services/whatsapp_account_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/premium_ui.dart';
+import '../widgets/whatsapp_meta_panels.dart';
 import 'backoffice_lead_proposal_flow.dart';
 import 'settings_screen.dart' show SettingsScreen, humanizeFlowName;
 
@@ -329,6 +330,20 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           tenant.email.toLowerCase().contains(normalized) ||
           (tenant.ownerEmail ?? '').toLowerCase().contains(normalized);
     }).toList();
+  }
+
+  /// Mantém uma entrada por `tenantId` para o dropdown de WhatsApp.
+  List<TenantAdminSummary> _dedupeTenantSummariesById(
+    Iterable<TenantAdminSummary> source,
+  ) {
+    final seen = <String>{};
+    final out = <TenantAdminSummary>[];
+    for (final t in source) {
+      if (seen.add(t.tenantId)) {
+        out.add(t);
+      }
+    }
+    return out;
   }
 
   void _onSearchChanged(String value) {
@@ -1249,6 +1264,16 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           ],
           if (_adminView == 'whatsapp') ...[
             const SizedBox(width: 8),
+            if (_selectedTenant != null && !_isSystemTenantContext)
+              WhatsAppMetaConnectButton(
+                tenantId: _selectedTenant!.tenantId,
+                accentColor: _kAccent,
+                onConnected: () async {
+                  final tenant = _selectedTenant;
+                  if (tenant != null) await _selectTenant(tenant);
+                },
+              ),
+            const SizedBox(width: 8),
             _AdminViewSecondaryButton(
               label: 'Vincular WhatsApp',
               icon: Icons.add_link_rounded,
@@ -1335,9 +1360,9 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   }
 
   Widget _buildWhatsAppView() {
-    final tenants = _tenants
-        .where((t) => t.tenantId != authService.homeTenantId)
-        .toList(growable: false);
+    final tenants = _dedupeTenantSummariesById(
+      _tenants.where((t) => t.tenantId != authService.homeTenantId),
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
@@ -1425,12 +1450,31 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             )
           else
             _buildWhatsAppAccountsList(),
+          if (_selectedTenant != null && !_isSystemTenantContext) ...[
+            const SizedBox(height: 16),
+            WhatsAppTemplatesSection(
+              tenantId: _selectedTenant!.tenantId,
+              accountKey: _defaultWhatsAppAccountKey,
+              cardColor: const Color(0xFF0F1421),
+              borderColor: _kBorder,
+              textColor: _kText,
+              mutedColor: _kMuted,
+              accentColor: _kAccent,
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildWhatsAppTenantSelector(List<TenantAdminSummary> tenants) {
+    final selectableIds = tenants.map((t) => t.tenantId).toSet();
+    final selectedId = _selectedTenant?.tenantId;
+    final dropdownValue =
+        selectedId != null && selectableIds.contains(selectedId)
+            ? selectedId
+            : null;
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -1455,7 +1499,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
-                value: _selectedTenant?.tenantId,
+                value: dropdownValue,
                 isExpanded: true,
                 dropdownColor: _kCard,
                 iconEnabledColor: _kMuted,
@@ -1478,10 +1522,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;
-                  final tenant = tenants.firstWhere(
-                    (t) => t.tenantId == value,
-                    orElse: () => tenants.first,
-                  );
+                  final tenant = tenants.firstWhere((t) => t.tenantId == value);
                   _selectTenant(tenant);
                 },
               ),
@@ -1490,6 +1531,14 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
         ],
       ),
     );
+  }
+
+  String? get _defaultWhatsAppAccountKey {
+    if (_accounts.isEmpty) return null;
+    for (final account in _accounts) {
+      if (account.isDefault) return account.accountKey;
+    }
+    return _accounts.first.accountKey;
   }
 
   Widget _buildWhatsAppAccountsList() {
@@ -1537,8 +1586,14 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 14),
+            WhatsAppMetaConnectButton(
+              tenantId: tenant.tenantId,
+              accentColor: _kAccent,
+              onConnected: () => _selectTenant(tenant),
+            ),
+            const SizedBox(height: 10),
             PremiumAccentButton(
-              label: 'Vincular WhatsApp',
+              label: 'Vincular manualmente',
               icon: Icons.add_link_rounded,
               onPressed: () => _showAccountDialog(),
             ),

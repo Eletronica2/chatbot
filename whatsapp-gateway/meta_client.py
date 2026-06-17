@@ -1,4 +1,4 @@
-﻿"""Meta/WhatsApp Cloud API Client."""
+"""Meta/WhatsApp Cloud API Client."""
 from __future__ import annotations
 
 import logging
@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 import httpx
 
 from config import settings
+from phone_utils import normalize_whatsapp_to
 from schemas import (
     OutgoingDocumentMessage,
     OutgoingImageMessage,
@@ -49,6 +50,8 @@ class MetaAPIClient:
         return f"{self.base_url}/{self.phone_number_id}/media"
 
     async def _send_request(self, payload: Dict[str, Any]) -> SendMessageResponse:
+        if payload.get("to"):
+            payload = {**payload, "to": normalize_whatsapp_to(str(payload["to"]))}
         try:
             async with httpx.AsyncClient(timeout=30.0, headers=self._get_headers()) as client:
                 response = await client.post(self.messages_url, json=payload)
@@ -242,4 +245,9 @@ def build_meta_client(
     phone_number_id: Optional[str] = None,
 ) -> MetaAPIClient:
     return MetaAPIClient(access_token=access_token, phone_number_id=phone_number_id)
+
+
+def get_meta_client() -> MetaAPIClient:
+    """FastAPI dependency for default Meta API client."""
+    return build_meta_client()
 
