@@ -61,6 +61,7 @@ services:
       INTERNAL_API_KEY: internal-chatbot-key
       META_APP_ID: "873826165763092"
       META_EMBEDDED_CONFIG_ID: "2257921298375333"
+      META_SYSTEM_USER_TOKEN: ${META_SYSTEM_USER_TOKEN:-}
     depends_on:
       flow-engine:
         condition: service_healthy

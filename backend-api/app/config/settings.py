@@ -81,6 +81,8 @@ class Settings(BaseSettings):
     META_VERIFY_TOKEN: str = "super-secret-webhook-token"
     META_DATA_DELETION_BASE_URL: str = "https://eletronica2.github.io/chatbot/data-deletion.html"
     META_TEST_RECIPIENT: str = "5534992665547"
+    # System User token with access to tenant WABAs; used to refresh expired account tokens
+    META_SYSTEM_USER_TOKEN: str = ""
 
     class Config:
         env_file = ".env"

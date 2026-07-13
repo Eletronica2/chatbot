@@ -11,6 +11,11 @@ class WhatsAppOnboardingService {
     return Map<String, dynamic>.from(data as Map);
   }
 
+  Future<Map<String, dynamic>> getEmbeddedSignupPreflight() async {
+    final data = await _apiClient.get('/api/v1/meta/embedded-signup/preflight');
+    return Map<String, dynamic>.from(data as Map);
+  }
+
   Future<Map<String, dynamic>> exchangeEmbeddedSignup({
     required String tenantId,
     required String code,

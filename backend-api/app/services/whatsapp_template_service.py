@@ -24,27 +24,23 @@ class WhatsAppTemplateService:
         self.meta_graph = meta_graph
         self.whatsapp_account_service = whatsapp_account_service
 
-    async def _access_token(self, tenant_id: str, account_key: str | None) -> tuple[str, str]:
-        accounts = await self.whatsapp_account_service.list_accounts(tenant_id)
-        if not accounts:
-            raise ValueError("Nenhuma conta WhatsApp vinculada a esta empresa")
-        selected = None
-        if account_key:
-            selected = next((item for item in accounts if item.account_key == account_key), None)
-            if selected is None:
-                raise ValueError("Conta WhatsApp nao encontrada")
-        else:
-            selected = next((item for item in accounts if item.is_default), None) or accounts[0]
-        secret = await self.whatsapp_account_service.resolve_for_account_key(
+    async def _access_token(
+        self,
+        tenant_id: str,
+        account_key: str | None,
+    ) -> tuple[str, str, bool]:
+        resolved_key, token, refreshed = await self.whatsapp_account_service.ensure_fresh_access_token(
             tenant_id,
-            selected.account_key,
+            account_key,
         )
-        if secret is None or not secret.access_token:
-            raise ValueError("Token de acesso da conta WhatsApp nao configurado")
-        return selected.account_key, secret.access_token
+        return resolved_key, token, refreshed
 
-    async def list_templates(self, tenant_id: str, account_key: str | None = None) -> list[WhatsAppTemplate]:
-        waba_id, token = await self._access_token(tenant_id, account_key)
+    async def list_templates(
+        self,
+        tenant_id: str,
+        account_key: str | None = None,
+    ) -> list[WhatsAppTemplate]:
+        waba_id, token, _ = await self._access_token(tenant_id, account_key)
         rows = await self.meta_graph.list_message_templates(waba_id, token)
         return [WhatsAppTemplate.from_graph(row) for row in rows]
 
@@ -53,7 +49,7 @@ class WhatsAppTemplateService:
         tenant_id: str,
         payload: WhatsAppTemplateCreate,
     ) -> WhatsAppTemplate:
-        waba_id, token = await self._access_token(tenant_id, payload.account_key)
+        waba_id, token, _ = await self._access_token(tenant_id, payload.account_key)
         row = await self.meta_graph.create_message_template(
             waba_id=waba_id,
             access_token=token,
@@ -91,18 +87,14 @@ class WhatsAppTemplateService:
                 f"Envio de teste permitido apenas para {settings.META_TEST_RECIPIENT}"
             )
 
-        accounts = await self.whatsapp_account_service.list_accounts(tenant_id)
-        if not accounts:
-            raise ValueError("Nenhuma conta WhatsApp vinculada a esta empresa")
-        selected = None
-        if payload.account_key:
-            selected = next((item for item in accounts if item.account_key == payload.account_key), None)
-            if selected is None:
-                raise ValueError("Conta WhatsApp nao encontrada")
-        else:
-            selected = next((item for item in accounts if item.is_default), None) or accounts[0]
+        resolved_key, _, token_refreshed = await self._access_token(tenant_id, payload.account_key)
 
-        templates = await self.list_templates(tenant_id, account_key=selected.account_key)
+        accounts = await self.whatsapp_account_service.list_accounts(tenant_id)
+        selected = next((item for item in accounts if item.account_key == resolved_key), None)
+        if selected is None:
+            raise ValueError("Conta WhatsApp nao encontrada")
+
+        templates = await self.list_templates(tenant_id, account_key=resolved_key)
         template = next(
             (
                 item
@@ -146,4 +138,5 @@ class WhatsAppTemplateService:
             message_id=data.get("message_id"),
             template_name=payload.template_name,
             to=target,
+            token_refreshed=token_refreshed,
         )

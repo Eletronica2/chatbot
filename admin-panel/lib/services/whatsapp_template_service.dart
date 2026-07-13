@@ -56,6 +56,7 @@ class WhatsAppTemplateService {
     required String templateName,
     required String language,
     String? accountKey,
+    String? to,
   }) async {
     final data = await _apiClient.post(
       '/api/v1/tenants/$tenantId/whatsapp-templates/send',
@@ -63,6 +64,7 @@ class WhatsAppTemplateService {
         'template_name': templateName,
         'language': language,
         if (accountKey != null) 'account_key': accountKey,
+        if (to != null && to.isNotEmpty) 'to': to,
       },
     );
     if (data is Map<String, dynamic>) {

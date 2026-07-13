@@ -139,11 +139,12 @@ async def lifespan(app: FastAPI):
         settings=settings,
         email_service=email_service,
     )
+    meta_graph_service = MetaGraphService()
     whatsapp_account_service = WhatsAppAccountService(
         whatsapp_account_repository,
         TokenCipher(settings.APP_SECRET_KEY),
+        meta_graph_service,
     )
-    meta_graph_service = MetaGraphService()
     whatsapp_template_service = WhatsAppTemplateService(
         meta_graph_service,
         whatsapp_account_service,

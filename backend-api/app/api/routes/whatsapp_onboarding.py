@@ -51,6 +51,15 @@ async def embedded_signup_config(
     return config
 
 
+@router.get("/api/v1/meta/embedded-signup/preflight")
+async def embedded_signup_preflight(
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: WhatsAppOnboardingService = Depends(whatsapp_onboarding_service_dependency),
+) -> dict:
+    _ = user
+    return service.embedded_signup_preflight()
+
+
 @router.post(
     "/api/v1/tenants/{tenant_id}/whatsapp-onboarding/exchange",
     response_model=EmbeddedSignupExchangeResponse,

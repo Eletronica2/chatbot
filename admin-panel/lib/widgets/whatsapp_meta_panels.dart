@@ -274,11 +274,23 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
 
     setState(() => _loading = true);
     try {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Permita popups neste site. A Meta abrira uma janela para conectar o WhatsApp Business.',
+          ),
+          duration: Duration(seconds: 5),
+        ),
+      );
+
       final config = await whatsAppOnboardingService.getEmbeddedSignupConfig();
+      final extras = config['extras'];
       final result = await launchMetaEmbeddedSignup(
         appId: config['app_id']?.toString() ?? '',
         configId: config['config_id']?.toString() ?? '',
         coexistence: true,
+        extras: extras is Map ? Map<String, dynamic>.from(extras) : null,
       );
       if (result == null) {
         throw StateError('Cadastro cancelado ou incompleto');
@@ -292,7 +304,7 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
         );
       }
 
-      await whatsAppOnboardingService.exchangeEmbeddedSignup(
+      final exchange = await whatsAppOnboardingService.exchangeEmbeddedSignup(
         tenantId: widget.tenantId,
         code: result.code,
         wabaId: wabaId,
@@ -303,13 +315,27 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
       );
       await widget.onConnected();
       if (!mounted) return;
+      final phoneStatus = exchange['phone_status'];
+      final status = phoneStatus is Map ? phoneStatus['status']?.toString() : null;
+      final message = status == 'CONNECTED'
+          ? 'WhatsApp conectado! Numero CONNECTED na Meta.'
+          : 'Conta vinculada. Status: ${status ?? "aguardando verificacao"}. '
+              'No celular: abra a mensagem da Meta, toque Conectar e cole o codigo.';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('WhatsApp conectado via Meta Embedded Signup.')),
+        SnackBar(content: Text(message)),
       );
     } catch (err) {
       if (!mounted) return;
+      final text = '$err';
+      final friendly = text.contains('WABA/Phone Number ID')
+          ? 'Meta nao enviou os IDs. Complete o codigo de verificacao no celular e tente de novo.'
+          : (text.contains('cancelado') || text.contains('incompleto'))
+              ? 'Popup bloqueado ou fluxo cancelado. Permita popups e use a URL https do tunnel.'
+              : text.contains('META_APP_SECRET')
+                  ? 'Configure META_APP_SECRET no backend e reinicie o Docker.'
+                  : text;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao conectar: $err')),
+        SnackBar(content: Text('Falha ao conectar: $friendly')),
       );
     } finally {
       if (mounted) setState(() => _loading = false);

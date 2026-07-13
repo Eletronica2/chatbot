@@ -10,42 +10,49 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
   required String appId,
   required String configId,
   bool coexistence = true,
+  Map<String, dynamic>? extras,
 }) async {
   final completer = Completer<MetaEmbeddedSignupResult?>();
   final callbackName = '_metaSignupCallback_${DateTime.now().millisecondsSinceEpoch}';
 
   js.context[callbackName] = js.allowInterop((dynamic payload) {
+    if (completer.isCompleted) {
+      return;
+    }
     if (payload == null) {
-      if (!completer.isCompleted) completer.complete(null);
+      completer.complete(null);
       return;
     }
     final map = js_util.dartify(payload);
     if (map is! Map) {
-      if (!completer.isCompleted) completer.complete(null);
+      completer.complete(null);
       return;
     }
+
     final code = map['code']?.toString() ?? '';
-    if (code.isEmpty) {
-      if (!completer.isCompleted) completer.complete(null);
+    final wabaId = map['waba_id']?.toString();
+    final phoneNumberId = map['phone_number_id']?.toString();
+
+    if (code.isEmpty || wabaId == null || wabaId.isEmpty || phoneNumberId == null || phoneNumberId.isEmpty) {
+      completer.complete(null);
       return;
     }
-    if (!completer.isCompleted) {
-      completer.complete(
-        MetaEmbeddedSignupResult(
-          code: code,
-          wabaId: map['waba_id']?.toString(),
-          phoneNumberId: map['phone_number_id']?.toString(),
-          displayPhoneNumber: map['display_phone_number']?.toString(),
-        ),
-      );
-    }
+
+    completer.complete(
+      MetaEmbeddedSignupResult(
+        code: code,
+        wabaId: wabaId,
+        phoneNumberId: phoneNumberId,
+        displayPhoneNumber: map['display_phone_number']?.toString(),
+      ),
+    );
   });
 
   final bridge = js.context['MetaSignupBridge'];
   if (bridge is! js.JsObject) {
     throw StateError(
-      'MetaSignupBridge nao carregado. Verifique se web/meta_signup_bridge.js '
-      'esta em web/index.html e reinicie o Flutter Web (hot restart nao basta).',
+      'MetaSignupBridge nao carregado. Verifique web/meta_signup_bridge.js em index.html '
+      'e reinicie o Flutter Web (hot restart nao recarrega o JS).',
     );
   }
   if (!bridge.hasProperty('launch')) {
@@ -57,10 +64,16 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
     configId,
     coexistence,
     callbackName,
+    extras != null ? js_util.jsify(extras) : null,
   ]);
 
   return completer.future.timeout(
     const Duration(minutes: 5),
-    onTimeout: () => null,
+    onTimeout: () {
+      throw StateError(
+        'Tempo esgotado aguardando a Meta. '
+        'Complete o codigo de verificacao no celular e tente novamente.',
+      );
+    },
   );
 }

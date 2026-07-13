@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/whatsapp_account.dart';
 import '../models/whatsapp_template.dart';
@@ -6,25 +7,30 @@ import '../services/auth_service.dart';
 import '../services/whatsapp_account_service.dart';
 import '../services/whatsapp_template_service.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/coexistence_wizard.dart';
 
 class TemplateDispatchScreen extends StatefulWidget {
   const TemplateDispatchScreen({super.key});
 
-  static const String testRecipientLabel = '+55 34 99266-5547';
+  static const String defaultRecipientLabel = '+55 34 99266-5547';
+  static const String defaultRecipientE164 = '5534992665547';
 
   @override
   State<TemplateDispatchScreen> createState() => _TemplateDispatchScreenState();
 }
 
 class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
+  final _recipientController = TextEditingController(
+    text: TemplateDispatchScreen.defaultRecipientLabel,
+  );
+
   bool _loading = true;
   bool _sending = false;
   String? _error;
-  String? _accountKey;
-  String? _wabaLabel;
-  String? _phoneNumberId;
+  String? _selectedAccountKey;
+  String? _selectedTemplateName;
+  List<WhatsAppAccountModel> _accounts = <WhatsAppAccountModel>[];
   List<WhatsAppTemplateModel> _templates = <WhatsAppTemplateModel>[];
-  String? _sendingTemplateName;
 
   String get _tenantId => authService.tenantId ?? '';
 
@@ -32,6 +38,36 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _recipientController.dispose();
+    super.dispose();
+  }
+
+  WhatsAppAccountModel? get _selectedAccount {
+    if (_selectedAccountKey == null) return null;
+    for (final account in _accounts) {
+      if (account.accountKey == _selectedAccountKey) return account;
+    }
+    return null;
+  }
+
+  WhatsAppTemplateModel? get _selectedTemplate {
+    if (_selectedTemplateName == null) return null;
+    for (final template in _templates) {
+      if (template.name == _selectedTemplateName) return template;
+    }
+    return null;
+  }
+
+  bool get _canSend {
+    final template = _selectedTemplate;
+    if (template == null || _sending || _selectedAccountKey == null) return false;
+    if (template.status.toUpperCase() != 'APPROVED') return false;
+    if (template.bodyText != null && template.bodyText!.contains('{{')) return false;
+    return _recipientController.text.trim().isNotEmpty;
   }
 
   Future<void> _load() async {
@@ -49,30 +85,65 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
     });
 
     try {
-      final templates = await whatsAppTemplateService.listTemplates(_tenantId);
-
-      WhatsAppAccountModel? account;
-      try {
-        final accounts = await whatsAppAccountService.listAccounts(_tenantId);
-        if (accounts.isNotEmpty) {
-          account = accounts.where((item) => item.isDefault).isNotEmpty
-              ? accounts.firstWhere((item) => item.isDefault)
-              : accounts.first;
-        }
-      } catch (accountErr) {
-        if (templates.isEmpty) {
-          throw StateError('Nao foi possivel carregar a conta WhatsApp: $accountErr');
-        }
+      final accounts = await whatsAppAccountService.listAccounts(_tenantId);
+      WhatsAppAccountModel? preferred;
+      if (accounts.isNotEmpty) {
+        preferred = accounts.where((item) => item.displayPhoneNumber.contains('31951773')).isNotEmpty
+            ? accounts.firstWhere((item) => item.displayPhoneNumber.contains('31951773'))
+            : (accounts.where((item) => item.isDefault).isNotEmpty
+                ? accounts.firstWhere((item) => item.isDefault)
+                : accounts.first);
       }
+
+      final accountKey = _selectedAccountKey ?? preferred?.accountKey;
+      final templates = accountKey == null
+          ? <WhatsAppTemplateModel>[]
+          : await whatsAppTemplateService.listTemplates(
+              _tenantId,
+              accountKey: accountKey,
+            );
 
       if (!mounted) return;
       setState(() {
-        _accountKey = account?.accountKey;
-        _wabaLabel = account?.displayPhoneNumber ?? account?.accountKey;
-        _phoneNumberId = account?.phoneNumberId;
+        _accounts = accounts;
+        _selectedAccountKey = accountKey;
+        _templates = templates;
+        if (_selectedTemplateName != null &&
+            !templates.any((item) => item.name == _selectedTemplateName)) {
+          _selectedTemplateName = null;
+        }
+        _error = accounts.isEmpty
+            ? 'Nenhuma conta WhatsApp vinculada. Configure em Clientes > WhatsApp.'
+            : (templates.isEmpty
+                ? 'Nenhum modelo encontrado para esta conta. Crie em Clientes > WhatsApp ou execute create-demo-template-pt-br.ps1.'
+                : null);
+      });
+    } catch (err) {
+      if (!mounted) return;
+      setState(() => _error = '$err');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _onAccountChanged(String? accountKey) async {
+    if (accountKey == null || accountKey == _selectedAccountKey) return;
+    setState(() {
+      _selectedAccountKey = accountKey;
+      _selectedTemplateName = null;
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final templates = await whatsAppTemplateService.listTemplates(
+        _tenantId,
+        accountKey: accountKey,
+      );
+      if (!mounted) return;
+      setState(() {
         _templates = templates;
         _error = templates.isEmpty
-            ? 'Nenhum modelo encontrado. Verifique o token da conta WhatsApp em Configuracoes ou peça ao administrador.'
+            ? 'Nenhum modelo encontrado para esta conta.'
             : null;
       });
     } catch (err) {
@@ -83,20 +154,41 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
     }
   }
 
-  Future<void> _sendTemplate(WhatsAppTemplateModel template) async {
-    if (template.status.toUpperCase() != 'APPROVED') return;
-    if (template.bodyText != null && template.bodyText!.contains('{{')) {
+  String _normalizeRecipient(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return '';
+    if (digits.startsWith('55')) return digits;
+    return '55$digits';
+  }
+
+  String _friendlyError(String raw) {
+    final lower = raw.toLowerCase();
+    if (lower.contains('133010') || lower.contains('not registered')) {
+      return 'Numero remetente nao registrado na Cloud API. Complete a coexistencia no Embedded Signup (QR no painel admin via HTTPS).';
+    }
+    if (lower.contains('131030')) {
+      return 'Destinatario nao esta na lista de teste da Meta. Adicione em API Setup > To.';
+    }
+    if (lower.contains('session has expired') || lower.contains('error validating access token')) {
+      return 'Token Meta expirado. Configure META_SYSTEM_USER_TOKEN no backend para atualizacao automatica.';
+    }
+    return raw;
+  }
+
+  Future<void> _sendSelectedTemplate() async {
+    final template = _selectedTemplate;
+    if (template == null) return;
+
+    final recipient = _normalizeRecipient(_recipientController.text.trim());
+    if (recipient.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Modelos com variaveis nao sao suportados nesta tela.'),
-        ),
+        const SnackBar(content: Text('Informe um destinatario valido.')),
       );
       return;
     }
 
     setState(() {
       _sending = true;
-      _sendingTemplateName = template.name;
       _error = null;
     });
 
@@ -105,32 +197,33 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         tenantId: _tenantId,
         templateName: template.name,
         language: template.language,
-        accountKey: _accountKey,
+        accountKey: _selectedAccountKey,
+        to: recipient,
       );
       if (!mounted) return;
       final messageId = result['message_id']?.toString();
+      final tokenRefreshed = result['token_refreshed'] == true;
+      final recipientLabel = _recipientController.text.trim();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            messageId == null || messageId.isEmpty
-                ? 'Template ${template.name} enviado para ${TemplateDispatchScreen.testRecipientLabel}.'
-                : 'Enviado! message_id: $messageId',
+            tokenRefreshed
+                ? 'Token atualizado automaticamente. Template enviado para $recipientLabel.'
+                : (messageId == null || messageId.isEmpty
+                    ? 'Template ${template.name} enviado para $recipientLabel.'
+                    : 'Enviado! message_id: $messageId'),
           ),
         ),
       );
     } catch (err) {
       if (!mounted) return;
-      setState(() => _error = '$err');
+      final message = _friendlyError('$err');
+      setState(() => _error = message);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao enviar: $err')),
+        SnackBar(content: Text('Falha ao enviar: $message')),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _sending = false;
-          _sendingTemplateName = null;
-        });
-      }
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -147,36 +240,46 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final account = _selectedAccount;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeaderCard(),
+          _buildHeaderCard(account),
           const SizedBox(height: 16),
           if (_loading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(48),
-              child: CircularProgressIndicator(),
-            ))
-          else if (_error != null && _templates.isEmpty)
-            _buildErrorCard(_error!)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(48),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else ...[
             if (_error != null) ...[
               _buildErrorCard(_error!),
+              if (_templates.isEmpty && _selectedAccountKey == '507137542482993') ...[
+                const SizedBox(height: 10),
+                _buildCoexistenceBanner(),
+              ],
+              const SizedBox(height: 12),
+            ] else if (_templates.isEmpty && _selectedAccountKey == '507137542482993') ...[
+              _buildCoexistenceBanner(),
               const SizedBox(height: 12),
             ],
-            if (_templates.isEmpty)
-              _buildEmptyCard()
-            else
-              ..._templates.map(_buildTemplateCard),
+            _buildFormCard(),
+            const SizedBox(height: 16),
+            _buildTemplatesSection(),
+            const SizedBox(height: 20),
+            _buildSendButton(),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildHeaderCard() {
+  Widget _buildHeaderCard(WhatsAppAccountModel? account) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -189,7 +292,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Disparo de teste',
+            'Disparo de template',
             style: TextStyle(
               color: AppColors.text,
               fontSize: 16,
@@ -197,21 +300,21 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            'Envie modelos aprovados pela Meta para o destinatario de teste cadastrado no app.',
+          const Text(
+            'Selecione remetente, destinatario e modelo aprovado. O token Meta e atualizado automaticamente antes do envio.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4),
           ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _infoChip('Destinatario', TemplateDispatchScreen.testRecipientLabel),
-              if (_wabaLabel != null) _infoChip('Numero', _wabaLabel!),
-              if (_phoneNumberId != null) _infoChip('Phone Number ID', _phoneNumberId!),
-              if (_accountKey != null) _infoChip('WABA', _accountKey!),
-            ],
-          ),
+          if (account != null) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _infoChip('WABA', account.accountKey),
+                _infoChip('Phone Number ID', account.phoneNumberId),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerRight,
@@ -222,6 +325,207 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFormCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '1. Remetente e destinatario',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+            value: _accounts.any((a) => a.accountKey == _selectedAccountKey)
+                ? _selectedAccountKey
+                : null,
+            decoration: const InputDecoration(
+              labelText: 'Conta remetente (numero WhatsApp)',
+              border: OutlineInputBorder(),
+            ),
+            items: _accounts
+                .map(
+                  (account) => DropdownMenuItem<String>(
+                    value: account.accountKey,
+                    child: Text(
+                      '${account.displayPhoneNumber}${account.isDefault ? ' (padrao)' : ''}',
+                    ),
+                  ),
+                )
+                .toList(),
+            onChanged: _sending ? null : _onAccountChanged,
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            controller: _recipientController,
+            enabled: !_sending,
+            decoration: const InputDecoration(
+              labelText: 'Destinatario',
+              hintText: TemplateDispatchScreen.defaultRecipientLabel,
+              border: OutlineInputBorder(),
+              helperText: 'Numero de teste cadastrado na Meta (App Review)',
+            ),
+            keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+\-\s()]'))],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemplatesSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '2. Selecione o template',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_templates.isEmpty)
+            const Text(
+              'Nenhum modelo disponivel para esta conta.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            )
+          else
+            ..._templates.map(_buildTemplateRow),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTemplateRow(WhatsAppTemplateModel template) {
+    final approved = template.status.toUpperCase() == 'APPROVED';
+    final hasVariables = template.bodyText?.contains('{{') ?? false;
+    final selectable = approved && !hasVariables;
+    final isSelected = _selectedTemplateName == template.name;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? AppColors.primary.withValues(alpha: 0.08) : AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isSelected ? AppColors.primary : AppColors.borderSubtle,
+        ),
+      ),
+      child: RadioListTile<String>(
+        value: template.name,
+        groupValue: _selectedTemplateName,
+        onChanged: _sending || !selectable
+            ? null
+            : (value) => setState(() => _selectedTemplateName = value),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                template.name,
+                style: const TextStyle(
+                  color: AppColors.text,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: _statusColor(template.status).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                template.status,
+                style: TextStyle(
+                  color: _statusColor(template.status),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              '${template.language} | ${template.category}',
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+            if (template.bodyText != null && template.bodyText!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                template.bodyText!,
+                style: const TextStyle(color: AppColors.textSoft, fontSize: 12, height: 1.4),
+              ),
+            ],
+            if (!approved)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Aguarde aprovacao da Meta para habilitar envio.',
+                  style: TextStyle(color: AppColors.warning, fontSize: 11),
+                ),
+              ),
+            if (hasVariables)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'Modelos com variaveis nao sao suportados nesta tela.',
+                  style: TextStyle(color: AppColors.warning, fontSize: 11),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSendButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        onPressed: _canSend ? _sendSelectedTemplate : null,
+        icon: _sending
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.send_rounded),
+        label: Text(_sending ? 'Enviando template...' : 'Enviar template'),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          disabledBackgroundColor: AppColors.surfaceSoft,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+        ),
       ),
     );
   }
@@ -246,6 +550,47 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
     );
   }
 
+  Widget _buildCoexistenceBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Numero BR sem templates? Complete a coexistencia primeiro.',
+            style: TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'O hello_world so existe na conta teste EUA. Para o BR, conecte via Embedded Signup e crie demo_bella_massa.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _tenantId.isEmpty
+                  ? null
+                  : () => showCoexistenceWizard(
+                        context: context,
+                        tenantId: _tenantId,
+                        onConnected: _load,
+                      ),
+              icon: const Icon(Icons.help_outline_rounded, size: 16),
+              label: const Text('Abrir assistente de coexistencia'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorCard(String message) {
     return Container(
       width: double.infinity,
@@ -256,112 +601,6 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
       ),
       child: Text(message, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
-    );
-  }
-
-  Widget _buildEmptyCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: const Text(
-        'Nenhum modelo encontrado. Crie modelos em Clientes > WhatsApp > Modelos WhatsApp (Meta).',
-        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-      ),
-    );
-  }
-
-  Widget _buildTemplateCard(WhatsAppTemplateModel template) {
-    final approved = template.status.toUpperCase() == 'APPROVED';
-    final hasVariables = template.bodyText?.contains('{{') ?? false;
-    final canSend = approved && !hasVariables && !_sending;
-    final isSendingThis = _sending && _sendingTemplateName == template.name;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  template.name,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _statusColor(template.status).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  template.status,
-                  style: TextStyle(
-                    color: _statusColor(template.status),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${template.language} | ${template.category}',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-          ),
-          if (template.bodyText != null && template.bodyText!.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(
-              template.bodyText!,
-              style: const TextStyle(color: AppColors.textSoft, fontSize: 12, height: 1.4),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Tooltip(
-              message: approved
-                  ? (hasVariables
-                      ? 'Modelo com variaveis nao suportado nesta tela'
-                      : 'Enviar teste para ${TemplateDispatchScreen.testRecipientLabel}')
-                  : 'Aguarde aprovacao da Meta (status APPROVED)',
-              child: FilledButton.icon(
-                onPressed: canSend ? () => _sendTemplate(template) : null,
-                icon: isSendingThis
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.send_rounded, size: 16),
-                label: Text(isSendingThis ? 'Enviando...' : 'Enviar teste'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  disabledBackgroundColor: AppColors.surfaceSoft,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

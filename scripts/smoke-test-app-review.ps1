@@ -2,9 +2,10 @@
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/smoke-test-app-review.ps1
 
 $ErrorActionPreference = "Continue"
+. (Join-Path $PSScriptRoot "lib/gateway-url.ps1")
 
 $BackendUrl = if ($env:BACKEND_URL) { $env:BACKEND_URL } else { "http://localhost:8000" }
-$GatewayUrl = if ($env:GATEWAY_URL) { $env:GATEWAY_URL } else { "http://localhost:40000" }
+$GatewayUrl = Resolve-GatewayUrl -Preferred $(if ($env:GATEWAY_URL) { $env:GATEWAY_URL } else { "http://localhost:40000" })
 $VerifyToken = if ($env:META_VERIFY_TOKEN) { $env:META_VERIFY_TOKEN } else { "super-secret-webhook-token" }
 $BellaEmail = if ($env:BELLA_ADMIN_EMAIL) { $env:BELLA_ADMIN_EMAIL } else { "admin@bellamassa.com.br" }
 $BellaPassword = if ($env:BELLA_ADMIN_PASSWORD) { $env:BELLA_ADMIN_PASSWORD } else { "Bella@2026!" }

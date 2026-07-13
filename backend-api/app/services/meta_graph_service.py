@@ -53,7 +53,27 @@ class MetaGraphService:
             except Exception:
                 payload = {"error": {"message": response.text}}
             message = payload.get("error", {}).get("message") or response.text
+            user_msg = payload.get("error", {}).get("error_user_msg")
+            if user_msg:
+                message = f"{message} — {user_msg}"
             raise ValueError(message)
+        return response.json()
+
+    async def debug_token(self, input_token: str) -> dict[str, Any]:
+        if not self.app_id or not self.app_secret:
+            return {"data": {"is_valid": True, "expires_at": 0}}
+        app_access_token = f"{self.app_id}|{self.app_secret}"
+        async with httpx.AsyncClient(timeout=settings.META_API_TIMEOUT) as client:
+            response = await client.get(
+                self._url("/debug_token"),
+                params={
+                    "input_token": input_token,
+                    "access_token": app_access_token,
+                },
+            )
+        if response.status_code >= 400:
+            logger.warning("Meta debug_token error: %s", response.text)
+            return {"data": {"is_valid": False}}
         return response.json()
 
     async def exchange_code_for_token(self, code: str, redirect_uri: str | None = None) -> str:

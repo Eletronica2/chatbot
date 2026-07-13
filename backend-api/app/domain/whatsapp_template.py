@@ -51,3 +51,4 @@ class WhatsAppTemplateSendResult(BaseModel):
     template_name: str
     to: str
     status: str = "sent"
+    token_refreshed: bool = False

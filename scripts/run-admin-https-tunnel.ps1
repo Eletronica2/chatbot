@@ -10,7 +10,7 @@
 # Uso:
 #   powershell -ExecutionPolicy Bypass -File scripts/run-admin-https-tunnel.ps1 -ApiBaseUrl "https://SEU-BACKEND.trycloudflare.com"
 #
-# Depois configure no app Meta 1009915888389805 (Facebook Login for Business > Settings):
+# Depois configure no app Meta 873826165763092 (Facebook Login for Business > Settings):
 #   - Allowed Domains for JavaScript SDK: <subdominio-admin>.trycloudflare.com
 #   - Valid OAuth Redirect URIs: https://<subdominio-admin>.trycloudflare.com/
 #   - Dominios do app (basic): <subdominio-admin>.trycloudflare.com

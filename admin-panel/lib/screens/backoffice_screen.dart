@@ -20,6 +20,7 @@ import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
 import '../widgets/premium_ui.dart';
 import '../widgets/whatsapp_meta_panels.dart';
+import '../widgets/coexistence_wizard.dart';
 import 'backoffice_lead_proposal_flow.dart';
 import 'settings_screen.dart' show SettingsScreen, humanizeFlowName;
 
@@ -1264,6 +1265,20 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
           ],
           if (_adminView == 'whatsapp') ...[
             const SizedBox(width: 8),
+            if (_selectedTenant != null && !_isSystemTenantContext)
+              _AdminViewSecondaryButton(
+                label: 'Assistente coexistencia',
+                icon: Icons.help_outline_rounded,
+                onTap: () => showCoexistenceWizard(
+                  context: context,
+                  tenantId: _selectedTenant!.tenantId,
+                  accentColor: _kAccent,
+                  onConnected: () async {
+                    final tenant = _selectedTenant;
+                    if (tenant != null) await _selectTenant(tenant);
+                  },
+                ),
+              ),
             if (_selectedTenant != null && !_isSystemTenantContext)
               WhatsAppMetaConnectButton(
                 tenantId: _selectedTenant!.tenantId,

@@ -22,6 +22,31 @@ class WhatsAppOnboardingService:
             "config_id": settings.META_EMBEDDED_CONFIG_ID,
             "coexistence_feature_type": "whatsapp_business_app_onboarding",
             "session_info_version": "3",
+            "embedded_signup_version": "v3",
+            "extras": {
+                "setup": {},
+                "featureType": "whatsapp_business_app_onboarding",
+                "sessionInfoVersion": "3",
+                "version": "v3",
+            },
+        }
+
+    def embedded_signup_preflight(self) -> dict:
+        app_id = settings.META_APP_ID
+        return {
+            "app_id": app_id,
+            "config_id": settings.META_EMBEDDED_CONFIG_ID,
+            "app_secret_configured": bool((settings.META_APP_SECRET or "").strip()),
+            "system_user_token_configured": bool((settings.META_SYSTEM_USER_TOKEN or "").strip()),
+            "verify_token": settings.META_VERIFY_TOKEN,
+            "coexistence_feature_type": "whatsapp_business_app_onboarding",
+            "session_info_version": "3",
+            "meta_links": {
+                "app_domains": f"https://developers.facebook.com/apps/{app_id}/settings/basic/",
+                "fb_login_for_business": f"https://developers.facebook.com/apps/{app_id}/fb-login/settings/",
+                "whatsapp_webhook": f"https://developers.facebook.com/apps/{app_id}/whatsapp-business/wa-settings/",
+                "whatsapp_api_setup": f"https://developers.facebook.com/apps/{app_id}/whatsapp-business/wa-dev-console/",
+            },
         }
 
     async def complete_embedded_signup(

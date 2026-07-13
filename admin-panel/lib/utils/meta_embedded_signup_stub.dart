@@ -16,6 +16,7 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
   required String appId,
   required String configId,
   bool coexistence = true,
+  Map<String, dynamic>? extras,
 }) async {
   return null;
 }
