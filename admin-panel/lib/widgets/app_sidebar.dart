@@ -164,14 +164,25 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                     Container(
                       width: 46,
                       height: 46,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         borderRadius: AppRadius.md,
-                        gradient: AppGradients.brandIcon,
+                        border: Border.all(color: AppColors.border),
+                        color: AppColors.surface,
                       ),
-                      child: const Icon(
-                        Icons.auto_awesome_rounded,
-                        color: Colors.white,
-                        size: 22,
+                      clipBehavior: Clip.antiAlias,
+                      child: Image.asset(
+                        'assets/brand/atenda-ai-mark.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: AppGradients.brandIcon,
+                          ),
+                          child: Icon(
+                            Icons.auto_awesome_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -180,17 +191,19 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Central de Ação',
-                            style: GoogleFonts.inter(
+                            'Atenda Ai',
+                            style: GoogleFonts.manrope(
                               color: AppColors.text,
                               fontSize: 17,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -0.2,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
                             ),
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            interactive ? 'Painel principal' : 'Operação',
+                            interactive
+                                ? 'Automação no WhatsApp'
+                                : 'Painel operacional',
                             style: GoogleFonts.inter(
                               color: AppColors.textSoft,
                               fontSize: 11,
@@ -253,71 +266,60 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
               color: selected
-                  ? AppColors.primary.withValues(alpha: 0.10)
+                  ? AppColors.primary.withValues(alpha: 0.12)
                   : (_hovering
                       ? AppColors.surfaceAlt.withValues(alpha: 0.55)
                       : Colors.transparent),
               borderRadius: AppRadius.md,
-              border: Border(
-                left: BorderSide(
-                  width: 2,
-                  color: selected ? AppColors.primary : Colors.transparent,
-                ),
-                top: BorderSide(
-                  color: selected
-                      ? const Color(0xFF242938)
-                      : Colors.transparent,
-                ),
-                right: BorderSide(
-                  color: selected
-                      ? const Color(0xFF242938)
-                      : Colors.transparent,
-                ),
-                bottom: BorderSide(
-                  color: selected
-                      ? const Color(0xFF242938)
-                      : Colors.transparent,
-                ),
+              border: Border.all(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.35)
+                    : Colors.transparent,
               ),
             ),
-            child: Row(
-              children: [
-                Icon(
-                  widget.item.icon,
-                  size: 20,
-                  color: selected ? AppColors.primary : AppColors.textMuted,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.item.label,
-                        style: TextStyle(
-                          color: selected ? AppColors.text : AppColors.text,
-                          fontSize: 13.5,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-                        ),
-                      ),
-                      if (widget.item.helper != null &&
-                          widget.item.helper!.trim().isNotEmpty) ...[
-                        const SizedBox(height: 3),
-                        Text(
-                          widget.item.helper!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textSoft,
-                            fontSize: 11,
-                            height: 1.35,
-                          ),
-                        ),
-                      ],
-                    ],
+            child: Tooltip(
+              message: widget.item.helper?.trim().isNotEmpty == true
+                  ? widget.item.helper!.trim()
+                  : widget.item.label,
+              waitDuration: const Duration(milliseconds: 450),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 18,
+                    margin: const EdgeInsets.only(right: 9),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
                   ),
-                ),
-              ],
+                  Icon(
+                    widget.item.icon,
+                    size: 20,
+                    color: selected
+                        ? AppColors.primarySoft
+                        : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      widget.item.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selected
+                            ? const Color(0xFFFFF7ED)
+                            : AppColors.text,
+                        fontSize: 13.5,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

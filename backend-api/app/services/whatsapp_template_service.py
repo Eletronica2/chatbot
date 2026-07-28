@@ -1,6 +1,8 @@
 """Manage WhatsApp message templates via Meta Graph API."""
 from __future__ import annotations
 
+import re
+
 import httpx
 
 from app.config.settings import settings
@@ -23,6 +25,15 @@ class WhatsAppTemplateService:
     ):
         self.meta_graph = meta_graph
         self.whatsapp_account_service = whatsapp_account_service
+
+    @staticmethod
+    def _body_variable_count(body_text: str | None) -> int:
+        if not body_text:
+            return 0
+        matches = re.findall(r"\{\{(\d+)\}\}", body_text)
+        if not matches:
+            return 0
+        return max(int(item) for item in matches)
 
     async def _access_token(
         self,
@@ -107,8 +118,25 @@ class WhatsAppTemplateService:
             raise ValueError("Modelo WhatsApp nao encontrado para este idioma")
         if template.status.upper() != "APPROVED":
             raise ValueError("Somente modelos com status APPROVED podem ser enviados")
-        if template.body_text and "{{" in template.body_text:
-            raise ValueError("Modelos com variaveis nao sao suportados nesta tela de teste")
+
+        expected_vars = self._body_variable_count(template.body_text)
+        params = [str(item).strip() for item in (payload.body_parameters or [])]
+        if expected_vars > 0:
+            if len(params) != expected_vars or any(not item for item in params):
+                raise ValueError(
+                    f"Este modelo exige {expected_vars} variavel(is) de corpo preenchida(s)"
+                )
+        elif params:
+            raise ValueError("Este modelo nao aceita parametros de corpo")
+
+        components = None
+        if params:
+            components = [
+                {
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": item} for item in params],
+                }
+            ]
 
         try:
             async with httpx.AsyncClient(timeout=settings.GATEWAY_API_TIMEOUT) as client:
@@ -121,6 +149,7 @@ class WhatsAppTemplateService:
                         "template_name": payload.template_name,
                         "language_code": payload.language,
                         "phone_number_id": selected.phone_number_id,
+                        "components": components,
                     },
                 )
             if gw_resp.status_code != 200:

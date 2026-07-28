@@ -62,6 +62,10 @@ class OperationHubPanel extends StatelessWidget {
     required this.whatsappAccounts,
     this.onOpenBilling,
     this.onOpenClients,
+    this.onOpenWhatsApp,
+    this.onOpenConversations,
+    this.onOpenAutomations,
+    this.onOpenTeam,
   });
 
   final TenantSettings settings;
@@ -69,6 +73,10 @@ class OperationHubPanel extends StatelessWidget {
   final List<WhatsAppAccountModel> whatsappAccounts;
   final VoidCallback? onOpenBilling;
   final VoidCallback? onOpenClients;
+  final VoidCallback? onOpenWhatsApp;
+  final VoidCallback? onOpenConversations;
+  final VoidCallback? onOpenAutomations;
+  final VoidCallback? onOpenTeam;
 
   String get _tenantId => authService.tenantId ?? 'default';
 
@@ -165,10 +173,26 @@ class OperationHubPanel extends StatelessWidget {
               title: 'WhatsApp conectado',
               subtitle: 'Contas vinculadas à empresa em foco.',
               child: wa == null
-                  ? const PremiumComingSoonStrip(
-                      title: 'Nenhuma conta configurada',
-                      description:
-                          'Cadastre números na área de Clientes (superadmin) ou via API de contas WhatsApp.',
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        PremiumComingSoonStrip(
+                          title: 'Nenhuma conta configurada',
+                          description: authService.isSuperadmin
+                              ? 'Cadastre números em Clientes ou via API de contas WhatsApp.'
+                              : 'Conecte o WhatsApp da sua empresa no menu WhatsApp.',
+                        ),
+                        if (onOpenWhatsApp != null || onOpenClients != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          PremiumTextButton(
+                            label: authService.isSuperadmin
+                                ? 'Abrir clientes'
+                                : 'Conectar WhatsApp',
+                            icon: Icons.phonelink_setup_rounded,
+                            onTap: (onOpenWhatsApp ?? onOpenClients)!,
+                          ),
+                        ],
+                      ],
                     )
                   : Column(
                       children: [
@@ -195,6 +219,42 @@ class OperationHubPanel extends StatelessWidget {
                           PremiumField(
                             label: 'Total de contas',
                             value: '${whatsappAccounts.length} vinculadas',
+                          ),
+                        ],
+                        if (onOpenWhatsApp != null ||
+                            onOpenConversations != null ||
+                            onOpenAutomations != null ||
+                            onOpenTeam != null) ...[
+                          const SizedBox(height: AppSpacing.md),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (onOpenWhatsApp != null)
+                                PremiumTextButton(
+                                  label: 'Gerenciar WhatsApp',
+                                  icon: Icons.phonelink_setup_rounded,
+                                  onTap: onOpenWhatsApp!,
+                                ),
+                              if (onOpenConversations != null)
+                                PremiumTextButton(
+                                  label: 'Abrir conversas',
+                                  icon: Icons.chat_bubble_rounded,
+                                  onTap: onOpenConversations!,
+                                ),
+                              if (onOpenAutomations != null)
+                                PremiumTextButton(
+                                  label: 'Automações',
+                                  icon: Icons.auto_awesome_motion_rounded,
+                                  onTap: onOpenAutomations!,
+                                ),
+                              if (onOpenTeam != null)
+                                PremiumTextButton(
+                                  label: 'Equipe',
+                                  icon: Icons.group_rounded,
+                                  onTap: onOpenTeam!,
+                                ),
+                            ],
                           ),
                         ],
                       ],

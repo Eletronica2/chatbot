@@ -9,10 +9,12 @@ class ConversationList extends StatelessWidget {
     super.key,
     required this.conversations,
     required this.onSelectConversation,
+    this.selectedId,
   });
 
   final List<Conversation> conversations;
   final ValueChanged<Conversation> onSelectConversation;
+  final String? selectedId;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +25,11 @@ class ConversationList extends StatelessWidget {
         itemCount: conversations.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
+          final conversation = conversations[index];
           return _ConversationTile(
-            conversation: conversations[index],
-            onTap: () => onSelectConversation(conversations[index]),
+            conversation: conversation,
+            selected: selectedId != null && conversation.id == selectedId,
+            onTap: () => onSelectConversation(conversation),
           );
         },
       ),
@@ -37,10 +41,12 @@ class _ConversationTile extends StatefulWidget {
   const _ConversationTile({
     required this.conversation,
     required this.onTap,
+    this.selected = false,
   });
 
   final Conversation conversation;
   final VoidCallback onTap;
+  final bool selected;
 
   @override
   State<_ConversationTile> createState() => _ConversationTileState();
@@ -95,19 +101,25 @@ class _ConversationTileState extends State<_ConversationTile> {
           curve: Curves.easeOutCubic,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           decoration: BoxDecoration(
-            gradient: _hovered ? AppGradients.glassPanel : null,
-            color: _hovered
+            gradient: (_hovered || widget.selected)
+                ? AppGradients.glassPanel
+                : null,
+            color: (_hovered || widget.selected)
                 ? null
                 : AppColors.background.withValues(alpha: 0.28),
             borderRadius: AppRadius.xl,
             border: Border.all(
-              color: needsHuman
-                  ? AppColors.warning.withValues(alpha: 0.42)
-                  : hasUnread
-                      ? AppColors.primary.withValues(alpha: 0.24)
-                      : AppColors.borderSubtle.withValues(alpha: 0.62),
+              color: widget.selected
+                  ? AppColors.primary.withValues(alpha: 0.55)
+                  : needsHuman
+                      ? AppColors.warning.withValues(alpha: 0.42)
+                      : hasUnread
+                          ? AppColors.primary.withValues(alpha: 0.24)
+                          : AppColors.borderSubtle.withValues(alpha: 0.62),
             ),
-            boxShadow: _hovered ? AppShadows.panelHover : null,
+            boxShadow: _hovered || widget.selected
+                ? AppShadows.panelHover
+                : null,
           ),
           child: Row(
             children: [

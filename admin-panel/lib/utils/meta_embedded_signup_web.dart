@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'dart:js' as js;
-import 'dart:js_util' as js_util;
+import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 import 'meta_embedded_signup_stub.dart';
 
@@ -15,7 +15,7 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
   final completer = Completer<MetaEmbeddedSignupResult?>();
   final callbackName = '_metaSignupCallback_${DateTime.now().millisecondsSinceEpoch}';
 
-  js.context[callbackName] = js.allowInterop((dynamic payload) {
+  void handlePayload(JSAny? payload) {
     if (completer.isCompleted) {
       return;
     }
@@ -23,7 +23,8 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
       completer.complete(null);
       return;
     }
-    final map = js_util.dartify(payload);
+
+    final map = payload.dartify();
     if (map is! Map) {
       completer.complete(null);
       return;
@@ -46,25 +47,30 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
         displayPhoneNumber: map['display_phone_number']?.toString(),
       ),
     );
-  });
+  }
 
-  final bridge = js.context['MetaSignupBridge'];
-  if (bridge is! js.JsObject) {
+  globalContext[callbackName] = handlePayload.toJS;
+
+  final bridge = globalContext.getProperty('MetaSignupBridge'.toJS);
+  if (bridge == null) {
     throw StateError(
       'MetaSignupBridge nao carregado. Verifique web/meta_signup_bridge.js em index.html '
       'e reinicie o Flutter Web (hot restart nao recarrega o JS).',
     );
   }
-  if (!bridge.hasProperty('launch')) {
+
+  final bridgeObj = bridge as JSObject;
+  final launchFn = bridgeObj.getProperty('launch'.toJS);
+  if (launchFn == null) {
     throw StateError('MetaSignupBridge.launch ausente em meta_signup_bridge.js');
   }
 
-  bridge.callMethod('launch', [
-    appId,
-    configId,
-    coexistence,
-    callbackName,
-    extras != null ? js_util.jsify(extras) : null,
+  bridgeObj.callMethodVarArgs('launch'.toJS, <JSAny?>[
+    appId.toJS,
+    configId.toJS,
+    coexistence.toJS,
+    callbackName.toJS,
+    extras?.jsify(),
   ]);
 
   return completer.future.timeout(

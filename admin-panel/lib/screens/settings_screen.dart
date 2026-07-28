@@ -667,74 +667,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _scrollSimulationToBottom();
   }
 
-  bool _matchesMessage(String message, String candidate) {
-    final normalizedMessage = message.trim().toLowerCase();
-    final normalizedCandidate = candidate.trim().toLowerCase();
-    if (normalizedMessage.isEmpty || normalizedCandidate.isEmpty) {
-      return false;
-    }
-    return normalizedMessage == normalizedCandidate ||
-        normalizedMessage.contains(normalizedCandidate);
-  }
-
-  _StateDraft? _resolveNextStateForMessage(
-    _FlowDraft draft,
-    _StateDraft current,
-    String message,
-  ) {
-    for (var index = 0; index < current.options.length; index++) {
-      final option = current.options[index];
-      final targetDisplay = option.targetState.trim();
-      if (targetDisplay.isEmpty) {
-        continue;
-      }
-
-      final optionLabel = option.labelCtrl.text.trim();
-      final optionToken = _autoOptionId(optionLabel, index);
-      if (_matchesMessage(message, optionLabel) ||
-          _matchesMessage(message, optionToken)) {
-        return _findStateByDisplayName(draft, targetDisplay);
-      }
-    }
-
-    for (final transition in current.transitions) {
-      final targetDisplay = transition.targetState.trim();
-      if (targetDisplay.isEmpty) {
-        continue;
-      }
-
-      final keyword = transition.keywordCtrl.text.trim();
-      if (_matchesMessage(message, keyword)) {
-        return _findStateByDisplayName(draft, targetDisplay);
-      }
-    }
-
-    return null;
-  }
-
-  String _buildSimulationFallback(_StateDraft current, String message) {
-    if (current.requiresHandoff) {
-      return 'Esta etapa encaminha a conversa para um atendente humano.';
-    }
-
-    final hasConfiguredOptions = current.options.any(
-      (option) =>
-          option.labelCtrl.text.trim().isNotEmpty &&
-          option.targetState.trim().isNotEmpty,
-    );
-    final hasConfiguredTransitions = current.transitions.any(
-      (transition) =>
-          transition.keywordCtrl.text.trim().isNotEmpty &&
-          transition.targetState.trim().isNotEmpty,
-    );
-
-    if (hasConfiguredOptions || hasConfiguredTransitions) {
-      return 'Nenhuma proxima etapa foi encontrada para "$message". Revise os atalhos ou as respostas digitadas desta etapa.';
-    }
-
-    return 'Esta etapa nao possui proximos passos configurados para continuar o teste.';
-  }
-
   Future<void> _runSimulationMessage(_FlowDraft draft, String rawMessage) async {
     if (_sendingSimulation) {
       return;
@@ -2133,6 +2065,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // Replaced by _FlowTestView dialog; kept for possible inline editor layout.
+  // ignore: unused_element
   Widget _buildInsightsPanel(_FlowDraft draft) {
     return Container(
       color: _kSurface,
@@ -2576,9 +2510,9 @@ class _FlowTestViewState extends State<_FlowTestView> {
   final ScrollController _scrollCtrl = ScrollController();
   bool _sending = false;
   int _tab = 0;
-  String? _currentStep;
+  String? _currentStep; // ignore: unused_field
   List<Map<String, String>> _history = <Map<String, String>>[];
-  bool _waitingForFirstMessage = true;
+  bool _waitingForFirstMessage = true; // ignore: unused_field
 
   @override
   void initState() {
@@ -2646,6 +2580,8 @@ class _FlowTestViewState extends State<_FlowTestView> {
     return slug.isNotEmpty ? slug : 'botao_${index + 1}';
   }
 
+  // Local transition helpers kept for offline fallback experiments.
+  // ignore: unused_element
   _StateDraft? _nextState(_StateDraft current, String message) {
     // Check option transitions first
     for (var i = 0; i < current.options.length; i++) {
@@ -2673,6 +2609,7 @@ class _FlowTestViewState extends State<_FlowTestView> {
     return wildcardTarget;
   }
 
+  // ignore: unused_element
   String _fallback(_StateDraft current, String message) {
     if (current.requiresHandoff) {
       return 'Esta etapa encaminha a conversa para um atendente humano.';

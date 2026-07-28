@@ -281,21 +281,40 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     }
   }
 
+  TenantAdminSummary _currentUserTenantSummary() {
+    final user = authService.currentUser;
+    final tenantId =
+        (authService.tenantId ?? user?.tenantId ?? '').trim();
+    return TenantAdminSummary(
+      tenantId: tenantId,
+      name: (user?.displayName.trim().isNotEmpty ?? false)
+          ? user!.displayName.trim()
+          : tenantId,
+      email: user?.email ?? '',
+      status: 'active',
+      plan: 'professional',
+      ownerEmail: user?.email,
+    );
+  }
+
   Future<void> _loadTenants() async {
     setState(() => _loadingTenants = true);
     try {
-      var tenants = await adminTenantService.listTenants();
-      if (!mounted) return;
-
+      late final List<TenantAdminSummary> tenants;
       final activeTenantId = authService.tenantId;
       final homeTenantId = authService.homeTenantId;
 
-      if (widget.lockToCurrentTenant) {
-        final scopedId = (activeTenantId ?? homeTenantId ?? '').trim();
-        tenants = tenants
-            .where((item) => item.tenantId == scopedId)
-            .toList(growable: false);
+      // Owner/cliente: nunca chama /admin/tenants (exige superadmin).
+      if (widget.lockToCurrentTenant || !authService.isSuperadmin) {
+        final scoped = _currentUserTenantSummary();
+        if (scoped.tenantId.isEmpty) {
+          throw StateError('Tenant do usuário não encontrado na sessão.');
+        }
+        tenants = <TenantAdminSummary>[scoped];
+      } else {
+        tenants = await adminTenantService.listTenants();
       }
+      if (!mounted) return;
 
       TenantAdminSummary? selected;
 
@@ -1185,7 +1204,6 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     }
     final content = PremiumPageBackground(
       intensity: AmbientIntensity.soft,
-      intensity: AmbientIntensity.soft,
       child: Column(
         children: [
           _buildAdminViewSwitcher(),
@@ -1404,9 +1422,12 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   }
 
   Widget _buildWhatsAppView() {
-    final tenants = _dedupeTenantSummariesById(
-      _tenants.where((t) => t.tenantId != authService.homeTenantId),
-    );
+    // Superadmin: oculta o tenant interno "default"/home do vínculo WhatsApp.
+    // Cliente (lockToCurrentTenant): mantém a própria empresa.
+    final source = widget.lockToCurrentTenant || !authService.isSuperadmin
+        ? _tenants
+        : _tenants.where((t) => t.tenantId != authService.homeTenantId);
+    final tenants = _dedupeTenantSummariesById(source);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
       child: Column(
@@ -1439,22 +1460,26 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
                           color: AppColors.primary, size: 18),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cadastros e vínculos de WhatsApp',
-                            style: TextStyle(
+                            widget.lockToCurrentTenant
+                                ? 'Sua conta WhatsApp Business'
+                                : 'Cadastros e vínculos de WhatsApp',
+                            style: const TextStyle(
                               color: _kText,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          SizedBox(height: 3),
+                          const SizedBox(height: 3),
                           Text(
-                            'Vincule um número de WhatsApp Business a cada empresa, defina a conta principal e atualize tokens da Meta.',
-                            style: TextStyle(
+                            widget.lockToCurrentTenant
+                                ? 'Conecte o número da sua empresa, acompanhe a coexistência e gerencie modelos oficiais da Meta.'
+                                : 'Vincule um número de WhatsApp Business a cada empresa, defina a conta principal e atualize tokens da Meta.',
+                            style: const TextStyle(
                               color: _kMuted,
                               fontSize: 12,
                               height: 1.4,
@@ -1494,18 +1519,6 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
             )
           else
             _buildWhatsAppAccountsList(),
-          if (_selectedTenant != null && !_isSystemTenantContext) ...[
-            const SizedBox(height: 16),
-            WhatsAppTemplatesSection(
-              tenantId: _selectedTenant!.tenantId,
-              accountKey: _defaultWhatsAppAccountKey,
-              cardColor: const Color(0xFF0F1421),
-              borderColor: _kBorder,
-              textColor: _kText,
-              mutedColor: _kMuted,
-              accentColor: _kAccent,
-            ),
-          ],
         ],
       ),
     );
@@ -1575,14 +1588,6 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
         ],
       ),
     );
-  }
-
-  String? get _defaultWhatsAppAccountKey {
-    if (_accounts.isEmpty) return null;
-    for (final account in _accounts) {
-      if (account.isDefault) return account.accountKey;
-    }
-    return _accounts.first.accountKey;
   }
 
   Widget _buildWhatsAppAccountsList() {

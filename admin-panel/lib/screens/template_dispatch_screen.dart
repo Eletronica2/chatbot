@@ -8,6 +8,7 @@ import '../services/whatsapp_account_service.dart';
 import '../services/whatsapp_template_service.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/coexistence_wizard.dart';
+import '../widgets/whatsapp_meta_panels.dart';
 
 class TemplateDispatchScreen extends StatefulWidget {
   const TemplateDispatchScreen({super.key});
@@ -31,6 +32,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
   String? _selectedTemplateName;
   List<WhatsAppAccountModel> _accounts = <WhatsAppAccountModel>[];
   List<WhatsAppTemplateModel> _templates = <WhatsAppTemplateModel>[];
+  List<TextEditingController> _bodyParamControllers = <TextEditingController>[];
 
   String get _tenantId => authService.tenantId ?? '';
 
@@ -43,7 +45,36 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
   @override
   void dispose() {
     _recipientController.dispose();
+    _disposeBodyParamControllers();
     super.dispose();
+  }
+
+  void _disposeBodyParamControllers() {
+    for (final controller in _bodyParamControllers) {
+      controller.dispose();
+    }
+    _bodyParamControllers = <TextEditingController>[];
+  }
+
+  int _bodyVariableCount(String? bodyText) {
+    if (bodyText == null || bodyText.isEmpty) return 0;
+    final matches = RegExp(r'\{\{(\d+)\}\}').allMatches(bodyText);
+    if (matches.isEmpty) return 0;
+    var max = 0;
+    for (final match in matches) {
+      final value = int.tryParse(match.group(1) ?? '') ?? 0;
+      if (value > max) max = value;
+    }
+    return max;
+  }
+
+  void _syncBodyParamControllers(WhatsAppTemplateModel? template) {
+    _disposeBodyParamControllers();
+    final count = _bodyVariableCount(template?.bodyText);
+    _bodyParamControllers = List<TextEditingController>.generate(
+      count,
+      (_) => TextEditingController(),
+    );
   }
 
   WhatsAppAccountModel? get _selectedAccount {
@@ -66,8 +97,14 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
     final template = _selectedTemplate;
     if (template == null || _sending || _selectedAccountKey == null) return false;
     if (template.status.toUpperCase() != 'APPROVED') return false;
-    if (template.bodyText != null && template.bodyText!.contains('{{')) return false;
-    return _recipientController.text.trim().isNotEmpty;
+    if (_recipientController.text.trim().isEmpty) return false;
+    final expected = _bodyVariableCount(template.bodyText);
+    if (_bodyParamControllers.length != expected) return false;
+    if (expected > 0 &&
+        _bodyParamControllers.any((c) => c.text.trim().isEmpty)) {
+      return false;
+    }
+    return true;
   }
 
   Future<void> _load() async {
@@ -113,9 +150,9 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
           _selectedTemplateName = null;
         }
         _error = accounts.isEmpty
-            ? 'Nenhuma conta WhatsApp vinculada. Configure em Clientes > WhatsApp.'
+            ? 'Nenhuma conta WhatsApp vinculada. Conecte em WhatsApp no menu lateral.'
             : (templates.isEmpty
-                ? 'Nenhum modelo encontrado para esta conta. Crie em Clientes > WhatsApp ou execute create-demo-template-pt-br.ps1.'
+                ? 'Nenhum modelo encontrado. Crie um modelo nesta tela (seção acima) ou aguarde aprovação da Meta.'
                 : null);
       });
     } catch (err) {
@@ -128,12 +165,13 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
 
   Future<void> _onAccountChanged(String? accountKey) async {
     if (accountKey == null || accountKey == _selectedAccountKey) return;
-    setState(() {
-      _selectedAccountKey = accountKey;
-      _selectedTemplateName = null;
-      _loading = true;
-      _error = null;
-    });
+      setState(() {
+        _selectedAccountKey = accountKey;
+        _selectedTemplateName = null;
+        _syncBodyParamControllers(null);
+        _loading = true;
+        _error = null;
+      });
     try {
       final templates = await whatsAppTemplateService.listTemplates(
         _tenantId,
@@ -199,6 +237,9 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         language: template.language,
         accountKey: _selectedAccountKey,
         to: recipient,
+        bodyParameters: _bodyParamControllers
+            .map((controller) => controller.text.trim())
+            .toList(),
       );
       if (!mounted) return;
       final messageId = result['message_id']?.toString();
@@ -268,9 +309,27 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
               _buildCoexistenceBanner(),
               const SizedBox(height: 12),
             ],
+            if (_tenantId.isNotEmpty && _selectedAccountKey != null) ...[
+              WhatsAppTemplatesSection(
+                tenantId: _tenantId,
+                accountKey: _selectedAccountKey,
+                cardColor: AppColors.surface,
+                borderColor: AppColors.border,
+                textColor: AppColors.text,
+                mutedColor: AppColors.textMuted,
+                accentColor: AppColors.primary,
+                showExistingList: false,
+                onCreated: _load,
+              ),
+              const SizedBox(height: 16),
+            ],
             _buildFormCard(),
             const SizedBox(height: 16),
             _buildTemplatesSection(),
+            if (_bodyParamControllers.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              _buildBodyParametersSection(),
+            ],
             const SizedBox(height: 20),
             _buildSendButton(),
           ],
@@ -292,7 +351,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Disparo de template',
+            'Modelos WhatsApp',
             style: TextStyle(
               color: AppColors.text,
               fontSize: 16,
@@ -301,7 +360,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            'Selecione remetente, destinatario e modelo aprovado. O token Meta e atualizado automaticamente antes do envio.',
+            'Crie modelos oficiais na Meta, acompanhe o status (PENDING/APPROVED) e dispare testes para o destinatário cadastrado.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4),
           ),
           if (account != null) ...[
@@ -342,7 +401,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '1. Remetente e destinatario',
+            '2. Remetente e destinatário',
             style: TextStyle(
               color: AppColors.text,
               fontSize: 14,
@@ -401,7 +460,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '2. Selecione o template',
+            '3. Selecione o template para disparo',
             style: TextStyle(
               color: AppColors.text,
               fontSize: 14,
@@ -423,8 +482,8 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
 
   Widget _buildTemplateRow(WhatsAppTemplateModel template) {
     final approved = template.status.toUpperCase() == 'APPROVED';
-    final hasVariables = template.bodyText?.contains('{{') ?? false;
-    final selectable = approved && !hasVariables;
+    final hasVariables = _bodyVariableCount(template.bodyText) > 0;
+    final selectable = approved;
     final isSelected = _selectedTemplateName == template.name;
 
     return Container(
@@ -441,7 +500,19 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
         groupValue: _selectedTemplateName,
         onChanged: _sending || !selectable
             ? null
-            : (value) => setState(() => _selectedTemplateName = value),
+            : (value) {
+                WhatsAppTemplateModel? selected;
+                for (final item in _templates) {
+                  if (item.name == value) {
+                    selected = item;
+                    break;
+                  }
+                }
+                setState(() {
+                  _selectedTemplateName = value;
+                  _syncBodyParamControllers(selected);
+                });
+              },
         title: Row(
           children: [
             Expanded(
@@ -498,12 +569,58 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
               const Padding(
                 padding: EdgeInsets.only(top: 6),
                 child: Text(
-                  'Modelos com variaveis nao sao suportados nesta tela.',
-                  style: TextStyle(color: AppColors.warning, fontSize: 11),
+                  'Modelo com variaveis: preencha os valores abaixo antes de enviar.',
+                  style: TextStyle(color: AppColors.accentBlue, fontSize: 11),
                 ),
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildBodyParametersSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '4. Preencha as variaveis do corpo',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Cada campo substitui {{1}}, {{2}}, etc. no texto aprovado pela Meta.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          ...List<Widget>.generate(_bodyParamControllers.length, (index) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index == _bodyParamControllers.length - 1 ? 0 : 10,
+              ),
+              child: TextField(
+                controller: _bodyParamControllers[index],
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  labelText: 'Variavel {{${index + 1}}}',
+                  hintText: 'Valor para {{${index + 1}}}',
+                ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

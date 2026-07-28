@@ -399,6 +399,7 @@ class SendTemplateRequest(BaseModel):
     template_name: str
     language_code: str = "pt_BR"
     phone_number_id: str | None = None
+    components: list[dict] | None = None
 
 
 @router.post("/send-message")
@@ -450,6 +451,7 @@ async def send_template(body: SendTemplateRequest, request: Request):
             to=body.to,
             template_name=body.template_name,
             language_code=body.language_code,
+            components=body.components,
         )
     )
     if not result.success:

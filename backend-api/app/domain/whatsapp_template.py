@@ -44,6 +44,7 @@ class WhatsAppTemplateSend(BaseModel):
     language: str = "pt_BR"
     to: str | None = None
     account_key: str | None = None
+    body_parameters: list[str] = Field(default_factory=list)
 
 
 class WhatsAppTemplateSendResult(BaseModel):

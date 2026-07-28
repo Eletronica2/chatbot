@@ -146,19 +146,22 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: Container(
+                      child: SizedBox(
                         width: 44,
                         height: 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          gradient: AppGradients.brandIcon,
-                        ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(2),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                            size: 20,
+                        child: Image.asset(
+                          'assets/brand/atenda-ai-mark.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            alignment: Alignment.center,
+                            decoration: const BoxDecoration(
+                              gradient: AppGradients.brandIcon,
+                            ),
+                            child: const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
@@ -166,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Chatbot Ops',
+                    'Atenda Ai',
                     style: GoogleFonts.inter(
                       color: AppColors.text,
                       fontSize: 17,

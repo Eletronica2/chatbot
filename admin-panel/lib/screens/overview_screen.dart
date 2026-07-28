@@ -22,14 +22,18 @@ class OverviewScreen extends StatefulWidget {
     super.key,
     required this.onOpenConversations,
     required this.onOpenAutomations,
+    this.onOpenWhatsApp,
     this.onOpenBilling,
     this.onOpenClients,
+    this.onOpenTeam,
   });
 
   final VoidCallback onOpenConversations;
   final VoidCallback onOpenAutomations;
+  final VoidCallback? onOpenWhatsApp;
   final VoidCallback? onOpenBilling;
   final VoidCallback? onOpenClients;
+  final VoidCallback? onOpenTeam;
 
   @override
   State<OverviewScreen> createState() => _OverviewScreenState();
@@ -168,7 +172,12 @@ class _OverviewScreenState extends State<OverviewScreen> {
                           ),
                         ),
                         const SizedBox(height: AppSpacing.xl),
-                        _StatusStrip(data: data),
+                        _StatusStrip(
+                          data: data,
+                          onOpenConversations: widget.onOpenConversations,
+                          onOpenWhatsApp: widget.onOpenWhatsApp,
+                          onOpenBilling: widget.onOpenBilling,
+                        ),
                         if (data.overview.recentEvents.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.xl),
                           _RecentActivityPanel(events: data.overview.recentEvents),
@@ -185,6 +194,10 @@ class _OverviewScreenState extends State<OverviewScreen> {
                           whatsappAccounts: data.whatsappAccounts,
                           onOpenBilling: widget.onOpenBilling,
                           onOpenClients: widget.onOpenClients,
+                          onOpenWhatsApp: widget.onOpenWhatsApp,
+                          onOpenConversations: widget.onOpenConversations,
+                          onOpenAutomations: widget.onOpenAutomations,
+                          onOpenTeam: widget.onOpenTeam,
                         ),
                       ],
                     ),
@@ -259,9 +272,17 @@ class _ActionCenterData {
 }
 
 class _StatusStrip extends StatelessWidget {
-  const _StatusStrip({required this.data});
+  const _StatusStrip({
+    required this.data,
+    required this.onOpenConversations,
+    this.onOpenWhatsApp,
+    this.onOpenBilling,
+  });
 
   final _ActionCenterData data;
+  final VoidCallback onOpenConversations;
+  final VoidCallback? onOpenWhatsApp;
+  final VoidCallback? onOpenBilling;
 
   @override
   Widget build(BuildContext context) {
@@ -271,22 +292,23 @@ class _StatusStrip extends StatelessWidget {
         label: 'Fila de atendimento',
         value: '${data.waitingConversations}',
         hint: data.waitingConversations == 0
-            ? 'Nenhuma pendente'
-            : 'Aguardando resposta',
+            ? 'Toque para abrir conversas'
+            : 'Aguardando resposta — abrir fila',
         icon: Icons.mark_chat_unread_outlined,
         accent: data.waitingConversations > 0
             ? AppColors.warning
             : AppColors.textSoft,
+        onTap: onOpenConversations,
       ),
       PremiumStatusTile(
         expand: true,
         label: 'Movimentação hoje',
         value: data.messagesTodayValue,
-        hint: 'Conversas com atividade',
+        hint: 'Ver conversas com atividade',
         icon: Icons.forum_outlined,
         accent: AppColors.info,
+        onTap: onOpenConversations,
       ),
-      
       PremiumStatusTile(
         expand: true,
         label: 'Consumo',
@@ -296,16 +318,18 @@ class _StatusStrip extends StatelessWidget {
             : 'Uso no período',
         icon: Icons.insights_outlined,
         accent: AppColors.accentBlue,
+        onTap: onOpenBilling,
       ),
       PremiumStatusTile(
         expand: true,
         label: 'WhatsApp',
         value: data.whatsAppStatus,
         hint: data.whatsappAccounts.isEmpty
-            ? 'Nenhuma conta na API'
+            ? 'Conectar número'
             : '${data.whatsappAccounts.length} conta(s)',
         icon: Icons.chat_outlined,
         accent: AppColors.success,
+        onTap: onOpenWhatsApp ?? onOpenConversations,
       ),
       PremiumStatusTile(
         expand: true,
@@ -314,9 +338,8 @@ class _StatusStrip extends StatelessWidget {
         hint: operationStatusLabel(data.subscription.status),
         icon: Icons.workspace_premium_outlined,
         accent: AppColors.primary,
+        onTap: onOpenBilling,
       ),
-      
-      
     ];
 
     return LayoutBuilder(

@@ -14,9 +14,14 @@ class ConversationDetailScreen extends StatefulWidget {
   const ConversationDetailScreen({
     super.key,
     required this.conversation,
+    this.embedded = false,
+    this.onClose,
   });
 
   final Conversation conversation;
+  /// When true, renders without a full-screen Scaffold (inbox split-pane).
+  final bool embedded;
+  final VoidCallback? onClose;
 
   @override
   State<ConversationDetailScreen> createState() =>
@@ -40,6 +45,16 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     super.initState();
     _loadMessages();
     _loadFlowState();
+  }
+
+  @override
+  void didUpdateWidget(covariant ConversationDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.conversation.id != widget.conversation.id) {
+      _replyCtrl.clear();
+      _loadMessages();
+      _loadFlowState();
+    }
   }
 
   @override
@@ -131,91 +146,115 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     }
   }
 
+
+  void _handleBack() {
+    if (widget.onClose != null) {
+      widget.onClose!();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  Widget _buildBody({required bool showInfoSidebar}) {
+    return Column(
+      children: [
+        _ConversationHeader(
+          conversation: widget.conversation,
+          onBack: _handleBack,
+          onRefresh: () {
+            _loadMessages();
+            _loadFlowState();
+          },
+        ),
+        if (widget.conversation.humanHandoffPending) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.12),
+              borderRadius: AppRadius.md,
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.4),
+              ),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Cliente aguardando atendimento humano. Responda abaixo para continuar a conversa.',
+                    style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 16),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showSidebar =
+                  showInfoSidebar && constraints.maxWidth >= 900;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 7,
+                    child: _ChatPanel(
+                      messages: _messages,
+                      loading: _loadingMessages,
+                      error: _messagesError,
+                      scrollCtrl: _scrollCtrl,
+                      replyCtrl: _replyCtrl,
+                      sending: _sending,
+                      onSend: _sendReply,
+                    ),
+                  ),
+                  if (showSidebar) ...[
+                    const SizedBox(width: 16),
+                    SizedBox(
+                      width: 280,
+                      child: _InfoPanel(
+                        conversation: widget.conversation,
+                        flowState: _flowState,
+                        loading: _loadingFlow,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFF05060B),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: _buildBody(showInfoSidebar: false),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF05060B),
       body: PremiumPageBackground(
         intensity: AmbientIntensity.soft,
         child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            children: [
-              _ConversationHeader(
-                conversation: widget.conversation,
-                onBack: () => Navigator.of(context).pop(),
-                onRefresh: () {
-                  _loadMessages();
-                  _loadFlowState();
-                },
-              ),
-              if (widget.conversation.humanHandoffPending) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.12),
-                    borderRadius: AppRadius.md,
-                    border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.4),
-                    ),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 20),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Cliente aguardando atendimento humano. Responda abaixo para continuar a conversa.',
-                          style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.4),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final showSidebar = constraints.maxWidth >= 1120;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          flex: 7,
-                          child: _ChatPanel(
-                            messages: _messages,
-                            loading: _loadingMessages,
-                            error: _messagesError,
-                            scrollCtrl: _scrollCtrl,
-                            replyCtrl: _replyCtrl,
-                            sending: _sending,
-                            onSend: _sendReply,
-                          ),
-                        ),
-                        if (showSidebar) ...[
-                          const SizedBox(width: 16),
-                          SizedBox(
-                            width: 320,
-                            child: _InfoPanel(
-                              conversation: widget.conversation,
-                              flowState: _flowState,
-                              loading: _loadingFlow,
-                            ),
-                          ),
-                        ],
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: _buildBody(showInfoSidebar: true),
           ),
         ),
-      ),
       ),
     );
   }

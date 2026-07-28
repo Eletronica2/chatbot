@@ -362,7 +362,7 @@ class _BrandMark extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Text(
-          'Chatbot Ops',
+          'Atenda Ai',
           style: GoogleFonts.inter(
             color: AppColors.text,
             fontSize: 17,
@@ -3167,7 +3167,7 @@ class _LandingFooter extends StatelessWidget {
           Row(
             children: [
               Text(
-                '© 2026 Chatbot Ops. Todos os direitos reservados.',
+                '© 2026 Atenda Ai. Todos os direitos reservados.',
                 style: GoogleFonts.inter(color: AppColors.textSoft, fontSize: 12),
               ),
               const Spacer(),

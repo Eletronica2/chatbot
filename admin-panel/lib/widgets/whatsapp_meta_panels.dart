@@ -15,6 +15,8 @@ class WhatsAppTemplatesSection extends StatefulWidget {
     this.textColor = const Color(0xFFF5F7FF),
     this.mutedColor = const Color(0xFF98A4C0),
     this.accentColor = const Color(0xFFF5A623),
+    this.showExistingList = true,
+    this.onCreated,
   });
 
   final String tenantId;
@@ -24,6 +26,9 @@ class WhatsAppTemplatesSection extends StatefulWidget {
   final Color textColor;
   final Color mutedColor;
   final Color accentColor;
+  /// When false, only the create form is shown (parent already lists templates).
+  final bool showExistingList;
+  final VoidCallback? onCreated;
 
   @override
   State<WhatsAppTemplatesSection> createState() => _WhatsAppTemplatesSectionState();
@@ -44,7 +49,9 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
   @override
   void initState() {
     super.initState();
-    _loadTemplates();
+    if (widget.showExistingList) {
+      _loadTemplates();
+    }
   }
 
   @override
@@ -88,7 +95,16 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
         bodyText: _bodyCtrl.text.trim(),
         accountKey: widget.accountKey,
       );
-      await _loadTemplates();
+      if (widget.showExistingList) {
+        await _loadTemplates();
+      }
+      widget.onCreated?.call();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Modelo enviado à Meta. Status inicial: PENDING.'),
+        ),
+      );
     } catch (err) {
       if (!mounted) return;
       setState(() => _error = '$err');
@@ -111,7 +127,7 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Modelos WhatsApp (Meta)',
+            '1. Criar modelo na Meta',
             style: TextStyle(
               color: widget.textColor,
               fontSize: 14,
@@ -120,7 +136,7 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Crie modelos oficiais para App Review e mensagens template via Cloud API.',
+            'Crie modelos oficiais da Meta (Cloud API). Após criar, eles aparecem na lista abaixo para disparo quando forem aprovados.',
             style: TextStyle(color: widget.mutedColor, fontSize: 12, height: 1.4),
           ),
           const SizedBox(height: 14),
@@ -186,41 +202,43 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
             const SizedBox(height: 10),
             Text(_error!, style: TextStyle(color: Colors.redAccent, fontSize: 12)),
           ],
-          const SizedBox(height: 16),
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else if (_templates.isEmpty)
-            Text('Nenhum modelo encontrado.', style: TextStyle(color: widget.mutedColor, fontSize: 12))
-          else
-            Column(
-              children: _templates.map((item) {
-                return Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF101726),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: widget.borderColor),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(item.name, style: TextStyle(color: widget.textColor, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${item.language} | ${item.category} | ${item.status}',
-                        style: TextStyle(color: widget.mutedColor, fontSize: 11),
-                      ),
-                      if (item.bodyText != null && item.bodyText!.isNotEmpty) ...[
-                        const SizedBox(height: 6),
-                        Text(item.bodyText!, style: TextStyle(color: widget.mutedColor, fontSize: 12)),
+          if (widget.showExistingList) ...[
+            const SizedBox(height: 16),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_templates.isEmpty)
+              Text('Nenhum modelo encontrado.', style: TextStyle(color: widget.mutedColor, fontSize: 12))
+            else
+              Column(
+                children: _templates.map((item) {
+                  return Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF101726),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: widget.borderColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.name, style: TextStyle(color: widget.textColor, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${item.language} | ${item.category} | ${item.status}',
+                          style: TextStyle(color: widget.mutedColor, fontSize: 11),
+                        ),
+                        if (item.bodyText != null && item.bodyText!.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(item.bodyText!, style: TextStyle(color: widget.mutedColor, fontSize: 12)),
+                        ],
                       ],
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
         ],
       ),
     );

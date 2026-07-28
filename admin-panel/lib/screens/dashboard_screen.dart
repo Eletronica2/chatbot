@@ -15,6 +15,7 @@ import 'billing_hub_screen.dart';
 import 'conversation_detail_screen.dart';
 import 'overview_screen.dart';
 import 'settings_screen.dart';
+import 'team_screen.dart';
 import 'template_dispatch_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -35,9 +36,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navBilling = 'billing';
   static const String _navTemplates = 'templates';
   static const String _navWhatsApp = 'whatsapp';
+  static const String _navTeam = 'team';
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
+  Conversation? _selectedConversation;
   String _selectedNav = _navHome;
   String _conversationFilter = 'all';
   final TextEditingController _searchCtrl = TextEditingController();
@@ -66,13 +69,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
         id: _navTemplates,
         label: 'Templates WhatsApp',
         icon: Icons.campaign_rounded,
-        helper: 'Liste modelos aprovados e dispare testes para o destinatario Meta',
+        helper: 'Criar modelos Meta, ver status e disparar testes',
       ),
       AppSidebarItem(
         id: _navWhatsApp,
         label: 'WhatsApp',
         icon: Icons.phonelink_setup_rounded,
-        helper: 'Conta, coexistência e integração Meta da sua empresa',
+        helper: 'Conectar número, coexistência e contas da empresa',
+        visible: !authService.isSuperadmin,
+      ),
+      AppSidebarItem(
+        id: _navTeam,
+        label: 'Equipe',
+        icon: Icons.group_rounded,
+        helper: 'Convide atendentes e gerentes da empresa',
         visible: !authService.isSuperadmin,
       ),
       AppSidebarItem(
@@ -156,6 +166,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _selectNav(String navId) {
     setState(() {
       _selectedNav = navId;
+      if (navId != _navConversations) {
+        _selectedConversation = null;
+      }
     });
     if (navId == _navConversations) {
       _refreshConversations();
@@ -163,6 +176,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _openConversation(Conversation conversation) async {
+    final wide = MediaQuery.sizeOf(context).width >= 1100;
+    if (wide) {
+      setState(() => _selectedConversation = conversation);
+      return;
+    }
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ConversationDetailScreen(conversation: conversation),
@@ -231,12 +249,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Templates WhatsApp';
       case _navWhatsApp:
         return 'WhatsApp';
+      case _navTeam:
+        return 'Equipe';
       case _navClients:
         return 'Clientes';
       case _navBilling:
         return 'Cobrança';
       default:
-        return 'Central de Ação';
+        return 'Início';
     }
   }
 
@@ -249,9 +269,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _navActions:
         return 'Cadastre ações reutilizáveis — imagens, links, requisições HTTP e mais — para usar nos fluxos.';
       case _navTemplates:
-        return 'Visualize modelos oficiais da Meta e envie testes para o numero cadastrado como destinatario.';
+        return 'Crie modelos oficiais da Meta, acompanhe PENDING/APPROVED e dispare testes.';
       case _navWhatsApp:
-        return 'Conecte sua conta WhatsApp Business, acompanhe coexistência e gerencie a integração da sua empresa.';
+        return 'Conecte o WhatsApp Business da sua empresa e configure a coexistência.';
+      case _navTeam:
+        return 'Convide atendentes e gerentes para operar o painel da sua empresa.';
       case _navClients:
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
@@ -291,6 +313,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             lockToCurrentTenant: true,
           ),
         );
+      case _navTeam:
+        return KeyedSubtree(
+          key: ValueKey<String>('team-${authService.tenantId}'),
+          child: const TeamScreen(),
+        );
       case _navClients:
         return KeyedSubtree(
           key: ValueKey<String>('clients-${authService.tenantId}'),
@@ -314,6 +341,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: OverviewScreen(
             onOpenConversations: () => _selectNav(_navConversations),
             onOpenAutomations: () => _selectNav(_navAutomations),
+            onOpenWhatsApp: authService.isSuperadmin
+                ? () => _selectNav(_navClients)
+                : () => _selectNav(_navWhatsApp),
+            onOpenTeam: authService.isSuperadmin
+                ? null
+                : () => _selectNav(_navTeam),
             onOpenBilling:
                 authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
             onOpenClients:
@@ -469,9 +502,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         accent: AppColors.accentBlue,
                       );
                     }
-                    return ConversationList(
-                      conversations: _filteredConversations,
-                      onSelectConversation: _openConversation,
+
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final split = constraints.maxWidth >= 860;
+                        final list = ConversationList(
+                          conversations: _filteredConversations,
+                          selectedId: _selectedConversation?.id,
+                          onSelectConversation: _openConversation,
+                        );
+
+                        if (!split) return list;
+
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: constraints.maxWidth < 1100 ? 340 : 400,
+                              child: list,
+                            ),
+                            Container(
+                              width: 1,
+                              color: AppColors.border.withValues(alpha: 0.7),
+                            ),
+                            Expanded(
+                              child: _selectedConversation == null
+                                  ? const Center(
+                                      child: PremiumEmptyPanel(
+                                        icon: Icons.forum_outlined,
+                                        title: 'Selecione uma conversa',
+                                        description:
+                                            'Escolha um cliente à esquerda para atender no painel.',
+                                        accent: AppColors.accentBlue,
+                                      ),
+                                    )
+                                  : ConversationDetailScreen(
+                                      key: ValueKey<String>(
+                                        _selectedConversation!.id,
+                                      ),
+                                      conversation: _selectedConversation!,
+                                      embedded: true,
+                                      onClose: () => setState(
+                                        () => _selectedConversation = null,
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        );
+                      },
                     );
                   },
                 ),

@@ -79,7 +79,7 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
     final baseTheme = AdminAppTheme.build();
 
     return MaterialApp(
-      title: 'Painel do Chatbot',
+      title: 'Atenda Ai',
       theme: baseTheme,
       darkTheme: baseTheme,
       themeMode: ThemeMode.dark,
