@@ -128,11 +128,17 @@ class BackofficeScreen extends StatefulWidget {
     required this.onLogout,
     this.embedded = false,
     this.onOpenTenantFlows,
+    this.initialAdminView,
+    this.lockToCurrentTenant = false,
   });
 
   final VoidCallback onLogout;
   final bool embedded;
   final VoidCallback? onOpenTenantFlows;
+  /// `tenants` | `whatsapp` | `leads`
+  final String? initialAdminView;
+  /// When true (tenant owner), hide SaaS management and open only own WhatsApp.
+  final bool lockToCurrentTenant;
 
   @override
   State<BackofficeScreen> createState() => _BackofficeScreenState();
@@ -164,7 +170,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   String? _settingDefaultAccountKey;
   String? _resettingUserId;
 
-  String _adminView = 'tenants';
+  late String _adminView;
   bool _loadingLeads = false;
   List<Lead> _leads = <Lead>[];
   LeadSummary? _leadSummary;
@@ -195,6 +201,14 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialAdminView?.trim().toLowerCase();
+    if (widget.lockToCurrentTenant) {
+      _adminView = 'whatsapp';
+    } else if (initial == 'whatsapp' || initial == 'leads' || initial == 'tenants') {
+      _adminView = initial!;
+    } else {
+      _adminView = 'tenants';
+    }
     _loadTenants();
   }
 
@@ -270,11 +284,19 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
   Future<void> _loadTenants() async {
     setState(() => _loadingTenants = true);
     try {
-      final tenants = await adminTenantService.listTenants();
+      var tenants = await adminTenantService.listTenants();
       if (!mounted) return;
 
       final activeTenantId = authService.tenantId;
       final homeTenantId = authService.homeTenantId;
+
+      if (widget.lockToCurrentTenant) {
+        final scopedId = (activeTenantId ?? homeTenantId ?? '').trim();
+        tenants = tenants
+            .where((item) => item.tenantId == scopedId)
+            .toList(growable: false);
+      }
+
       TenantAdminSummary? selected;
 
       if (activeTenantId != null && activeTenantId.isNotEmpty) {
@@ -288,6 +310,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
 
       if (selected == null &&
           authService.isSuperadmin &&
+          !widget.lockToCurrentTenant &&
           homeTenantId != null &&
           homeTenantId.isNotEmpty) {
         for (final item in tenants) {
@@ -305,6 +328,9 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
         _filteredTenants = _filterTenants(_searchCtrl.text, tenants);
         _selectedTenant = selected;
         _loadingTenants = false;
+        if (widget.lockToCurrentTenant) {
+          _adminView = 'whatsapp';
+        }
       });
 
       if (selected != null) {
@@ -1236,26 +1262,28 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
         runSpacing: 8,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          _AdminViewChip(
-            label: 'Empresas',
-            icon: Icons.apartment_rounded,
-            selected: _adminView == 'tenants',
-            onTap: () => _switchAdminView('tenants'),
-          ),
-          _AdminViewChip(
-            label: 'Leads',
-            icon: Icons.contact_mail_outlined,
-            selected: _adminView == 'leads',
-            onTap: () => _switchAdminView('leads'),
-            badge: _leadSummary?.byStatus['new'],
-          ),
+          if (!widget.lockToCurrentTenant) ...[
+            _AdminViewChip(
+              label: 'Empresas',
+              icon: Icons.apartment_rounded,
+              selected: _adminView == 'tenants',
+              onTap: () => _switchAdminView('tenants'),
+            ),
+            _AdminViewChip(
+              label: 'Leads',
+              icon: Icons.contact_mail_outlined,
+              selected: _adminView == 'leads',
+              onTap: () => _switchAdminView('leads'),
+              badge: _leadSummary?.byStatus['new'],
+            ),
+          ],
           _AdminViewChip(
             label: 'WhatsApp',
             icon: Icons.phone_iphone_rounded,
             selected: _adminView == 'whatsapp',
             onTap: () => _switchAdminView('whatsapp'),
           ),
-          if (_adminView == 'leads') ...[
+          if (_adminView == 'leads' && !widget.lockToCurrentTenant) ...[
             const SizedBox(width: 8),
             _AdminViewSecondaryButton(
               label: _loadingLeads ? 'Atualizando...' : 'Atualizar',

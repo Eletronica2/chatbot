@@ -34,6 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navClients = 'clients';
   static const String _navBilling = 'billing';
   static const String _navTemplates = 'templates';
+  static const String _navWhatsApp = 'whatsapp';
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
@@ -66,6 +67,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         label: 'Templates WhatsApp',
         icon: Icons.campaign_rounded,
         helper: 'Liste modelos aprovados e dispare testes para o destinatario Meta',
+      ),
+      AppSidebarItem(
+        id: _navWhatsApp,
+        label: 'WhatsApp',
+        icon: Icons.phonelink_setup_rounded,
+        helper: 'Conta, coexistência e integração Meta da sua empresa',
+        visible: !authService.isSuperadmin,
       ),
       AppSidebarItem(
         id: _navClients,
@@ -221,6 +229,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Ações';
       case _navTemplates:
         return 'Templates WhatsApp';
+      case _navWhatsApp:
+        return 'WhatsApp';
       case _navClients:
         return 'Clientes';
       case _navBilling:
@@ -240,6 +250,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Cadastre ações reutilizáveis — imagens, links, requisições HTTP e mais — para usar nos fluxos.';
       case _navTemplates:
         return 'Visualize modelos oficiais da Meta e envie testes para o numero cadastrado como destinatario.';
+      case _navWhatsApp:
+        return 'Conecte sua conta WhatsApp Business, acompanhe coexistência e gerencie a integração da sua empresa.';
       case _navClients:
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
@@ -267,6 +279,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return KeyedSubtree(
           key: ValueKey<String>('templates-${authService.tenantId}'),
           child: const TemplateDispatchScreen(),
+        );
+      case _navWhatsApp:
+        return KeyedSubtree(
+          key: ValueKey<String>('whatsapp-${authService.tenantId}'),
+          child: BackofficeScreen(
+            embedded: true,
+            onLogout: _logout,
+            onOpenTenantFlows: () => _selectNav(_navAutomations),
+            initialAdminView: 'whatsapp',
+            lockToCurrentTenant: true,
+          ),
         );
       case _navClients:
         return KeyedSubtree(
