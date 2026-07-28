@@ -1185,6 +1185,7 @@ class _BackofficeScreenState extends State<BackofficeScreen> {
     }
     final content = PremiumPageBackground(
       intensity: AmbientIntensity.soft,
+      intensity: AmbientIntensity.soft,
       child: Column(
         children: [
           _buildAdminViewSwitcher(),

@@ -60,19 +60,12 @@ class AppSidebar extends StatelessWidget {
     final visibleItems = items.where((item) => item.visible).toList();
 
     return Container(
-      width: 276,
-      decoration: BoxDecoration(
+      width: 248,
+      decoration: const BoxDecoration(
         color: AppColors.sidebar,
         border: Border(
-          right: BorderSide(color: AppColors.borderSubtle.withValues(alpha: 0.9)),
+          right: BorderSide(color: Color(0xFF242938)),
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x28000000),
-            blurRadius: 32,
-            offset: Offset(4, 0),
-          ),
-        ],
       ),
       child: Column(
         children: [
@@ -257,43 +250,42 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
           borderRadius: AppRadius.lg,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             decoration: BoxDecoration(
-              gradient: selected
-                  ? LinearGradient(
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.14),
-                        AppColors.accentBlue.withValues(alpha: 0.08),
-                      ],
-                    )
-                  : null,
               color: selected
-                  ? null
+                  ? AppColors.primary.withValues(alpha: 0.10)
                   : (_hovering
-                      ? AppColors.surfaceAlt.withValues(alpha: 0.65)
+                      ? AppColors.surfaceAlt.withValues(alpha: 0.55)
                       : Colors.transparent),
-              borderRadius: AppRadius.lg,
-              border: Border.all(
-                color: selected
-                    ? AppColors.primary.withValues(alpha: 0.35)
-                    : Colors.transparent,
+              borderRadius: AppRadius.md,
+              border: Border(
+                left: BorderSide(
+                  width: 2,
+                  color: selected ? AppColors.primary : Colors.transparent,
+                ),
+                top: BorderSide(
+                  color: selected
+                      ? const Color(0xFF242938)
+                      : Colors.transparent,
+                ),
+                right: BorderSide(
+                  color: selected
+                      ? const Color(0xFF242938)
+                      : Colors.transparent,
+                ),
+                bottom: BorderSide(
+                  color: selected
+                      ? const Color(0xFF242938)
+                      : Colors.transparent,
+                ),
               ),
-              boxShadow: selected ? AppShadows.navActive : null,
             ),
             child: Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.surfaceSoft : AppColors.surfaceAlt,
-                    borderRadius: AppRadius.md,
-                  ),
-                  child: Icon(
-                    widget.item.icon,
-                    size: 20,
-                    color: selected ? AppColors.primarySoft : AppColors.textMuted,
-                  ),
+                Icon(
+                  widget.item.icon,
+                  size: 20,
+                  color: selected ? AppColors.primary : AppColors.textMuted,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -303,8 +295,8 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                       Text(
                         widget.item.label,
                         style: TextStyle(
-                          color: selected ? Colors.white : AppColors.text,
-                          fontSize: 14,
+                          color: selected ? AppColors.text : AppColors.text,
+                          fontSize: 13.5,
                           fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                         ),
                       ),
@@ -324,11 +316,6 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                       ],
                     ],
                   ),
-                ),
-                Icon(
-                  selected ? Icons.north_east_rounded : Icons.chevron_right_rounded,
-                  color: selected ? AppColors.primarySoft : AppColors.textSoft,
-                  size: 18,
                 ),
               ],
             ),

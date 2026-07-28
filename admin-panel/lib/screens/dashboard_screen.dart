@@ -325,6 +325,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildConversationsPage() {
     return PremiumPageBackground(
+      intensity: AmbientIntensity.soft,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(36, 28, 36, 36),
         child: Column(

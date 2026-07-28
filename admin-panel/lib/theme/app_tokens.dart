@@ -121,94 +121,65 @@ class AppDurations {
 }
 
 class AppShadows {
+  /// Quiet surfaces (Stitch Premium Obsidian): soft black, no colored glows.
   static const List<BoxShadow> panelHover = <BoxShadow>[
     BoxShadow(
-      color: Color(0x1A60A5FA),
-      blurRadius: 40,
-      offset: Offset(0, 16),
-    ),
-    BoxShadow(
-      color: Color(0x40000000),
-      blurRadius: 32,
-      offset: Offset(0, 12),
+      color: Color(0x33000000),
+      blurRadius: 24,
+      offset: Offset(0, 10),
     ),
   ];
 
   static const List<BoxShadow> card = <BoxShadow>[
     BoxShadow(
-      color: Color(0x50000000),
-      blurRadius: 48,
-      offset: Offset(0, 24),
-    ),
-    BoxShadow(
-      color: Color(0x0AFFFFFF),
-      blurRadius: 0,
-      offset: Offset(0, 1),
+      color: Color(0x28000000),
+      blurRadius: 20,
+      offset: Offset(0, 8),
     ),
   ];
 
   static const List<BoxShadow> hover = <BoxShadow>[
     BoxShadow(
-      color: Color(0x1AF97316),
-      blurRadius: 32,
+      color: Color(0x3D000000),
+      blurRadius: 28,
       offset: Offset(0, 12),
-    ),
-    BoxShadow(
-      color: Color(0x4060A5FA),
-      blurRadius: 40,
-      offset: Offset(0, 16),
     ),
   ];
 
   static const List<BoxShadow> glowOrange = <BoxShadow>[
     BoxShadow(
-      color: Color(0x33F97316),
-      blurRadius: 24,
-      spreadRadius: -6,
+      color: Color(0x22F97316),
+      blurRadius: 18,
     ),
   ];
 
   static const List<BoxShadow> glowBlue = <BoxShadow>[
     BoxShadow(
-      color: Color(0x3360A5FA),
-      blurRadius: 28,
-      spreadRadius: -8,
+      color: Color(0x22000000),
+      blurRadius: 18,
     ),
   ];
 
   static const List<BoxShadow> navActive = <BoxShadow>[
     BoxShadow(
-      color: Color(0x28F97316),
-      blurRadius: 20,
-      offset: Offset(0, 4),
+      color: Color(0x18000000),
+      blurRadius: 12,
+      offset: Offset(0, 2),
     ),
   ];
 
-  /// Glow violeta para hero/highlights premium.
   static const List<BoxShadow> glowViolet = <BoxShadow>[
     BoxShadow(
-      color: Color(0x408B5CF6),
-      blurRadius: 40,
-      spreadRadius: -10,
+      color: Color(0x22000000),
+      blurRadius: 24,
     ),
   ];
 
-  /// Sombra cinematográfica para painéis grandes (hero mockup, planos).
   static const List<BoxShadow> cinematic = <BoxShadow>[
     BoxShadow(
-      color: Color(0x66000000),
-      blurRadius: 60,
-      offset: Offset(0, 28),
-    ),
-    BoxShadow(
-      color: Color(0x33000000),
-      blurRadius: 100,
-      offset: Offset(0, 50),
-    ),
-    BoxShadow(
-      color: Color(0x14FFFFFF),
-      blurRadius: 0,
-      offset: Offset(0, 1),
+      color: Color(0x44000000),
+      blurRadius: 40,
+      offset: Offset(0, 20),
     ),
   ];
 }

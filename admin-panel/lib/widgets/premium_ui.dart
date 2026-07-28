@@ -307,14 +307,14 @@ class _PremiumGlassCardState extends State<PremiumGlassCard> {
           curve: Curves.easeOutCubic,
           padding: widget.padding,
           decoration: BoxDecoration(
-            gradient: AppGradients.glassPanel,
-            borderRadius: AppRadius.xxl,
+            color: AppColors.surface,
+            borderRadius: AppRadius.lg,
             border: Border.all(
               color: _hovered || widget.highlight
                   ? AppColors.primary.withValues(alpha: 0.35)
-                  : AppColors.borderSubtle,
+                  : const Color(0xFF242938),
             ),
-            boxShadow: _hovered ? AppShadows.hover : AppShadows.card,
+            boxShadow: _hovered ? AppShadows.hover : null,
           ),
           clipBehavior: Clip.antiAlias,
           child: widget.child,
