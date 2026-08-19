@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Automações</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-primary": "#003543",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb1",
+                        "inverse-primary": "#00677f",
+                        "secondary-container": "#571bc1",
+                        "on-primary-fixed-variant": "#004e60",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "surface-variant": "#2f3639",
+                        "surface-container-highest": "#2f3639",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-container-lowest": "#090f12",
+                        "on-tertiary": "#442b00",
+                        "primary-fixed": "#b7eaff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b3134",
+                        "tertiary": "#ffd59c",
+                        "secondary-fixed": "#e9ddff",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00566a",
+                        "surface-container-low": "#161d1f",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "tertiary-container": "#feb127",
+                        "outline": "#859399",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#dde3e7",
+                        "primary": "#a4e6ff",
+                        "on-secondary-container": "#c4abff",
+                        "secondary": "#d0bcff",
+                        "on-error": "#690005",
+                        "on-secondary": "#3c0091",
+                        "on-secondary-fixed": "#23005c",
+                        "on-surface-variant": "#bbc9cf",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-container": "#6b4700",
+                        "surface-container-high": "#242b2e",
+                        "surface-dim": "#0e1417",
+                        "surface": "#0e1417",
+                        "surface-container": "#1a2123",
+                        "on-primary-fixed": "#001f28",
+                        "background": "#0e1417",
+                        "on-background": "#dde3e7",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "surface-bright": "#333a3d",
+                        "inverse-surface": "#dde3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-lg": "2rem",
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #07080d; /* Deep background layer */
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        /* Custom Scrollbar for dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(14, 20, 23, 0.5); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2f3639; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3c494e; 
+        }
+    </style>
+</head>
+<body class="text-on-background font-body-md min-h-screen flex overflow-hidden" style="background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px); background-size: 20px 20px;">
+<!-- SideNavBar -->
+<nav class="bg-surface-container border-r border-outline-variant h-screen fixed left-0 top-0 w-[216px] transition-all duration-300 shadow-sm flex flex-col z-50 md:flex hidden">
+<!-- Logo Area -->
+<div class="h-16 flex items-center px-6 border-b border-outline-variant/30">
+<span class="font-headline-md text-headline-md text-primary font-bold">Atenda Ai</span>
+</div>
+<!-- Navigation Links -->
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[216px] w-full min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface/80 backdrop-blur-md flex justify-between items-center h-16 px-gutter w-full z-40 sticky top-0">
+<!-- Mobile Menu Toggle & Title -->
+<div class="flex items-center md:hidden">
+<button class="text-on-surface-variant mr-4 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-sm text-headline-sm text-primary">Automações</span>
+</div>
+<!-- Page Title (Desktop) -->
+<div class="hidden md:flex items-center">
+<h1 class="font-headline-sm text-headline-sm text-on-surface">Gerenciador de Automações</h1>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<!-- Search Bar -->
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 transform -translate-y-1/2 text-on-surface-variant/50 text-sm">search</span>
+<input class="bg-surface-container-lowest border border-outline-variant/30 text-on-surface rounded-full py-1.5 pl-10 pr-4 text-sm focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all w-64 placeholder-on-surface-variant/40" placeholder="Buscar automação..." type="text"/>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant ml-2">
+<img alt="Foto de Perfil" class="w-full h-full object-cover" data-alt="A futuristic, hyper-realistic macro portrait of an artificial intelligence avatar interface, rendered with high contrast, bright cyan and deep black tones, glowing subtly against a dark background, embodying the precise tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBin449Ih07C35oL8pf-h73qZxIXEKgeYE6mPXUUV5Gc27pk1ACdLXLxXOWGCpXKnnzThY1YppdLY7W9pIcRSySIBKYX-mz1cKvWqAq-W2KAARJe50l09RflNmcTN__zGDFvwd4wcimgGJKcugS9-O28Pc6pE1KfMZ3RSRnhr9Bt2YpyFiELm3PYtB17UVPb9PuoXbx06dCLdCn4H6uDN-YbqYFbvPSeAvJ6fydfJtcBfJjzPK1O4-i"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto p-gutter">
+<!-- Header Actions -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">Automações Ativas</h2>
+<p class="font-body-md text-body-md text-on-surface-variant/70">Gerencie fluxos e respostas inteligentes do seu assistente.</p>
+</div>
+<button class="bg-primary text-on-primary hover:bg-primary-container transition-colors px-6 py-2.5 rounded-lg font-label-md text-label-md flex items-center gap-2 shadow-[0_0_15px_rgba(164,230,255,0.2)]">
+<span class="material-symbols-outlined text-lg">add</span>
+                    Nova Automação
+                </button>
+</div>
+<!-- Stats/Summary Bento Grid -->
+<!-- Main Table Section (High Density, Modern) -->
+<div class="bg-surface-container border border-outline-variant/30 rounded-xl overflow-hidden shadow-sm">
+<!-- Table Controls -->
+<div class="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-high/50">
+<div class="flex items-center gap-4">
+<button class="text-on-surface font-label-md text-label-md flex items-center gap-1 hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">filter_list</span> Filtrar
+                        </button>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<span class="font-body-md text-body-md text-on-surface-variant/70 text-xs">Exibindo 6 de 12 automações</span>
+</div>
+<div class="flex gap-2">
+<button class="p-1.5 rounded-md hover:bg-surface-variant text-on-surface-variant transition-colors">
+<span class="material-symbols-outlined text-sm">view_list</span>
+</button>
+<button class="p-1.5 rounded-md hover:bg-surface-variant text-on-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-sm">grid_view</span>
+</button>
+</div>
+</div>
+<!-- Table Content -->
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest/50 text-on-surface-variant font-label-md text-label-md uppercase tracking-wider">
+<th class="p-4 font-semibold w-16 text-center">Status</th>
+<th class="p-4 font-semibold w-1/4">Nome</th>
+<th class="p-4 font-semibold w-2/4">Descrição</th>
+<th class="p-4 font-semibold text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/20 font-body-md text-body-md">
+<!-- Row 1 -->
+<tr class="hover:bg-surface-variant/20 transition-colors group cursor-pointer">
+<td class="p-4 text-center">
+<!-- Toggle -->
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-primary after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary shadow-[0_0_10px_rgba(164,230,255,0.2)]"></div>
+</label>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:shadow-[0_0_12px_rgba(164,230,255,0.3)] transition-shadow">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">forum</span>
+</div>
+<span class="font-semibold text-on-surface">Boas Vindas WhatsApp</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant">
+                                    Envia mensagem de saudação inicial com menu de opções quando um novo contato chama.
+                                </td>
+<td class="p-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-on-surface-variant hover:text-primary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Editar">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-secondary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Ver Fluxo">
+<span class="material-symbols-outlined text-sm">account_tree</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Excluir">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-surface-variant/20 transition-colors group cursor-pointer">
+<td class="p-4 text-center">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-primary after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary shadow-[0_0_10px_rgba(164,230,255,0.2)]"></div>
+</label>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-secondary/10 border border-secondary/20 flex items-center justify-center text-secondary group-hover:shadow-[0_0_12px_rgba(208,188,255,0.3)] transition-shadow">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
+</div>
+<span class="font-semibold text-on-surface">Agendamento de Consulta</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant">
+                                    Coleta dados do paciente e marca na agenda do Google integrada.
+                                    <span class="inline-flex items-center ml-2 px-2 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary border border-secondary/20">
+<span class="material-symbols-outlined text-[10px] mr-1">auto_awesome</span> IA Ativa
+                                    </span>
+</td>
+<td class="p-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-on-surface-variant hover:text-primary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Editar">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-secondary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Ver Fluxo">
+<span class="material-symbols-outlined text-sm">account_tree</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Excluir">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-surface-variant/20 transition-colors group cursor-pointer">
+<td class="p-4 text-center">
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-9 h-5 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-on-surface-variant after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-surface-variant/30 border border-outline-variant/30 flex items-center justify-center text-on-surface-variant group-hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">payments</span>
+</div>
+<span class="font-semibold text-on-surface-variant">Lembrete de Cobrança</span>
+</div>
+</td>
+<td class="p-4 text-on-surface-variant/70">
+                                    Dispara mensagem 2 dias antes do vencimento do boleto. (Pausada para revisão)
+                                </td>
+<td class="p-4 text-right">
+<div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 text-on-surface-variant hover:text-primary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Editar">
+<span class="material-symbols-outlined text-sm">edit</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-secondary bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Ver Fluxo">
+<span class="material-symbols-outlined text-sm">account_tree</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-error bg-surface-container rounded-md border border-transparent hover:border-outline-variant/50 transition-all" title="Excluir">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="p-4 border-t border-outline-variant/30 flex items-center justify-between bg-surface-container-lowest/30">
+<span class="text-xs text-on-surface-variant">Mostrando 1-3 de 12 automações</span>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-variant transition-colors disabled:opacity-50"><span class="material-symbols-outlined text-sm">chevron_left</span></button>
+<button class="px-2.5 py-1 rounded bg-primary/10 text-primary text-xs font-bold border border-primary/20">1</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:bg-surface-variant transition-colors text-xs">2</button>
+<button class="px-2.5 py-1 rounded text-on-surface-variant hover:bg-surface-variant transition-colors text-xs">3</button>
+<button class="p-1 rounded text-on-surface-variant hover:bg-surface-variant transition-colors"><span class="material-symbols-outlined text-sm">chevron_right</span></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface-container border-t border-outline-variant/30 flex justify-around items-center h-16 z-50 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-xl mb-1">dashboard</span>
+<span class="text-[10px] font-label-md">Geral</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-xl mb-1">chat</span>
+<span class="text-[10px] font-label-md">Conversas</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-primary relative" href="#">
+<div class="absolute -top-1 w-10 h-1 bg-primary rounded-b-full"></div>
+<span class="material-symbols-outlined text-xl mb-1" style="font-variation-settings: 'FILL' 1;">bolt</span>
+<span class="text-[10px] font-label-md font-bold">Automações</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-xl mb-1">group</span>
+<span class="text-[10px] font-label-md">Equipe</span>
+</a>
+</nav>
+</body></html>

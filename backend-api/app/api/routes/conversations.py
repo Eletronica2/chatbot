@@ -125,7 +125,7 @@ async def get_conversation_flow(
     state = session.conversation_state or {}
 
     return {
-        "flow_name": session.active_flow or state.get("active_flow") or state.get("last_flow") or "start",
+        "flow_name": session.active_flow or state.get("active_flow") or state.get("last_flow"),
         "current_state": session.current_state or state.get("last_state") or "greeting",
         "state_data": state,
         "updated_at": session.last_interaction.isoformat(),

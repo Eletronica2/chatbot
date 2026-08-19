@@ -189,7 +189,7 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
           final subscription = data.subscription;
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+            padding: AppPageInsets.of(context).copyWith(bottom: 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

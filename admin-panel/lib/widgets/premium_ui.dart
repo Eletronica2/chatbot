@@ -45,9 +45,10 @@ class _PremiumPageBackgroundState extends State<PremiumPageBackground>
       fit: StackFit.expand,
       children: [
         const DecoratedBox(
-          decoration: BoxDecoration(gradient: AppGradients.heroBackdrop),
+          decoration: BoxDecoration(color: AppColors.background),
         ),
-        AnimatedAmbientLayer(controller: _ctrl, intensity: widget.intensity),
+        if (widget.intensity != AmbientIntensity.soft)
+          AnimatedAmbientLayer(controller: _ctrl, intensity: widget.intensity),
         widget.child,
       ],
     );
@@ -278,7 +279,7 @@ class PremiumGlassCard extends StatefulWidget {
   const PremiumGlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(AppSpacing.lg),
+    this.padding = const EdgeInsets.all(AppSpacing.md),
     this.onTap,
     this.highlight = false,
   });
@@ -314,7 +315,7 @@ class _PremiumGlassCardState extends State<PremiumGlassCard> {
                   ? AppColors.primary.withValues(alpha: 0.35)
                   : const Color(0xFF242938),
             ),
-            boxShadow: _hovered ? AppShadows.hover : null,
+            boxShadow: null,
           ),
           clipBehavior: Clip.antiAlias,
           child: widget.child,
@@ -893,14 +894,14 @@ class _PremiumFilterChipState extends State<PremiumFilterChip> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: active
-                ? AppColors.accentBlue.withValues(alpha: 0.14)
+                ? AppColors.primaryMuted
                 : (_hovered
                     ? AppColors.surfaceAlt.withValues(alpha: 0.72)
                     : AppColors.background.withValues(alpha: 0.35)),
             borderRadius: AppRadius.pill,
             border: Border.all(
               color: active
-                  ? AppColors.accentBlue.withValues(alpha: 0.34)
+                  ? AppColors.primary.withValues(alpha: 0.45)
                   : AppColors.borderSubtle.withValues(alpha: 0.62),
             ),
           ),

@@ -6,21 +6,25 @@ import '../services/actions_service.dart';
 import '../services/auth_service.dart';
 import '../services/flow_admin_service.dart';
 import '../services/tenant_service.dart';
+import '../theme/app_motion.dart';
+import '../theme/app_tokens.dart';
 import '../widgets/premium_ui.dart';
 
-const _kBg = Color(0xFF0A0C10);
-const _kSurface = Color(0xFF12161F);
-const _kCard = Color(0xFF1A2030);
-const _kInput = Color(0xFF0E1219);
-const _kSubCard = Color(0xFF0D1018);
-const _kBorder = Color(0xFF2E3A52);
-const _kText = Color(0xFFF8F6F2);
-const _kMuted = Color(0xFFA8B0C4);
-const _kSubtle = Color(0xFF6E7A94);
-const _kAccent = Color(0xFFF5A623);
-const _kAccentSoft = Color(0xFFFFC857);
-const _kSuccess = Color(0xFF2DD4A8);
-const _kDanger = Color(0xFFFF6B6B);
+const _kBg = Color(0xFF07080D);
+const _kSurface = Color(0xFF11141D);
+const _kCard = Color(0xFF161B27);
+const _kInput = Color(0xFF0C0E16);
+const _kSubCard = Color(0xFF0C0E16);
+const _kBorder = Color(0xFF252B3A);
+const _kText = Color(0xFFF4F5F7);
+const _kMuted = Color(0xFF8B93A7);
+const _kSubtle = Color(0xFF5C6478);
+const _kAccent = Color(0xFF22D3EE);
+const _kAccentSoft = Color(0xFF67E8F9);
+const _kOnAccent = Color(0xFF042F2E);
+const _kSuccess = Color(0xFF2DD4BF);
+const _kDanger = Color(0xFFF87171);
+const double _kSplit = 1100;
 
 /// Converte um identificador tecnico (snake_case ou kebab-case) em um nome
 /// amigavel em Title Case. Quando uma `description`/`displayName` for fornecida
@@ -209,12 +213,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   final TextEditingController _simulationInputCtrl = TextEditingController();
   final ScrollController _simulationScrollCtrl = ScrollController();
+  final TextEditingController _flowSearchCtrl = TextEditingController();
 
   List<FlowSummaryModel> _flows = <FlowSummaryModel>[];
   bool _loadingFlows = true;
+  String? _flowsError;
+  bool _loadingDraft = false;
+  String? _draftError;
+  bool _compactEditorOpen = false;
+  String? _selectedFlowName;
   _FlowDraft? _draft;
   bool _saving = false;
   bool _restoring = false;
+  String? _saveFeedback;
   FlowYamlDetail? _draftDetail;
   bool _aiEnabled = false;
   String _automationFilter = 'all';
@@ -235,6 +246,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _simulationInputCtrl.dispose();
     _simulationScrollCtrl.dispose();
+    _flowSearchCtrl.dispose();
     _draft?.dispose();
     super.dispose();
   }
@@ -275,27 +287,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    setState(() => _loadingFlows = true);
+    setState(() {
+      _loadingFlows = true;
+      _flowsError = null;
+    });
     try {
       final flows = await flowAdminService.listFlows();
       if (mounted) {
         setState(() {
           _flows = flows;
           _loadingFlows = false;
+          _flowsError = null;
         });
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _loadingFlows = false);
+        setState(() {
+          _loadingFlows = false;
+          _flowsError = 'Não foi possível carregar as automações.';
+        });
       }
     }
   }
 
-  Future<void> _selectFlow(String name) async {
+  Future<void> _selectFlow(String name, {bool openCompact = true}) async {
     setState(() {
+      _selectedFlowName = name;
+      _loadingDraft = true;
+      _draftError = null;
       _draft?.dispose();
       _draft = null;
       _draftDetail = null;
+      _saveFeedback = null;
+      if (openCompact) _compactEditorOpen = true;
     });
 
     try {
@@ -307,12 +331,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _draft = draft;
         _draftDetail = detail;
+        _loadingDraft = false;
+        _draftError = null;
       });
       _resetPreview(draft);
     } catch (error) {
       if (!mounted) {
         return;
       }
+      setState(() {
+        _loadingDraft = false;
+        _draftError = 'Não foi possível carregar esta automação.';
+      });
       _showErr('Erro ao carregar automa\u00e7\u00e3o: $error');
     }
   }
@@ -628,7 +658,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return;
     }
 
-    setState(() {});
+    setState(() => _saveFeedback = null);
   }
 
   void _scrollSimulationToBottom() {
@@ -854,11 +884,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (draft.name.isEmpty) {
       _showErr('O nome da automa\u00e7\u00e3o \u00e9 obrigat\u00f3rio.');
+      setState(() => _saveFeedback = 'Nome obrigatório.');
       return;
     }
 
     if (draft.states.isEmpty) {
       _showErr('Adicione pelo menos uma etapa na automa\u00e7\u00e3o.');
+      setState(() => _saveFeedback = 'Adicione ao menos uma etapa.');
       return;
     }
 
@@ -867,11 +899,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final stepName = state.name.trim();
       if (stepName.isEmpty) {
         _showErr('Preencha o nome de todas as etapas.');
+        setState(() => _saveFeedback = 'Há etapa sem nome.');
         return;
       }
       final normalized = stepName.toLowerCase();
       if (seenSteps.contains(normalized)) {
         _showErr('Existem etapas com o mesmo nome. Use nomes diferentes.');
+        setState(() => _saveFeedback = 'Há etapas com o mesmo nome.');
         return;
       }
       seenSteps.add(normalized);
@@ -884,6 +918,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _showErr(
             'Defina a proxima etapa para o atalho "${option.labelCtrl.text.trim()}" na etapa "${state.name}".',
           );
+          setState(() => _saveFeedback = 'Há atalho sem próxima etapa.');
           return;
         }
       }
@@ -916,8 +951,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: _kSuccess,
         ),
       );
+      if (mounted) {
+        setState(() => _saveFeedback = 'Salva');
+      }
     } catch (error) {
       if (mounted) {
+        setState(() => _saveFeedback = 'Falha ao salvar');
         _showErr('Erro ao salvar: $error');
       }
     } finally {
@@ -1190,7 +1229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Defina um nome e escolha como quer comecar. Voce pode montar tudo do zero ou usar um modelo apenas para adiantar a estrutura inicial.',
+                  'Defina um nome e escolha como quer começar. Você pode montar tudo do zero ou usar um modelo apenas para adiantar a estrutura inicial.',
                   style: TextStyle(color: _kMuted, fontSize: 13, height: 1.45),
                 ),
                 const SizedBox(height: 16),
@@ -1257,7 +1296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Comecar do zero',
+                              'Começar do zero',
                               style: TextStyle(
                                 color: _kText,
                                 fontSize: 14,
@@ -1267,8 +1306,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(height: 4),
                             Text(
                               startFromScratch
-                                  ? 'Vamos abrir uma automacao com uma etapa inicial vazia para voce definir mensagem, respostas e proximos passos do seu jeito.'
-                                  : 'Desative esta opcao se quiser usar um modelo pronto como ponto de partida.',
+                                  ? 'Vamos abrir uma automação com uma etapa inicial vazia para você definir mensagem, respostas e próximos passos do seu jeito.'
+                                  : 'Desative esta opção se quiser usar um modelo pronto como ponto de partida.',
                               style: const TextStyle(
                                 color: _kMuted,
                                 fontSize: 12,
@@ -1315,7 +1354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Voce vai comecar com uma etapa inicial em branco. Depois, preencha a mensagem, adicione atalhos opcionais e ligue a etapa aos proximos passos.',
+                                  'Você vai começar com uma etapa inicial em branco. Depois, preencha a mensagem, adicione atalhos opcionais e ligue a etapa aos próximos passos.',
                                   style: TextStyle(
                                     color: _kMuted,
                                     fontSize: 12,
@@ -1453,7 +1492,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('Cancelar', style: TextStyle(color: _kMuted)),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: _kAccent),
+              style: FilledButton.styleFrom(
+                backgroundColor: _kAccent,
+                foregroundColor: _kOnAccent,
+              ),
               onPressed: () async {
                 final name = _normalizeFlowName(nameCtrl.text);
                 if (name.isEmpty) {
@@ -1477,12 +1519,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     startState: states.isNotEmpty ? states.first.name : '',
                     states: states,
                   );
+                  _selectedFlowName = name;
+                  _compactEditorOpen = true;
+                  _loadingDraft = false;
+                  _draftError = null;
+                  _draftDetail = null;
                 });
 
                 final draft = _draft;
                 if (draft != null) {
                   _resetPreview(draft);
-                  await _openCurrentDraftEditorDialog();
                 }
               },
               child: Text(
@@ -1501,59 +1547,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showGuidedFlowDialog();
   }
 
-  Future<void> _openFlowEditorDialog(String name) async {
-    await _selectFlow(name);
+  Future<void> _openCurrentDraftTestDialog() async {
     final draft = _draft;
-    if (!mounted || draft == null) {
-      return;
-    }
+    if (draft == null) return;
     await _showAutomationDialog(
-      title: 'Editar automa\u00e7\u00e3o',
+      title: 'Testar automa\u00e7\u00e3o',
       subtitle: humanizeFlowName(draft.name),
-      width: 1200,
-      height: 820,
-      child: StatefulBuilder(
-        builder: (context, _) => _FlowEditorView(
-          key: ValueKey('editor-${draft.name}'),
-          draft: draft,
-          saving: _saving,
-          onSave: _save,
-          autoOptionId: _autoOptionId,
-          onChanged: _handleDraftChanged,
-          hasBaseSnapshot: _draftDetail?.hasBaseSnapshot ?? false,
-          isBaseVersion: _draftDetail?.isBaseVersion ?? true,
-          restoring: _restoring,
-          onRestoreBase: (_draftDetail?.hasBaseSnapshot ?? false) ? _restoreFlowToBase : null,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openCurrentDraftEditorDialog() async {
-    final draft = _draft;
-    if (draft == null) {
-      return;
-    }
-    await _showAutomationDialog(
-      title: 'Editar automa\u00e7\u00e3o',
-      subtitle: humanizeFlowName(draft.name),
-      width: 1200,
-      height: 820,
-      child: StatefulBuilder(
-        builder: (context, _) => _FlowEditorView(
-          key: ValueKey('editor-${draft.name}'),
-          draft: draft,
-          saving: _saving,
-          onSave: _save,
-          autoOptionId: _autoOptionId,
-          onChanged: _handleDraftChanged,
-          hasBaseSnapshot: _draftDetail?.hasBaseSnapshot ?? false,
-          isBaseVersion: _draftDetail?.isBaseVersion ?? true,
-          restoring: _restoring,
-          isCreating: true,
-          onRestoreBase: (_draftDetail?.hasBaseSnapshot ?? false) ? _restoreFlowToBase : null,
-        ),
-      ),
+      width: 960,
+      height: 760,
+      child: _FlowTestView(draft: draft),
     );
   }
 
@@ -1652,31 +1654,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final split = MediaQuery.sizeOf(context).width >= _kSplit;
+    final Widget body;
+    if (split) {
+      body = Row(
+        children: [
+          SizedBox(width: 292, child: _buildListPane()),
+          Container(width: 1, color: AppColors.divider),
+          Expanded(child: _buildEditorPane(showBack: false)),
+        ],
+      );
+    } else if (_compactEditorOpen &&
+        (_draft != null || _loadingDraft || _draftError != null)) {
+      body = _buildEditorPane(showBack: true);
+    } else {
+      body = _buildListPane();
+    }
+
     final content = PremiumPageBackground(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return SizedBox(
-                width: constraints.maxWidth,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(36, 32, 36, 36),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildPageHeader(),
-                    const SizedBox(height: 20),
-                    _buildAiConfigCard(),
-                    const SizedBox(height: 20),
-                    _buildAutomationListCard(),
-                  ],
-                ),
-              ),
-              );
-            },
-          ),
-        ),
-      ),
+      intensity: AmbientIntensity.soft,
+      child: body,
     );
 
     if (widget.embedded) {
@@ -1689,209 +1686,178 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildPageHeader() {
-    final titleBlock = Row(
-      mainAxisSize: MainAxisSize.min,
+  Widget _buildListPane() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!widget.embedded) ...[
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _kCard,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _kBorder),
-              ),
-              child: const Icon(
-                Icons.arrow_back_rounded,
-                color: _kMuted,
-                size: 18,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-        ],
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Automa\u00e7\u00f5es',
-              style: TextStyle(
-                color: _kText,
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Gerencie, edite e teste os fluxos do atendimento.',
-              style: TextStyle(
-                color: _kMuted,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final compact = constraints.maxWidth < 760;
-        final actionButton = PremiumAccentButton(
-          label: 'Nova automa\u00e7\u00e3o',
-          icon: Icons.add_rounded,
-          onPressed: _isSystemAdminHomeContext ? null : _showNewFlowDialog,
-          expand: compact,
-        );
-        if (compact) {
-          return Column(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              titleBlock,
-              const SizedBox(height: 16),
-              actionButton,
-            ],
-          );
-        }
-        return Row(
-          children: [
-            Expanded(child: titleBlock),
-            const SizedBox(width: 16),
-            actionButton,
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildAutomationListCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x16000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Suas automa\u00e7\u00f5es',
-                  style: TextStyle(
-                    color: _kText,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _isSystemAdminHomeContext
-                      ? 'Selecione uma empresa para visualizar as automa\u00e7\u00f5es deste tenant.'
-                      : 'Abra o menu de cada linha para editar ou testar uma automa\u00e7\u00e3o.',
-                  style: const TextStyle(
-                    color: _kMuted,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    PremiumFilterChip(
-                      label: 'Todos',
-                      selected: _automationFilter == 'all',
-                      onTap: () => setState(() => _automationFilter = 'all'),
-                    ),
-                    PremiumFilterChip(
-                      label: 'IA habilitada',
-                      icon: Icons.auto_awesome_rounded,
-                      selected: _automationFilter == 'ai',
-                      onTap: () => setState(() => _automationFilter = 'ai'),
-                    ),
-                    PremiumFilterChip(
-                      label: 'Com início',
-                      icon: Icons.flag_outlined,
-                      selected: _automationFilter == 'start',
-                      onTap: () => setState(() => _automationFilter = 'start'),
-                    ),
-                    PremiumFilterChip(
-                      label: 'Recentes',
-                      icon: Icons.schedule_rounded,
-                      selected: _automationFilter == 'recent',
-                      onTap: () => setState(() => _automationFilter = 'recent'),
+              Row(
+                children: [
+                  if (!widget.embedded) ...[
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back_rounded, color: _kMuted),
                     ),
                   ],
+                  const Expanded(
+                    child: Text(
+                      'Automações',
+                      style: TextStyle(
+                        color: _kText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed:
+                        _isSystemAdminHomeContext ? null : _showNewFlowDialog,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _kAccent,
+                      foregroundColor: _kOnAccent,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Nova'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _buildAiConfigCard(),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _flowSearchCtrl,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(color: _kText, fontSize: 13),
+                decoration: InputDecoration(
+                  hintText: 'Buscar por nome ou descrição',
+                  hintStyle: const TextStyle(color: _kSubtle, fontSize: 12),
+                  prefixIcon: const Icon(Icons.search_rounded, color: _kMuted, size: 18),
+                  isDense: true,
+                  filled: true,
+                  fillColor: _kInput,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _kBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _kBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: _kAccent),
+                  ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  PremiumFilterChip(
+                    label: 'Todos',
+                    selected: _automationFilter == 'all',
+                    onTap: () => setState(() => _automationFilter = 'all'),
+                  ),
+                  PremiumFilterChip(
+                    label: 'IA habilitada',
+                    icon: Icons.auto_awesome_rounded,
+                    selected: _automationFilter == 'ai',
+                    onTap: () => setState(() => _automationFilter = 'ai'),
+                  ),
+                  PremiumFilterChip(
+                    label: 'Com início',
+                    icon: Icons.flag_outlined,
+                    selected: _automationFilter == 'start',
+                    onTap: () => setState(() => _automationFilter = 'start'),
+                  ),
+                  PremiumFilterChip(
+                    label: 'Recentes',
+                    icon: Icons.schedule_rounded,
+                    selected: _automationFilter == 'recent',
+                    onTap: () => setState(() => _automationFilter = 'recent'),
+                  ),
+                ],
+              ),
+            ],
           ),
-          const Divider(height: 1, color: _kBorder),
-          _buildAutomationTableHeader(),
-          const Divider(height: 1, color: _kBorder),
-          _buildAutomationListBody(),
-        ],
-      ),
+        ),
+        const Divider(height: 1, color: _kBorder),
+        Expanded(child: _buildAutomationListBody()),
+      ],
     );
   }
 
-  Widget _buildAutomationTableHeader() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(24, 14, 18, 14),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Text(
-              'Automa\u00e7\u00e3o',
-              style: TextStyle(
-                color: _kSubtle,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
+  Widget _buildEditorPane({required bool showBack}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showBack)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => setState(() => _compactEditorOpen = false),
+                icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                label: const Text('Voltar'),
+                style: TextButton.styleFrom(foregroundColor: _kText),
               ),
             ),
           ),
-          Expanded(
-            flex: 4,
-            child: Text(
-              'Descri\u00e7\u00e3o',
-              style: TextStyle(
-                color: _kSubtle,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              'Primeira etapa',
-              style: TextStyle(
-                color: _kSubtle,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          SizedBox(width: 44),
-        ],
-      ),
+        Expanded(child: _buildEditorBody()),
+      ],
+    );
+  }
+
+  Widget _buildEditorBody() {
+    if (_isSystemAdminHomeContext) {
+      return _buildListPlaceholder(
+        icon: Icons.apartment_rounded,
+        title: 'Selecione uma empresa',
+        message:
+            'O tenant de sistema não possui automações próprias. Escolha uma empresa em Clientes para editar ou testar fluxos.',
+      );
+    }
+    if (_loadingDraft) {
+      return const _AutomationsSkeleton();
+    }
+    if (_draftError != null) {
+      return _AutomationsInlineError(
+        message: _draftError!,
+        onRetry: _selectedFlowName == null
+            ? _reloadFlows
+            : () => _selectFlow(_selectedFlowName!, openCompact: false),
+      );
+    }
+    final draft = _draft;
+    if (draft == null) {
+      return _buildListPlaceholder(
+        icon: Icons.account_tree_outlined,
+        title: 'Selecione uma automação',
+        message: 'Escolha um fluxo à esquerda para ver a estrutura e editar as etapas.',
+      );
+    }
+    return _FlowEditorView(
+      key: ValueKey('editor-${draft.name}'),
+      draft: draft,
+      saving: _saving,
+      onSave: _save,
+      autoOptionId: _autoOptionId,
+      onChanged: _handleDraftChanged,
+      hasBaseSnapshot: _draftDetail?.hasBaseSnapshot ?? false,
+      isBaseVersion: _draftDetail?.isBaseVersion ?? true,
+      restoring: _restoring,
+      isCreating: _draftDetail == null,
+      onRestoreBase:
+          (_draftDetail?.hasBaseSnapshot ?? false) ? _restoreFlowToBase : null,
+      onTest: _openCurrentDraftTestDialog,
+      saveFeedback: _saveFeedback,
     );
   }
 
@@ -1906,48 +1872,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (_loadingFlows) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+      return const _AutomationsSkeleton();
+    }
+
+    if (_flowsError != null) {
+      return _AutomationsInlineError(
+        message: _flowsError!,
+        onRetry: _reloadFlows,
+      );
     }
 
     final rows = _buildAutomationRows();
     if (rows.isEmpty) {
+      final searching = _flowSearchCtrl.text.trim().isNotEmpty;
       return _buildListPlaceholder(
-        icon: Icons.account_tree_outlined,
-        title: 'Nenhuma automa\u00e7\u00e3o criada',
-        message:
-            'Use o bot\u00e3o Nova automa\u00e7\u00e3o para criar o primeiro fluxo do atendimento.',
+        icon: searching ? Icons.search_off_rounded : Icons.account_tree_outlined,
+        title: searching
+            ? 'Nenhuma automação encontrada'
+            : 'Nenhuma automação criada',
+        message: searching
+            ? 'Ajuste a busca. Ela filtra nome e descrição já carregados.'
+            : 'Use o botão Nova para criar o primeiro fluxo do atendimento.',
       );
     }
 
     return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
       children: rows,
     );
   }
 
   List<Widget> _buildAutomationRows() {
+    final query = _flowSearchCtrl.text.trim().toLowerCase();
     final visibleFlows = _flows.where((flow) {
-      return switch (_automationFilter) {
+      final matchesFilter = switch (_automationFilter) {
         'ai' => _aiEnabled,
         'start' => (flow.startState ?? '').trim().isNotEmpty,
         _ => true,
       };
+      if (!matchesFilter) return false;
+      if (query.isEmpty) return true;
+      final name = flow.name.toLowerCase();
+      final human = humanizeFlowName(flow.name).toLowerCase();
+      final desc = (flow.description ?? '').toLowerCase();
+      return name.contains(query) || human.contains(query) || desc.contains(query);
     }).toList();
     if (_automationFilter == 'recent') {
       visibleFlows.sort((a, b) => b.name.compareTo(a.name));
     }
 
-    final rows = <Widget>[
+    return <Widget>[
       for (final flow in visibleFlows)
         _FlowListItem(
           flow: flow,
-          onEdit: () => _openFlowEditorDialog(flow.name),
+          selected: flow.name == _selectedFlowName,
+          onSelect: () => _selectFlow(flow.name),
+          onEdit: () => _selectFlow(flow.name),
           onTest: () => _openFlowTestDialog(flow.name),
         ),
     ];
-
-    return rows;
   }
 
   Widget _buildListPlaceholder({
@@ -2004,32 +1987,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Container(
       decoration: BoxDecoration(
         color: _kCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _aiEnabled
+              ? AppColors.accentPurple.withValues(alpha: 0.35)
+              : _kBorder,
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _aiEnabled ? const Color(0xFF064E3B) : _kSurface,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.smart_toy_rounded,
-              color: _aiEnabled ? _kSuccess : _kMuted,
-              size: 20,
-            ),
+          Icon(
+            Icons.auto_awesome_rounded,
+            color: _aiEnabled ? AppColors.accentPurple : _kMuted,
+            size: 16,
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2039,16 +2012,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   'IA do atendimento',
                   style: TextStyle(
                     color: _kText,
-                    fontSize: 15,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                const SizedBox(height: 3),
                 Text(
                   statusLabel,
                   style: TextStyle(
-                    color: _aiEnabled ? _kSuccess : _kMuted,
-                    fontSize: 12,
+                    color: _aiEnabled ? AppColors.accentPurple : _kMuted,
+                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -2057,7 +2029,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           Switch(
             value: _aiEnabled,
-            activeTrackColor: _kAccent,
+            activeTrackColor: AppColors.accentPurple,
             onChanged: _isSystemAdminHomeContext ? null : _toggleAi,
           ),
         ],
@@ -2968,11 +2940,15 @@ enum _FlowListAction { edit, test }
 class _FlowListItem extends StatefulWidget {
   const _FlowListItem({
     required this.flow,
+    required this.selected,
+    required this.onSelect,
     required this.onEdit,
     required this.onTest,
   });
 
   final FlowSummaryModel flow;
+  final bool selected;
+  final VoidCallback onSelect;
   final Future<void> Function() onEdit;
   final Future<void> Function() onTest;
 
@@ -2986,114 +2962,111 @@ class _FlowListItemState extends State<_FlowListItem> {
   @override
   Widget build(BuildContext context) {
     final flow = widget.flow;
-    final description = (flow.description ?? '').trim().isEmpty
-      ? 'Sem descri\u00e7\u00e3o informada'
-        : flow.description!.trim();
     final startState = (flow.startState ?? '').trim().isEmpty
-      ? 'Nao definida'
+        ? 'Nao definida'
         : flow.startState!.trim();
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        color: _hovered ? const Color(0xFF161F31) : Colors.transparent,
-        padding: const EdgeInsets.fromLTRB(24, 16, 18, 16),
-        child: Row(
-          children: [
-            Expanded(
-              flex: 3,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: widget.onSelect,
+            borderRadius: BorderRadius.circular(10),
+            child: AnimatedContainer(
+              duration: AppMotion.hoverOf(context),
+              curve: AppMotion.hoverCurve,
+              padding: const EdgeInsets.fromLTRB(10, 10, 4, 10),
+              decoration: BoxDecoration(
+                color: widget.selected
+                    ? AppColors.primaryMuted
+                    : (_hovered ? AppColors.surfaceSoft : Colors.transparent),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: widget.selected
+                      ? _kAccent.withValues(alpha: 0.45)
+                      : Colors.transparent,
+                ),
+              ),
               child: Row(
                 children: [
-                  Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: _kCard,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _kBorder),
-                    ),
-                    child: const Icon(
-                      Icons.account_tree_outlined,
-                      size: 18,
-                      color: _kAccentSoft,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          humanizeFlowName(flow.name),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: _kText,
+                            fontSize: 13,
+                            fontWeight: widget.selected
+                                ? FontWeight.w700
+                                : FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          (flow.description ?? '').trim().isEmpty
+                              ? flow.name
+                              : flow.description!.trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _kSubtle, fontSize: 11),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          startState == 'Nao definida'
+                              ? 'Início não definido'
+                              : 'Início: $startState',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _kMuted, fontSize: 11),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      humanizeFlowName(flow.name),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: _kText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  PopupMenuButton<_FlowListAction>(
+                    tooltip: 'Ações da automação',
+                    color: _kCard,
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: _kMuted,
+                      size: 18,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(color: _kBorder),
+                    ),
+                    onSelected: (action) async {
+                      switch (action) {
+                        case _FlowListAction.edit:
+                          await widget.onEdit();
+                          break;
+                        case _FlowListAction.test:
+                          await widget.onTest();
+                          break;
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem<_FlowListAction>(
+                        value: _FlowListAction.edit,
+                        child: Text('Editar', style: TextStyle(color: _kText)),
+                      ),
+                      PopupMenuItem<_FlowListAction>(
+                        value: _FlowListAction.test,
+                        child: Text('Testar', style: TextStyle(color: _kText)),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            Expanded(
-              flex: 4,
-              child: Text(
-                description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: _kMuted, fontSize: 12),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                startState,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: _kText, fontSize: 12),
-              ),
-            ),
-            SizedBox(
-              width: 44,
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: PopupMenuButton<_FlowListAction>(
-                    tooltip: 'A\u00e7\u00f5es da automa\u00e7\u00e3o',
-                  color: _kCard,
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: _kMuted,
-                    size: 18,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: _kBorder),
-                  ),
-                  onSelected: (action) async {
-                    switch (action) {
-                      case _FlowListAction.edit:
-                        await widget.onEdit();
-                        break;
-                      case _FlowListAction.test:
-                        await widget.onTest();
-                        break;
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem<_FlowListAction>(
-                      value: _FlowListAction.edit,
-                      child: Text('Editar', style: TextStyle(color: _kText)),
-                    ),
-                    PopupMenuItem<_FlowListAction>(
-                      value: _FlowListAction.test,
-                      child: Text('Testar', style: TextStyle(color: _kText)),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -3157,6 +3130,8 @@ class _FlowEditorView extends StatefulWidget {
     this.restoring = false,
     this.isCreating = false,
     this.onRestoreBase,
+    this.onTest,
+    this.saveFeedback,
   });
 
   final _FlowDraft draft;
@@ -3169,6 +3144,8 @@ class _FlowEditorView extends StatefulWidget {
   final bool restoring;
   final bool isCreating;
   final VoidCallback? onRestoreBase;
+  final VoidCallback? onTest;
+  final String? saveFeedback;
 
   @override
   State<_FlowEditorView> createState() => _FlowEditorViewState();
@@ -3189,6 +3166,10 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
     super.initState();
     _autoLayoutIfNeeded();
     _loadFlowActions();
+    if (widget.draft.states.isNotEmpty) {
+      _selectedIndex = 0;
+      _showGuide = false;
+    }
   }
 
   Future<void> _loadFlowActions() async {
@@ -3298,48 +3279,85 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
       children: [
         _buildTopBar(draft),
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── Canvas area ────────────────────────────────────────
-              Expanded(
-                child: draft.states.isEmpty
-                    ? _buildEmptyCanvas()
-                    : _FlowCanvas(
-                        draft: draft,
-                        selectedIndex: _selectedIndex,
-                        onSelectNode: _selectNode,
-                        onNodeMoved: (i, pos) {
-                          setState(() => draft.states[i].position = pos);
-                        },
-                        onAddState: _addState,
-                        onChanged: () {
-                          setState(() {});
-                          widget.onChanged();
-                        },
-                        onDeselectNode: _deselectNode,
-                      ),
-              ),
-              // ── Side panel ─────────────────────────────────────────
-              Container(
-                width: 420,
-                decoration: BoxDecoration(
-                  color: _kSurface,
-                  border: const Border(left: BorderSide(color: _kBorder)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      blurRadius: 28,
-                      offset: const Offset(-8, 0),
-                    ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final stacked = constraints.maxWidth < 720;
+              final canvas = draft.states.isEmpty
+                  ? _buildEmptyCanvas()
+                  : _FlowCanvas(
+                      draft: draft,
+                      selectedIndex: _selectedIndex,
+                      onSelectNode: _selectNode,
+                      onNodeMoved: (i, pos) {
+                        setState(() => draft.states[i].position = pos);
+                      },
+                      onAddState: _addState,
+                      onChanged: () {
+                        setState(() {});
+                        widget.onChanged();
+                      },
+                      onDeselectNode: _deselectNode,
+                    );
+              if (stacked) {
+                return Column(
+                  children: [
+                    _buildCompactStepStrip(draft),
+                    Expanded(child: _buildSidePanel(draft)),
                   ],
-                ),
-                child: _buildSidePanel(draft),
-              ),
-            ],
+                );
+              }
+              final panelWidth = constraints.maxWidth < 980 ? 320.0 : 380.0;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: canvas),
+                  Container(
+                    width: panelWidth,
+                    decoration: const BoxDecoration(
+                      color: _kSurface,
+                      border: Border(left: BorderSide(color: _kBorder)),
+                    ),
+                    child: _buildSidePanel(draft),
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCompactStepStrip(_FlowDraft draft) {
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        itemCount: draft.states.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (context, index) {
+          if (index == draft.states.length) {
+            return ActionChip(
+              avatar: const Icon(Icons.add_rounded, size: 16, color: _kOnAccent),
+              label: const Text('Etapa'),
+              backgroundColor: _kAccent,
+              labelStyle: const TextStyle(color: _kOnAccent, fontSize: 12),
+              onPressed: _addState,
+            );
+          }
+          final selected = _selectedIndex == index;
+          return ChoiceChip(
+            label: Text(
+              draft.states[index].name.isEmpty
+                  ? 'Etapa ${index + 1}'
+                  : draft.states[index].name,
+            ),
+            selected: selected,
+            onSelected: (_) => _selectNode(index),
+          );
+        },
+      ),
     );
   }
 
@@ -3365,7 +3383,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: const Color(0x1FF5A623),
+                  color: _kAccent.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: _kBorder),
                 ),
@@ -3482,6 +3500,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
           FilledButton.icon(
             style: FilledButton.styleFrom(
               backgroundColor: _kAccent,
+              foregroundColor: _kOnAccent,
               minimumSize: const Size.fromHeight(38),
             ),
             onPressed: _addState,
@@ -3552,7 +3571,10 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
-            style: FilledButton.styleFrom(backgroundColor: _kAccent),
+            style: FilledButton.styleFrom(
+              backgroundColor: _kAccent,
+              foregroundColor: _kOnAccent,
+            ),
             onPressed: _addState,
             icon: const Icon(Icons.add_rounded, size: 16),
             label: const Text('Criar primeira etapa'),
@@ -3589,7 +3611,10 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
       badgeHint = 'Você fez ajustes — restaure para voltar à versão base sempre que quiser.';
     }
 
-    return Row(
+    return Wrap(
+      spacing: 10,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -3615,8 +3640,8 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
             ],
           ),
         ),
-        const SizedBox(width: 10),
-        Expanded(
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
           child: Text(
             badgeHint,
             style: const TextStyle(color: _kSubtle, fontSize: 12, height: 1.4),
@@ -3624,8 +3649,7 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
             maxLines: 2,
           ),
         ),
-        if (canRestore) ...[
-          const SizedBox(width: 12),
+        if (canRestore)
           TextButton.icon(
             onPressed: widget.restoring ? null : widget.onRestoreBase,
             icon: widget.restoring
@@ -3644,112 +3668,188 @@ class _FlowEditorViewState extends State<_FlowEditorView> {
               ),
             ),
           ),
-        ],
+      ],
+    );
+  }
+
+  Widget _buildStartStateDropdown(_FlowDraft draft) {
+    return Container(
+      height: 36,
+      constraints: const BoxConstraints(minWidth: 140),
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: _kCard,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _kBorder),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: draft.stateNames.contains(draft.startState)
+              ? draft.startState
+              : (draft.stateNames.isEmpty ? null : draft.stateNames.first),
+          dropdownColor: _kCard,
+          isDense: true,
+          style: const TextStyle(color: _kText, fontSize: 13),
+          hint: const Text(
+            'Selecione',
+            style: TextStyle(color: _kSubtle, fontSize: 13),
+          ),
+          items: draft.stateNames
+              .map(
+                (name) => DropdownMenuItem<String>(
+                  value: name,
+                  child: Text(name, overflow: TextOverflow.ellipsis),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            if (value == null) {
+              return;
+            }
+            setState(() => draft.startState = value);
+            widget.onChanged();
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEditorActions() {
+    final feedback = widget.saveFeedback;
+    final feedbackColor = feedback == 'Salva' ? _kSuccess : _kDanger;
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        if (feedback != null && feedback.isNotEmpty)
+          Text(
+            feedback,
+            style: TextStyle(
+              color: feedbackColor,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        if (widget.onTest != null)
+          OutlinedButton.icon(
+            onPressed: widget.onTest,
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
+            label: const Text('Testar'),
+          ),
+        PremiumAccentButton(
+          label: widget.saving ? 'Salvando...' : 'Salvar',
+          icon: widget.saving ? null : Icons.save_rounded,
+          onPressed: widget.saving ? null : widget.onSave,
+          dense: true,
+        ),
       ],
     );
   }
 
   Widget _buildTopBar(_FlowDraft draft) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 14, 24, 14),
-      decoration: const BoxDecoration(
-        color: _kSurface,
-        border: Border(bottom: BorderSide(color: _kBorder)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x12000000),
-            blurRadius: 16,
-            offset: Offset(0, 8),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 720;
+        return Container(
+          padding: EdgeInsets.fromLTRB(
+            compact ? 12 : 24,
+            compact ? 10 : 14,
+            compact ? 12 : 24,
+            compact ? 10 : 14,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (widget.isCreating) ...[
-            SizedBox(
-              width: 220,
-              child: _LabeledField(
-                label: 'Nome da automa\u00e7\u00e3o',
-                child: _DarkField(
-                  controller: draft.nameCtrl,
-                  hint: 'Ex: Atendimento da loja',
-                  onChanged: widget.onChanged,
-                ),
+          decoration: const BoxDecoration(
+            color: _kSurface,
+            border: Border(bottom: BorderSide(color: _kBorder)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 16,
+                offset: Offset(0, 8),
               ),
-            ),
-            const SizedBox(width: 14),
-          ],
-          Expanded(
-            flex: 2,
-            child: _LabeledField(
-              label: 'Descri\u00e7\u00e3o (opcional)',
-              child: _DarkField(
-                controller: draft.descCtrl,
-                hint: 'Descreva o objetivo desta automa\u00e7\u00e3o',
-                onChanged: widget.onChanged,
-              ),
-            ),
+            ],
           ),
-          const SizedBox(width: 14),
-          _LabeledField(
-            label: 'Primeira etapa',
-            child: Container(
-              height: 36,
-              constraints: const BoxConstraints(minWidth: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                color: _kCard,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _kBorder),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: draft.stateNames.contains(draft.startState)
-                      ? draft.startState
-                      : (draft.stateNames.isEmpty ? null : draft.stateNames.first),
-                  dropdownColor: _kCard,
-                  isDense: true,
-                  style: const TextStyle(color: _kText, fontSize: 13),
-                  hint: const Text(
-                    'Selecione',
-                    style: TextStyle(color: _kSubtle, fontSize: 13),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (compact) ...[
+                if (widget.isCreating) ...[
+                  _LabeledField(
+                    label: 'Nome da automa\u00e7\u00e3o',
+                    child: _DarkField(
+                      controller: draft.nameCtrl,
+                      hint: 'Ex: Atendimento da loja',
+                      onChanged: widget.onChanged,
+                    ),
                   ),
-                  items: draft.stateNames
-                      .map(
-                        (name) => DropdownMenuItem<String>(
-                          value: name,
-                          child: Text(name),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    if (value == null) {
-                      return;
-                    }
-                    setState(() => draft.startState = value);
-                    widget.onChanged();
-                  },
+                  const SizedBox(height: 10),
+                ],
+                _LabeledField(
+                  label: 'Descri\u00e7\u00e3o (opcional)',
+                  child: _DarkField(
+                    controller: draft.descCtrl,
+                    hint: 'Descreva o objetivo desta automa\u00e7\u00e3o',
+                    onChanged: widget.onChanged,
+                  ),
                 ),
-              ),
-            ),
+                const SizedBox(height: 10),
+                _LabeledField(
+                  label: 'Primeira etapa',
+                  child: _buildStartStateDropdown(draft),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: _buildEditorActions(),
+                ),
+              ] else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (widget.isCreating) ...[
+                      SizedBox(
+                        width: 220,
+                        child: _LabeledField(
+                          label: 'Nome da automa\u00e7\u00e3o',
+                          child: _DarkField(
+                            controller: draft.nameCtrl,
+                            hint: 'Ex: Atendimento da loja',
+                            onChanged: widget.onChanged,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      flex: 2,
+                      child: _LabeledField(
+                        label: 'Descri\u00e7\u00e3o (opcional)',
+                        child: _DarkField(
+                          controller: draft.descCtrl,
+                          hint: 'Descreva o objetivo desta automa\u00e7\u00e3o',
+                          onChanged: widget.onChanged,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    _LabeledField(
+                      label: 'Primeira etapa',
+                      child: SizedBox(
+                        width: 176,
+                        child: _buildStartStateDropdown(draft),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    _buildEditorActions(),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              _buildVersionBar(),
+            ],
           ),
-          const SizedBox(width: 24),
-          PremiumAccentButton(
-            label: widget.saving ? 'Salvando...' : 'Salvar automa\u00e7\u00e3o',
-            icon: widget.saving ? null : Icons.save_rounded,
-            onPressed: widget.saving ? null : widget.onSave,
-            dense: true,
-          ),
-        ],
-      ),
-          const SizedBox(height: 12),
-          _buildVersionBar(),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -5845,6 +5945,65 @@ class _RestoreBaseDialogState extends State<_RestoreBaseDialog> {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AutomationsInlineError extends StatelessWidget {
+  const _AutomationsInlineError({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: _kDanger, size: 28),
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _kText, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Tentar novamente'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AutomationsSkeleton extends StatelessWidget {
+  const _AutomationsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSoft,
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       ),

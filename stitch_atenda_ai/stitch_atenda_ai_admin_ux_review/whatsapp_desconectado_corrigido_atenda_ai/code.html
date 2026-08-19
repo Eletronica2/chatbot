@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configurações de WhatsApp - Atenda Ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed-dim": "#d0bcff",
+                      "on-primary": "#003543",
+                      "on-tertiary-fixed": "#291800",
+                      "tertiary-fixed": "#ffddb1",
+                      "inverse-primary": "#00677f",
+                      "secondary-container": "#571bc1",
+                      "on-primary-fixed-variant": "#004e60",
+                      "tertiary-fixed-dim": "#ffba49",
+                      "surface-variant": "#2f3639",
+                      "surface-container-highest": "#2f3639",
+                      "on-secondary-fixed-variant": "#5516be",
+                      "surface-container-lowest": "#090f12",
+                      "on-tertiary": "#442b00",
+                      "primary-fixed": "#b7eaff",
+                      "on-error-container": "#ffdad6",
+                      "inverse-on-surface": "#2b3134",
+                      "tertiary": "#ffd59c",
+                      "secondary-fixed": "#e9ddff",
+                      "outline-variant": "#3c494e",
+                      "error-container": "#93000a",
+                      "on-primary-container": "#00566a",
+                      "surface-container-low": "#161d1f",
+                      "on-tertiary-fixed-variant": "#624000",
+                      "tertiary-container": "#feb127",
+                      "outline": "#859399",
+                      "error": "#ffb4ab",
+                      "surface-tint": "#4cd6ff",
+                      "on-surface": "#dde3e7",
+                      "primary": "#a4e6ff",
+                      "on-secondary-container": "#c4abff",
+                      "secondary": "#d0bcff",
+                      "on-error": "#690005",
+                      "on-secondary": "#3c0091",
+                      "on-secondary-fixed": "#23005c",
+                      "on-surface-variant": "#bbc9cf",
+                      "primary-container": "#00d1ff",
+                      "on-tertiary-container": "#6b4700",
+                      "surface-container-high": "#242b2e",
+                      "surface-dim": "#0e1417",
+                      "surface": "#0e1417",
+                      "surface-container": "#1a2123",
+                      "on-primary-fixed": "#001f28",
+                      "background": "#0e1417",
+                      "on-background": "#dde3e7",
+                      "primary-fixed-dim": "#4cd6ff",
+                      "surface-bright": "#333a3d",
+                      "inverse-surface": "#dde3e7"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "grid-opacity": "0.05",
+                      "margin-page": "2rem",
+                      "stack-lg": "2rem",
+                      "stack-md": "1rem",
+                      "gutter": "1.5rem",
+                      "stack-sm": "0.5rem"
+              },
+              "fontFamily": {
+                      "headline-sm": [
+                              "Manrope"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Manrope"
+                      ],
+                      "label-md": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "20px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "26px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "letterSpacing": "-0.01em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        /* Cyber-Minimalism Background Grid */
+        .bg-grid-mesh {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+        
+        /* Glassmorphism Utilities */
+        .glass-panel {
+            background: rgba(17, 20, 29, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Neon Glow Utilities */
+        .glow-cyan {
+            box-shadow: 0 0 20px rgba(0, 209, 255, 0.2), inset 0 0 10px rgba(0, 209, 255, 0.1);
+        }
+        
+        .border-glow-cyan {
+            border-color: rgba(0, 209, 255, 0.5);
+            box-shadow: 0 0 10px rgba(0, 209, 255, 0.2);
+        }
+
+        /* Smooth Transitions */
+        .hover-lift {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 209, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen overflow-x-hidden relative selection:bg-primary-container selection:text-on-primary-container">
+<!-- Background Grid Base Layer (Tier 0) -->
+<div class="fixed inset-0 bg-grid-mesh pointer-events-none z-0 opacity-50"></div>
+<!-- Radial Gradient Accent -->
+<div class="fixed top-0 right-0 w-1/2 h-1/2 bg-primary/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+<!-- Main App Container -->
+<div class="flex relative z-10 min-h-screen">
+<!-- SideNavBar Component -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 w-[216px] transition-all duration-300 bg-surface-container border-r border-outline-variant shadow-sm z-30">
+<!-- Brand Logo Area -->
+<div class="p-6 border-b border-outline-variant/30 flex items-center space-x-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center glow-cyan">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">graphic_eq</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Atenda Ai</h1>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto py-4 space-y-1">
+<!-- Visão Geral -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">dashboard</span>
+<span class="text-label-md font-label-md">Visão Geral</span>
+</a>
+<!-- Conversas -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">chat</span>
+<span class="text-label-md font-label-md">Conversas</span>
+</a>
+<!-- Automações -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-secondary transition-colors">bolt</span>
+<span class="text-label-md font-label-md">Automações</span>
+</a>
+<!-- Ações -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">smart_button</span>
+<span class="text-label-md font-label-md">Ações</span>
+</a>
+<!-- Templates WhatsApp -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">message</span>
+<span class="text-label-md font-label-md">Templates WhatsApp</span>
+</a>
+<!-- WhatsApp (ACTIVE STATE) -->
+<a class="text-primary font-bold border-l-4 border-primary bg-primary-container/10 flex items-center px-4 py-3 opacity-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3 text-primary" style="font-variation-settings: 'FILL' 1;">account_tree</span>
+<span class="text-label-md font-label-md">WhatsApp</span>
+</a>
+<!-- Equipe -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">group</span>
+<span class="text-label-md font-label-md">Equipe</span>
+</a>
+<!-- Configurações -->
+<a class="text-on-surface-variant flex items-center px-4 py-3 hover:bg-surface-container-high transition-colors group" href="#">
+<span class="material-symbols-outlined mr-3 text-outline group-hover:text-primary transition-colors">settings</span>
+<span class="text-label-md font-label-md">Configurações</span>
+</a>
+</div>
+<!-- User Profile Area -->
+<div class="p-4 border-t border-outline-variant/30 flex items-center hover:bg-surface-container-high cursor-pointer transition-colors">
+<img class="w-8 h-8 rounded-full object-cover mr-3 border border-outline" data-alt="A close-up portrait of a professional individual in a dimly lit, high-tech environment. The lighting is sophisticated, with cool cyan highlights reflecting on their face, conveying a modern, intelligent, and focused mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD1wypFIGwQScjcdY3ecaAY6PmPs9HviSMXRddElwJjoBM32tKElOnWYx-Bdh_I7O_xOQcrUAyR_grYo16J40BmuzGJdnf8YB8x9ZG20a08buKWX5_n3teKudrchVRlnLHznlHa3c0N7m9lQP0DbqMvGZMnqhX14UAJw3mAj5qTWucbVSEMBfaHK7-NZ88p5z6xV_VGGabjg9jgFZchPUKHfbFDWQDfizKh9c8Kx0mjY54e3wLnQg1e"/>
+<div class="flex-1 min-w-0">
+<p class="text-body-md font-body-md truncate text-on-surface">Administrador</p>
+<p class="text-[10px] text-on-surface-variant truncate font-label-md">admin@atenda.ai</p>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-[216px] w-full md:w-[calc(100%-216px)] min-h-screen">
+<!-- TopAppBar Component -->
+<header class="flex justify-between items-center h-16 px-gutter bg-surface/80 backdrop-blur-md border-b border-outline-variant sticky top-0 z-20">
+<!-- Mobile Menu Button -->
+<button class="md:hidden p-2 text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Page Title -->
+<h2 class="text-headline-sm font-headline-sm text-on-surface hidden md:block">Conexão WhatsApp</h2>
+<!-- Top Nav Actions -->
+<div class="flex items-center space-x-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full shadow-[0_0_5px_rgba(255,180,171,0.5)]"></span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="md:hidden w-8 h-8 rounded-full bg-surface-container-highest border border-outline overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sleek, abstract avatar image featuring dark, geometric shapes with subtle cyan glows, representing an anonymous admin user in a high-tech interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyPsLOS3KDbWDIgkvt9l_CloersEkCpCR1GauFwUBo5wJEyndEU0ZkwkZwi47Pj4r3I-C28R9G0nA3u-Zise_BuQGPMfueS7bOoVh9v4Y6gxbgOxtYu10mhe2mrW03u1o9kzPP21Fn4tiPSW_qWYMGkgSbXkOfT-8f0uTKx8X9NUDYZzgyPgyuFOAP0tlaeoM0_YFGytYJkWCb5xhdAqVcnff5lKtkkELRSeumUcdMmTyjrGrGSzX_"/>
+</div>
+</div>
+</header>
+<!-- Page Canvas -->
+<div class="p-4 md:p-margin-page flex-1 flex items-center justify-center">
+<!-- Main Glass Card - Bento Style -->
+<div class="glass-panel rounded-xl w-full max-w-2xl overflow-hidden relative group">
+<!-- Decorative Top Border -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-outline-variant via-primary-container to-outline-variant opacity-50"></div>
+<div class="p-8 md:p-12 flex flex-col items-center text-center">
+<!-- Status Badge: Disconnected -->
+<div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-surface-container border border-outline-variant mb-8">
+<div class="w-2 h-2 rounded-full bg-error shadow-[0_0_8px_rgba(255,180,171,0.6)] animate-pulse"></div>
+<span class="text-label-md font-label-md text-on-surface-variant tracking-wider uppercase">Status: Desconectado</span>
+</div>
+<!-- Icon Container - High Contrast -->
+<div class="w-24 h-24 mb-6 rounded-2xl bg-surface-container-highest border border-outline flex items-center justify-center relative overflow-hidden">
+<!-- Inner Glow -->
+<div class="absolute inset-0 bg-primary/5 rounded-2xl"></div>
+<span class="material-symbols-outlined text-5xl text-outline-variant group-hover:text-primary transition-colors duration-500" style="font-variation-settings: 'wght' 200;">phonelink_erase</span>
+</div>
+<!-- Headline & Helper Text -->
+<h3 class="text-headline-lg font-headline-lg text-on-surface mb-4">Nenhuma Conta Conectada</h3>
+<p class="text-body-lg font-body-lg text-on-surface-variant max-w-md mx-auto mb-10 leading-relaxed">
+                            Conecte seu WhatsApp Business para centralizar conversas e automatizar seu atendimento. A integração permite o uso de IA para triagem e respostas rápidas.
+                        </p>
+<!-- Primary Action Button -->
+<button class="relative overflow-hidden group hover-lift rounded-lg">
+<!-- Button Background Gradient -->
+<div class="absolute inset-0 bg-gradient-to-r from-primary-container to-primary transition-transform duration-300 group-hover:scale-105"></div>
+<!-- Button Content -->
+<div class="relative flex items-center justify-center px-8 py-4 space-x-3 bg-opacity-0">
+<span class="material-symbols-outlined text-on-primary font-bold">qr_code_scanner</span>
+<span class="text-on-primary font-headline-sm text-headline-sm font-bold tracking-wide">Conectar WhatsApp</span>
+</div>
+<!-- Focus Ring Outline -->
+<div class="absolute inset-0 border border-transparent group-focus:border-on-primary rounded-lg transition-colors"></div>
+</button>
+<!-- Secondary info / Tech detail -->
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

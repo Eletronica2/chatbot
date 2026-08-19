@@ -14,6 +14,8 @@ String operationPlanLabel(String value) {
       return 'Inicial';
     case 'growth':
       return 'Crescimento';
+    case 'professional':
+      return 'Profissional';
     case 'pro':
       return 'Profissional';
     case 'enterprise':

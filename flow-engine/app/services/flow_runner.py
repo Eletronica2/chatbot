@@ -232,7 +232,9 @@ class FlowRunner:
             metadata=metadata,
             requires_handoff=state.requires_handoff,
             collected_data=collected_data or {},
-            requires_ai_fallback=bool(definition.fallback_ai or state.fallback_ai),
+            # Successful transitions must not trigger Gemini; unmatched
+            # fallback_ai is handled separately with reply_text=None.
+            requires_ai_fallback=False,
         )
 
     def _resolve_default_transition(
@@ -319,6 +321,15 @@ class FlowRunner:
         normalized = unicodedata.normalize("NFKD", stripped)
         return "".join(ch for ch in normalized if not unicodedata.combining(ch))
 
+    def _contains_phrase(self, haystack: str, needle: str) -> bool:
+        """Match a phrase as whole words, not as a substring inside another word."""
+        if not haystack or not needle:
+            return False
+        if haystack == needle:
+            return True
+        pattern = r"(^|[^a-z0-9])" + re.escape(needle) + r"([^a-z0-9]|$)"
+        return re.search(pattern, haystack) is not None
+
     def _extract_detected_intent(self, message: Dict[str, Any]) -> Optional[str]:
         if not isinstance(message, dict):
             return None
@@ -347,9 +358,11 @@ class FlowRunner:
 
         normalized_intent = (detected_intent or "").strip().lower()
 
-        # First, resolve aliases: if detected_intent matches an alias, find its canonical intent
-        resolved_intent = self._resolve_alias(normalized_intent, definition.intent_aliases)
-        # Also check if any text candidate matches an alias
+        # Classifier intents map by exact/canonical key, not loose substring.
+        resolved_intent = self._canonicalize_detected_intent(
+            normalized_intent, definition.intent_aliases
+        )
+        # User text still uses phrase aliases ("status do pedido" → consultar)
         resolved_from_text = None
         for candidate in text_candidates:
             resolved_from_text = self._resolve_alias(candidate, definition.intent_aliases)
@@ -377,21 +390,45 @@ class FlowRunner:
                         or eff_intent in normalized_trigger
                     ):
                         return state
-                # Check if any text candidate contains the trigger
-                if any(normalized_trigger in candidate for candidate in text_candidates):
+                # Check if any text candidate contains the trigger as a phrase
+                if any(self._contains_phrase(candidate, normalized_trigger) for candidate in text_candidates):
                     return state
+        return None
+
+    def _canonicalize_detected_intent(
+        self,
+        detected_intent: str,
+        intent_aliases: Dict[str, List[str]],
+    ) -> Optional[str]:
+        """Map IntentService names onto YAML canonical intents without substring false positives."""
+        if not detected_intent:
+            return None
+        normalized = detected_intent.strip().lower()
+        if intent_aliases and normalized in intent_aliases:
+            return normalized
+        if intent_aliases:
+            for intent_name in intent_aliases:
+                key = (intent_name or "").strip().lower()
+                if key and (normalized == key or normalized.startswith(f"{key}_")):
+                    return key
         return None
 
     def _resolve_alias(
         self, text: str, intent_aliases: Dict[str, List[str]]
     ) -> Optional[str]:
-        """Return canonical intent name if text matches any alias; else None."""
+        """Return canonical intent name if user text contains an alias phrase."""
         if not text or not intent_aliases:
             return None
         normalized = self._normalize_text(text)
+        if not normalized:
+            return None
         for intent_name, aliases in intent_aliases.items():
+            key = self._normalize_text(intent_name)
+            if key and self._contains_phrase(normalized, key):
+                return intent_name
             for alias in aliases:
-                if alias in normalized or normalized in alias:
+                alias_norm = self._normalize_text(alias)
+                if alias_norm and self._contains_phrase(normalized, alias_norm):
                     return intent_name
         return None
 
@@ -412,7 +449,7 @@ class FlowRunner:
 
         if lowered.startswith("contains:"):
             term = self._normalize_text(lowered.split(":", 1)[1].strip())
-            return any(term in candidate for candidate in text_candidates)
+            return any(self._contains_phrase(candidate, term) for candidate in text_candidates)
 
         if lowered.startswith("equals:"):
             term = self._normalize_text(lowered.split(":", 1)[1].strip())

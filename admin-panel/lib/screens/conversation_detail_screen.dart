@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../models/conversation.dart';
 import '../models/flow_state.dart';
 import '../models/message.dart';
 import '../services/conversation_service.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/premium_ui.dart';
@@ -39,12 +41,24 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   final TextEditingController _replyCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   bool _sending = false;
+  bool _showContext = true;
+  bool _contextSeeded = false;
 
   @override
   void initState() {
     super.initState();
     _loadMessages();
     _loadFlowState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_contextSeeded) {
+      _contextSeeded = true;
+      final width = MediaQuery.sizeOf(context).width;
+      _showContext = width >= AppLayout.contextPanelMinViewport;
+    }
   }
 
   @override
@@ -109,8 +123,8 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       if (_scrollCtrl.hasClients) {
         _scrollCtrl.animateTo(
           _scrollCtrl.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOut,
+          duration: AppMotion.pageOf(context),
+          curve: AppMotion.pageCurve,
         );
       }
     });
@@ -146,7 +160,6 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     }
   }
 
-
   void _handleBack() {
     if (widget.onClose != null) {
       widget.onClose!();
@@ -155,7 +168,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     Navigator.of(context).pop();
   }
 
-  Widget _buildBody({required bool showInfoSidebar}) {
+  Widget _buildBody({required bool allowContextRail}) {
     return Column(
       children: [
         _ConversationHeader(
@@ -165,44 +178,24 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
             _loadMessages();
             _loadFlowState();
           },
+          contextVisible: _showContext,
+          onToggleContext: () => setState(() => _showContext = !_showContext),
+          showBack: !widget.embedded || !AppBreakpoints.useInboxSplit(context),
         ),
-        if (widget.conversation.humanHandoffPending) ...[
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withValues(alpha: 0.12),
-              borderRadius: AppRadius.md,
-              border: Border.all(
-                color: AppColors.warning.withValues(alpha: 0.4),
-              ),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Cliente aguardando atendimento humano. Responda abaixo para continuar a conversa.',
-                    style: TextStyle(color: AppColors.text, fontSize: 13, height: 1.4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-        const SizedBox(height: 16),
+        if (widget.conversation.humanHandoffPending)
+          const _HandoffBanner(),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final showSidebar =
-                  showInfoSidebar && constraints.maxWidth >= 900;
+              final canShowRail =
+                  allowContextRail &&
+                  constraints.maxWidth >= AppLayout.contextPanelMinDetailWidth;
+              final open =
+                  _showContext && canShowRail;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Expanded(
-                    flex: 7,
                     child: _ChatPanel(
                       messages: _messages,
                       loading: _loadingMessages,
@@ -213,17 +206,26 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       onSend: _sendReply,
                     ),
                   ),
-                  if (showSidebar) ...[
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 280,
-                      child: _InfoPanel(
+                  // B↔C: só a largura muda; chat e estado permanecem.
+                  AnimatedContainer(
+                    duration: AppMotion.of(context, AppMotion.contextPanel),
+                    curve: AppMotion.pageCurve,
+                    width: open ? AppLayout.contextPanelWidth : 0,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        left: BorderSide(color: AppColors.border),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: AppLayout.contextPanelWidth,
+                      child: _InfoSidebar(
                         conversation: widget.conversation,
                         flowState: _flowState,
                         loading: _loadingFlow,
                       ),
                     ),
-                  ],
+                  ),
                 ],
               );
             },
@@ -237,24 +239,53 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   Widget build(BuildContext context) {
     if (widget.embedded) {
       return ColoredBox(
-        color: const Color(0xFF05060B),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: _buildBody(showInfoSidebar: false),
-        ),
+        color: AppColors.background,
+        child: _buildBody(allowContextRail: true),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF05060B),
+      backgroundColor: AppColors.background,
       body: PremiumPageBackground(
         intensity: AmbientIntensity.soft,
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: _buildBody(showInfoSidebar: true),
-          ),
+          child: _buildBody(allowContextRail: true),
         ),
+      ),
+    );
+  }
+}
+
+class _HandoffBanner extends StatelessWidget {
+  const _HandoffBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.10),
+        border: Border(
+          bottom: BorderSide(color: AppColors.warning.withValues(alpha: 0.25)),
+        ),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.support_agent_rounded, color: AppColors.warning, size: 16),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Cliente aguardando atendimento humano',
+              style: TextStyle(
+                color: AppColors.text,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -265,19 +296,24 @@ class _ConversationHeader extends StatelessWidget {
     required this.conversation,
     required this.onBack,
     required this.onRefresh,
+    required this.contextVisible,
+    required this.onToggleContext,
+    required this.showBack,
   });
 
   final Conversation conversation;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
+  final bool contextVisible;
+  final VoidCallback onToggleContext;
+  final bool showBack;
 
   static const List<Color> _palette = <Color>[
-    Color(0xFFF5A623),
-    Color(0xFF48C0FF),
-    Color(0xFF19C37D),
-    Color(0xFFFFB84D),
-    Color(0xFFFF6B6B),
-    Color(0xFF9B8CFF),
+    Color(0xFF22D3EE),
+    Color(0xFF8B5CF6),
+    Color(0xFF2DD4BF),
+    Color(0xFF60A5FA),
+    Color(0xFF94A3B8),
   ];
 
   Color _avatarColor(String phone) =>
@@ -291,100 +327,94 @@ class _ConversationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPanelCard(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
       child: Row(
         children: [
-          IconButton(
-            onPressed: onBack,
-            tooltip: 'Voltar',
-            icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textMuted),
-          ),
-          const SizedBox(width: 6),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: _avatarColor(conversation.phoneNumber),
-                child: Text(
-                  _initials(conversation.phoneNumber),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                  ),
-                ),
+          if (showBack)
+            IconButton(
+              onPressed: onBack,
+              tooltip: 'Voltar',
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: AppColors.textMuted,
+                size: 20,
               ),
-              Positioned(
-                bottom: -2,
-                right: -2,
-                child: Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: conversation.aiEnabled
-                        ? AppColors.success
-                        : AppColors.warning,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AppColors.surface, width: 2),
-                  ),
-                ),
+            ),
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: _avatarColor(conversation.phoneNumber)
+                .withValues(alpha: 0.22),
+            child: Text(
+              _initials(conversation.phoneNumber),
+              style: TextStyle(
+                color: _avatarColor(conversation.phoneNumber),
+                fontWeight: FontWeight.w700,
+                fontSize: 10,
               ),
-            ],
+            ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   conversation.phoneNumber,
-                  style: const TextStyle(
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.manrope(
                     color: AppColors.text,
-                    fontSize: 18,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    AppStatusChip(
-                      label: conversation.humanHandoffPending
-                          ? 'Pendente atendimento'
-                          : (conversation.aiEnabled ? 'IA ativa' : 'Atendimento humano'),
-                      icon: conversation.humanHandoffPending
-                          ? Icons.support_agent_rounded
-                          : (conversation.aiEnabled
-                              ? Icons.auto_awesome_rounded
-                              : Icons.support_agent_rounded),
-                      backgroundColor: conversation.humanHandoffPending
-                          ? AppColors.warning.withValues(alpha: 0.16)
-                          : (conversation.aiEnabled
-                              ? AppColors.success.withValues(alpha: 0.14)
-                              : AppColors.warning.withValues(alpha: 0.16)),
-                      foregroundColor: conversation.humanHandoffPending
-                          ? AppColors.warning
-                          : (conversation.aiEnabled
-                              ? AppColors.success
-                              : AppColors.warning),
-                    ),
-                    AppStatusChip(
-                      label: 'Atualização ${conversation.formattedUpdatedAt}',
-                      icon: Icons.schedule_rounded,
-                      backgroundColor: AppColors.surfaceAlt,
-                    ),
-                  ],
+                Text(
+                  conversation.humanHandoffPending
+                      ? 'Aguardando atendimento'
+                      : (conversation.aiEnabled
+                          ? 'IA ativa'
+                          : 'Atendimento humano'),
+                  style: TextStyle(
+                    color: conversation.humanHandoffPending
+                        ? AppColors.warning
+                        : AppColors.textMuted,
+                    fontSize: 11,
+                  ),
                 ),
               ],
             ),
           ),
-          FilledButton.icon(
+          Semantics(
+            button: true,
+            label: contextVisible ? 'Recolher contexto' : 'Abrir contexto',
+            child: IconButton(
+              tooltip: contextVisible ? 'Recolher contexto' : 'Abrir contexto',
+              onPressed: onToggleContext,
+              icon: Icon(
+                contextVisible
+                    ? Icons.view_sidebar_rounded
+                    : Icons.info_outline_rounded,
+                color: contextVisible
+                    ? AppColors.primarySoft
+                    : AppColors.textMuted,
+                size: 20,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Atualizar',
             onPressed: onRefresh,
-            icon: const Icon(Icons.refresh_rounded, size: 18),
-            label: const Text('Atualizar'),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppColors.textMuted,
+              size: 20,
+            ),
           ),
         ],
       ),
@@ -413,41 +443,17 @@ class _ChatPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPanelCard(
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: AppRadius.lg,
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: AppColors.whatsappPattern,
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF0E1524), Color(0xFF0B0F1A)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: CustomPaint(
-                        painter: _ChatPatternPainter(),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(child: _buildMessages()),
-                ],
-              ),
-            ),
-            _ReplyBar(
-              ctrl: replyCtrl,
-              sending: sending,
-              onSend: onSend,
-            ),
-          ],
-        ),
+    return ColoredBox(
+      color: AppColors.background,
+      child: Column(
+        children: [
+          Expanded(child: _buildMessages()),
+          _ReplyBar(
+            ctrl: replyCtrl,
+            sending: sending,
+            onSend: onSend,
+          ),
+        ],
       ),
     );
   }
@@ -468,13 +474,13 @@ class _ChatPanel extends StatelessWidget {
         icon: Icons.mark_chat_read_rounded,
         title: 'Nenhuma mensagem ainda',
         message:
-            'Assim que a conversa começar, as mensagens aparecerão aqui no formato do WhatsApp.',
+            'Assim que a conversa começar, as mensagens aparecerão aqui.',
       );
     }
 
     return ListView.builder(
       controller: scrollCtrl,
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       itemCount: messages.length,
       itemBuilder: (context, index) {
         return MessageBubble(message: messages[index]);
@@ -497,12 +503,13 @@ class _ReplyBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Expanded(
             child: TextField(
@@ -511,26 +518,62 @@ class _ReplyBar extends StatelessWidget {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => onSend(),
-              decoration: const InputDecoration(
+              style: GoogleFonts.manrope(fontSize: 14, color: AppColors.text),
+              decoration: InputDecoration(
                 hintText: 'Digite uma resposta para enviar ao cliente...',
-                prefixIcon: Icon(Icons.chat_rounded),
+                filled: true,
+                fillColor: AppColors.surfaceAlt,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: AppRadius.lg,
+                  borderSide: const BorderSide(color: AppColors.borderSubtle),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.lg,
+                  borderSide: const BorderSide(color: AppColors.borderSubtle),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: AppRadius.lg,
+                  borderSide: const BorderSide(
+                    color: AppColors.primary,
+                    width: 1.4,
+                  ),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: sending ? null : onSend,
-            icon: sending
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
+          const SizedBox(width: 10),
+          SizedBox(
+            height: 44,
+            child: FilledButton(
+              onPressed: sending ? null : onSend,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.md),
+              ),
+              child: sending
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.onPrimary,
+                      ),
+                    )
+                  : const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.send_rounded, size: 18),
+                        SizedBox(width: 8),
+                        Text('Enviar'),
+                      ],
                     ),
-                  )
-                : const Icon(Icons.send_rounded, size: 18),
-            label: Text(sending ? 'Enviando...' : 'Enviar'),
+            ),
           ),
         ],
       ),
@@ -538,8 +581,8 @@ class _ReplyBar extends StatelessWidget {
   }
 }
 
-class _InfoPanel extends StatelessWidget {
-  const _InfoPanel({
+class _InfoSidebar extends StatelessWidget {
+  const _InfoSidebar({
     required this.conversation,
     required this.flowState,
     required this.loading,
@@ -566,85 +609,100 @@ class _InfoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppPanelCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AppSectionHeader(
-            title: 'Resumo da conversa',
-            subtitle:
-                'Entenda rapidamente como o chatbot está conduzindo o atendimento desta pessoa.',
-          ),
-          const SizedBox(height: AppSpacing.lg),
-          _InfoBlock(
-            label: 'Canal de resposta',
-            value: conversation.aiEnabled ? 'IA + automações' : 'Atendimento humano',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _InfoBlock(
-            label: 'Última atualização',
-            value: conversation.formattedUpdatedAt,
-          ),
-          const SizedBox(height: AppSpacing.md),
-          if (loading)
-            const Center(child: Padding(
-              padding: EdgeInsets.all(20),
-              child: CircularProgressIndicator(),
-            ))
-          else if (flowState == null)
-            const _InfoBlock(
-              label: 'Automação ativa',
-              value: 'Nenhuma automação ativa no momento',
-            )
-          else ...[
-            _InfoBlock(
-              label: 'Automação ativa',
-              value: flowState!.flowName,
-            ),
-            const SizedBox(height: AppSpacing.md),
-            _InfoBlock(
-              label: 'Etapa atual',
-              value: flowState!.currentState,
-            ),
-            if (flowState!.stateData['detected_intent'] != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              _InfoBlock(
-                label: 'Intenção detectada',
-                value: '${flowState!.stateData['detected_intent']}'
-                    '${flowState!.stateData['confidence'] != null ? ' (${((flowState!.stateData['confidence'] as num) * 100).round()}%)' : ''}',
+    return ColoredBox(
+      color: AppColors.surface,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Contexto',
+              style: GoogleFonts.manrope(
+                color: AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
               ),
-            ],
-            if (flowState!.stateData['source'] != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              _InfoBlock(
-                label: 'Fonte da última resposta',
-                value: _sourceLabel(flowState!.stateData['source']?.toString() ?? ''),
-              ),
-            ],
-            if (flowState!.stateData['collected_data'] is Map &&
-                (flowState!.stateData['collected_data'] as Map).isNotEmpty) ...[
-              const SizedBox(height: AppSpacing.md),
-              _CollectedDataBlock(
-                data: Map<String, dynamic>.from(
-                  flowState!.stateData['collected_data'] as Map,
+            ),
+            const SizedBox(height: 14),
+            _InfoBlock(
+              label: 'Canal de resposta',
+              value: conversation.aiEnabled
+                  ? 'IA + automações'
+                  : 'Atendimento humano',
+            ),
+            const SizedBox(height: 10),
+            _InfoBlock(
+              label: 'Última atualização',
+              value: conversation.formattedUpdatedAt,
+            ),
+            const SizedBox(height: 10),
+            if (loading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(),
                 ),
+              )
+            else if (flowState == null)
+              const _InfoBlock(
+                label: 'Automação ativa',
+                value: 'Nenhuma automação ativa no momento',
+              )
+            else ...[
+              _InfoBlock(
+                label: 'Automação ativa',
+                value: flowState!.flowName,
+              ),
+              const SizedBox(height: 10),
+              _InfoBlock(
+                label: 'Etapa atual',
+                value: flowState!.currentState,
+              ),
+              if (flowState!.stateData['detected_intent'] != null) ...[
+                const SizedBox(height: 10),
+                _InfoBlock(
+                  label: 'Intenção detectada',
+                  value:
+                      '${flowState!.stateData['detected_intent']}'
+                      '${flowState!.stateData['confidence'] != null ? ' (${((flowState!.stateData['confidence'] as num) * 100).round()}%)' : ''}',
+                ),
+              ],
+              if (flowState!.stateData['source'] != null) ...[
+                const SizedBox(height: 10),
+                _InfoBlock(
+                  label: 'Fonte da última resposta',
+                  value: _sourceLabel(
+                    flowState!.stateData['source']?.toString() ?? '',
+                  ),
+                ),
+              ],
+              if (flowState!.stateData['collected_data'] is Map &&
+                  (flowState!.stateData['collected_data'] as Map)
+                      .isNotEmpty) ...[
+                const SizedBox(height: 10),
+                _CollectedDataBlock(
+                  data: Map<String, dynamic>.from(
+                    flowState!.stateData['collected_data'] as Map,
+                  ),
+                ),
+              ],
+              if (flowState!.stateData['smart_reentry'] == true) ...[
+                const SizedBox(height: 10),
+                const _TagChip(
+                  label: 'Retomou fluxo após pergunta fora de contexto',
+                  color: AppColors.warning,
+                ),
+              ],
+              const SizedBox(height: 10),
+              _InfoBlock(
+                label: 'Atualizada em',
+                value: DateFormat('dd/MM/yyyy HH:mm')
+                    .format(flowState!.updatedAt.toLocal()),
               ),
             ],
-            if (flowState!.stateData['smart_reentry'] == true) ...[
-              const SizedBox(height: AppSpacing.md),
-              _TagChip(
-                label: 'Retomou fluxo após pergunta fora de contexto',
-                color: AppColors.warning,
-              ),
-            ],
-            const SizedBox(height: AppSpacing.md),
-            _InfoBlock(
-              label: 'Atualizada em',
-              value: DateFormat('dd/MM/yyyy HH:mm')
-                  .format(flowState!.updatedAt.toLocal()),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -663,11 +721,11 @@ class _InfoBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: AppRadius.md,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -714,11 +772,11 @@ class _CollectedDataBlock extends StatelessWidget {
     final entries = data.entries.toList();
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.surfaceAlt,
         borderRadius: AppRadius.md,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -800,24 +858,4 @@ class _TagChip extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ChatPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.03)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    const spacing = 34.0;
-    for (double x = -spacing; x < size.width + spacing; x += spacing) {
-      for (double y = -spacing; y < size.height + spacing; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 10, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

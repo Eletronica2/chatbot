@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Configurações WhatsApp - Atenda Ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-primary": "#003543",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb1",
+                        "inverse-primary": "#00677f",
+                        "secondary-container": "#571bc1",
+                        "on-primary-fixed-variant": "#004e60",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "surface-variant": "#2f3639",
+                        "surface-container-highest": "#2f3639",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-container-lowest": "#090f12",
+                        "on-tertiary": "#442b00",
+                        "primary-fixed": "#b7eaff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b3134",
+                        "tertiary": "#ffd59c",
+                        "secondary-fixed": "#e9ddff",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00566a",
+                        "surface-container-low": "#161d1f",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "tertiary-container": "#feb127",
+                        "outline": "#859399",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#dde3e7",
+                        "primary": "#a4e6ff",
+                        "on-secondary-container": "#c4abff",
+                        "secondary": "#d0bcff",
+                        "on-error": "#690005",
+                        "on-secondary": "#3c0091",
+                        "on-secondary-fixed": "#23005c",
+                        "on-surface-variant": "#bbc9cf",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-container": "#6b4700",
+                        "surface-container-high": "#242b2e",
+                        "surface-dim": "#0e1417",
+                        "surface": "#0e1417",
+                        "surface-container": "#1a2123",
+                        "on-primary-fixed": "#001f28",
+                        "background": "#0e1417",
+                        "on-background": "#dde3e7",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "surface-bright": "#333a3d",
+                        "inverse-surface": "#dde3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-lg": "2rem",
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #07080d;
+        }
+        .bg-grid {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 24px 24px;
+        }
+        .glow-active {
+            box-shadow: inset 0 0 10px rgba(164, 230, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="text-on-background font-body-md bg-grid min-h-screen">
+<!-- Side Navigation -->
+<nav class="bg-surface-container dark:bg-surface-container h-screen fixed left-0 top-0 w-[216px] transition-all duration-300 border-r border-outline-variant shadow-sm flex flex-col hidden md:flex z-50">
+<div class="p-6">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl">chat_bubble</span>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Atenda Ai</h1>
+</div>
+</div>
+<ul class="flex-1 mt-4">
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">dashboard</span>
+<span class="text-label-md font-label-md">Visão Geral</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">chat</span>
+<span class="text-label-md font-label-md">Conversas</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">bolt</span>
+<span class="text-label-md font-label-md">Automações</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">smart_button</span>
+<span class="text-label-md font-label-md">Ações</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">message</span>
+<span class="text-label-md font-label-md">Templates WhatsApp</span>
+</li>
+<li class="text-primary font-bold border-l-4 border-primary bg-primary-container/10 flex items-center px-4 py-3 cursor-pointer opacity-90 transition-all duration-200">
+<span class="material-symbols-outlined mr-3 text-primary">account_tree</span>
+<span class="text-label-md font-label-md">WhatsApp</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">group</span>
+<span class="text-label-md font-label-md">Equipe</span>
+</li>
+<li class="hover:bg-surface-container-high transition-colors text-on-surface-variant flex items-center px-4 py-3 cursor-pointer">
+<span class="material-symbols-outlined mr-3 text-on-surface-variant">settings</span>
+<span class="text-label-md font-label-md">Configurações</span>
+</li>
+</ul>
+</nav>
+<!-- Top App Bar -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center h-16 px-gutter ml-[216px] w-[calc(100%-216px)] fixed top-0 z-40 hidden md:flex">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer mr-4">menu</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer scale-95 duration-150">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer scale-95 duration-150">settings</span>
+<img alt="Foto de Perfil do Usuário" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small, circular profile picture placeholder for a user in a dark themed UI. The image should be abstract or a simple silhouette, fitting seamlessly into a high-tech, neon-accented dark mode dashboard." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJ_Ov4V2Kbw8oliFwC0nywcdJthI82aPoPUen-ixuEBFBJo0qYEYzuDdRqrQIKwzP0y54XHYi4qJvpo6pZI2E2siprMp-lNJDvfkQS5UEGPS4I49r1j0J_TYWLhq56KbXtPB4FB5xEDSfZLGglg0EIJ7jRfSu3EeB6-ViawZhUp_Fa-WMZe6HsOFs1-FHtX5ZGVdI4SzICS3gNLzHcOs0YBsrKA_1NhhTf_r0AAcdCepSTSxa7hjQH"/>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="md:ml-[216px] pt-24 px-gutter pb-12 max-w-[1440px] mx-auto relative z-10">
+<!-- Glassmorphism Card for Connection Status -->
+<div class="bg-surface/60 backdrop-blur-xl border border-outline-variant rounded-xl p-8 shadow-[0_4px_30px_rgba(0,0,0,0.1)] relative overflow-hidden glow-active">
+<!-- Connection Indicator Large -->
+<div class="flex items-center gap-6 mb-10">
+<div class="w-16 h-16 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center relative">
+<span class="material-symbols-outlined text-primary text-4xl" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div class="absolute inset-0 rounded-full animate-ping bg-primary/20 opacity-75"></div>
+</div>
+<div>
+<h3 class="text-headline-md font-headline-md text-primary tracking-tight">WhatsApp conectado</h3>
+<p class="text-body-md font-body-md text-on-surface-variant mt-1">Sessão ativa e operante</p>
+</div>
+</div>
+<!-- Details Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-10">
+<div class="flex flex-col">
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">NÚMERO</span>
+<span class="text-body-lg font-body-lg text-on-background font-medium">+55 34 3195-3594</span>
+</div>
+<div class="flex flex-col">
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">NOME DA CONTA</span>
+<span class="text-body-lg font-body-lg text-on-background font-medium">Atenda Ai</span>
+</div>
+<div class="flex flex-col">
+<span class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">STATUS</span>
+<span class="inline-flex items-center gap-2 text-primary font-medium text-body-lg font-body-lg">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_#a4e6ff]"></span>
+                        Conectado
+                    </span>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-wrap items-center gap-4 border-t border-outline-variant pt-6">
+<button class="border border-outline-variant text-on-surface hover:bg-surface-container-highest text-label-md font-label-md py-3 px-6 rounded-lg transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface">edit</span>
+                    Editar
+                </button>
+<button class="border border-secondary-container text-secondary hover:bg-secondary-container/20 text-label-md font-label-md py-3 px-6 rounded-lg transition-all flex items-center gap-2 shadow-[inset_0_0_8px_rgba(87,27,193,0.3)]">
+<span class="material-symbols-outlined text-secondary">star</span>
+                    Conta principal
+                </button>
+<button class="ml-auto text-on-surface-variant hover:text-error text-label-md font-label-md transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined">logout</span>
+                     Desconectar
+                </button>
+</div>
+</div>
+</main>
+</body></html>

@@ -10,15 +10,15 @@ import '../widgets/premium_ui.dart';
 
 // ── Colors (shared with admin panel theme) ──────────────────────────────────
 
-const _kSurface = Color(0xFF121826);
-const _kCard = Color(0xFF182133);
-const _kBorder = Color(0xFF25304A);
-const _kText = Color(0xFFF5F7FF);
-const _kMuted = Color(0xFF98A4C0);
-const _kSubtle = Color(0xFF6E7B99);
-const _kAccent = Color(0xFFF5A623);
-const _kSuccess = Color(0xFF10B981);
-const _kDanger = Color(0xFFEF4444);
+const _kSurface = AppColors.surface;
+const _kCard = AppColors.surfaceAlt;
+const _kBorder = AppColors.border;
+const _kText = AppColors.text;
+const _kMuted = AppColors.textMuted;
+const _kSubtle = AppColors.textSoft;
+const _kAccent = AppColors.primary;
+const _kSuccess = AppColors.success;
+const _kDanger = AppColors.danger;
 
 // ── Action type presentation helpers ────────────────────────────────────────
 
@@ -66,7 +66,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
   Future<void> _openDialog({FlowAction? existing}) async {
     final saved = await showDialog<bool>(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: true,
       builder: (_) => _ActionDialog(existing: existing),
     );
     if (saved == true) _reload();
@@ -148,7 +148,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(36, 32, 36, 20),
+      padding: AppPageInsets.of(context).copyWith(bottom: 20),
       child: PremiumGlassCard(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -256,7 +256,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   Widget _buildList(List<FlowAction> actions) {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(36, 4, 36, 36),
+      padding: AppPageInsets.of(context).copyWith(top: 4),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 520,
         mainAxisExtent: 112,

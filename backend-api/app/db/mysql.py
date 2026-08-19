@@ -1,4 +1,4 @@
-﻿"""MySQL helpers and bootstrap utilities for the backend runtime."""
+"""MySQL helpers and bootstrap utilities for the backend runtime."""
 from __future__ import annotations
 
 import asyncio
@@ -361,6 +361,29 @@ class MySQLDatabase:
                 UNIQUE KEY uq_flow_base_snapshots_tenant_flow (tenant_id, flow_key),
                 KEY idx_flow_base_snapshots_tenant (tenant_id),
                 CONSTRAINT fk_flow_base_snapshots_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS flow_actions (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                name VARCHAR(120) NOT NULL,
+                action_type ENUM(
+                    'send_image',
+                    'send_link',
+                    'http_request',
+                    'delay',
+                    'send_document'
+                ) NOT NULL,
+                config LONGTEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                CONSTRAINT fk_flow_actions_tenant
                     FOREIGN KEY (tenant_id) REFERENCES tenants(id)
                     ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci

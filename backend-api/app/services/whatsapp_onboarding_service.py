@@ -7,6 +7,34 @@ from app.services.whatsapp_account_service import WhatsAppAccountService
 from app.config.settings import settings
 
 
+def resolve_signup_display_fields(
+    *,
+    phone_number_id: str,
+    display_phone_number: str,
+    display_name: str,
+    phone_status: dict | None,
+) -> tuple[str, str]:
+    status = phone_status or {}
+    graph_phone = str(status.get("display_phone_number") or "").strip()
+    graph_name = str(status.get("verified_name") or "").strip()
+    incoming_phone = str(display_phone_number or "").strip()
+    phone = graph_phone or incoming_phone
+    if not phone or phone == phone_number_id:
+        phone = graph_phone or incoming_phone or phone_number_id
+    incoming_name = str(display_name or "").strip()
+    placeholder_names = {
+        "",
+        "WhatsApp",
+        f"WhatsApp {phone_number_id}",
+        f"WhatsApp {incoming_phone}",
+    }
+    if incoming_name in placeholder_names or incoming_name.endswith(phone_number_id):
+        name = graph_name or (f"WhatsApp {phone}" if phone else "WhatsApp")
+    else:
+        name = incoming_name
+    return phone, name
+
+
 class WhatsAppOnboardingService:
     def __init__(
         self,
@@ -64,18 +92,27 @@ class WhatsAppOnboardingService:
     ) -> dict:
         access_token = await self.meta_graph.exchange_code_for_token(code, redirect_uri=redirect_uri)
         await self.meta_graph.subscribe_waba_webhooks(waba_id, access_token)
+        try:
+            phone_status = await self.meta_graph.get_phone_number_status(phone_number_id, access_token)
+        except ValueError:
+            phone_status = {}
+        pretty_phone, pretty_name = resolve_signup_display_fields(
+            phone_number_id=phone_number_id,
+            display_phone_number=display_phone_number,
+            display_name=display_name,
+            phone_status=phone_status,
+        )
         account = await self.whatsapp_account_service.save_account(
             tenant_id,
             account_key=waba_id,
-            display_name=display_name,
+            display_name=pretty_name,
             phone_number_id=phone_number_id,
-            display_phone_number=display_phone_number,
+            display_phone_number=pretty_phone,
             verify_token=verify_token or settings.META_VERIFY_TOKEN,
             access_token=access_token,
             status="active",
             is_default=True,
         )
-        phone_status = await self.meta_graph.get_phone_number_status(phone_number_id, access_token)
         return {
             "account": account,
             "coexistence": coexistence,

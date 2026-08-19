@@ -20,4 +20,5 @@ CREATE TABLE IF NOT EXISTS flow_actions (
         FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX IF NOT EXISTS idx_flow_actions_tenant ON flow_actions (tenant_id);
+-- tenant_id is already indexed by fk_flow_actions_tenant (InnoDB).
+-- Do not add a second index: CREATE INDEX IF NOT EXISTS is invalid on MySQL 8.4.

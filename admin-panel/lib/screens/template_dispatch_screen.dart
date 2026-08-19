@@ -284,7 +284,7 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
     final account = _selectedAccount;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+      padding: AppPageInsets.of(context),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     PORT: int = 8002
 
     FLOWS_PATH: Path = Path("app/flows")
-    DEFAULT_FLOW: str = "start"
+    # Optional named fallback. Leave empty: use the tenant's sole flow, or none.
+    DEFAULT_FLOW: str = ""
     CACHE_TTL_SECONDS: int = 60
 
     class Config:

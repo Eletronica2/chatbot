@@ -260,13 +260,9 @@ class _ProposalDialogShellState extends State<_ProposalDialogShell> {
         constraints: const BoxConstraints(maxWidth: 640, maxHeight: 720),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF151925), Color(0xFF0B0E14)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
             boxShadow: AppShadows.cinematic,
           ),
           child: _loading
@@ -284,7 +280,7 @@ class _ProposalDialogShellState extends State<_ProposalDialogShell> {
                             child: Text(
                               'Gerar proposta',
                               style: TextStyle(
-                                color: Color(0xFFF5F7FF),
+                                color: AppColors.text,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
                               ),

@@ -1,4 +1,4 @@
-﻿"""Intent detection utilities."""
+"""Intent detection utilities."""
 from __future__ import annotations
 
 import re
@@ -45,7 +45,11 @@ class IntentService:
                 0.9,
             ),
             "pedido_status": (
-                re.compile(r"\b(status|acompanhar|pedido)\b", re.I),
+                re.compile(
+                    r"\b(status|acompanhar|rastrear)\b|"
+                    r"\b(meu pedido|consultar pedido|cade meu pedido)\b",
+                    re.I,
+                ),
                 0.82,
             ),
             "faq": (

@@ -210,39 +210,50 @@ class _TeamScreenState extends State<TeamScreen> {
     return PremiumPageBackground(
       intensity: AmbientIntensity.soft,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 24, 28, 32),
+        padding: AppPageInsets.of(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             PremiumGlassCard(
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Equipe',
-                          style: TextStyle(
-                            color: AppColors.text,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Convide atendentes e gerentes para operar o WhatsApp da sua empresa.',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton.icon(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final stacked = constraints.maxWidth < 640;
+                  final invite = FilledButton.icon(
                     onPressed: _loading ? null : _showInviteDialog,
                     icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                     label: const Text('Convidar'),
-                  ),
-                ],
+                  );
+                  final intro = const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Equipe',
+                        style: TextStyle(
+                          color: AppColors.text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Convide atendentes e gerentes para operar o WhatsApp da sua empresa.',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4),
+                      ),
+                    ],
+                  );
+                  if (stacked) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [intro, const SizedBox(height: 14), invite],
+                    );
+                  }
+                  return Row(
+                    children: [
+                      Expanded(child: intro),
+                      invite,
+                    ],
+                  );
+                },
               ),
             ),
             const SizedBox(height: 16),
@@ -335,7 +346,9 @@ class _TeamScreenState extends State<TeamScreen> {
                                             borderRadius: AppRadius.pill,
                                           ),
                                           child: Text(
-                                            user.status,
+                                            user.status.toLowerCase() == 'active'
+                                                ? 'Ativo'
+                                                : user.status,
                                             style: TextStyle(
                                               color: user.status.toLowerCase() == 'active'
                                                   ? AppColors.success

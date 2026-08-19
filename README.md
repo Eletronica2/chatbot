@@ -1,5 +1,11 @@
 # chatbot
 
+## Desenvolvimento local
+
+Veja [infra/README.md](infra/README.md) para subir a stack com Docker Compose, portas e o painel Flutter Web.
+
+A porta **8000** precisa estar livre no host.
+
 ## Site publico
 
 - Landing page: https://eletronica2.github.io/chatbot/

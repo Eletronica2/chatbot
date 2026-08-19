@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Console Atenda Ai - Super Admin</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#522300",
+                        "surface-bright": "#363943",
+                        "surface-container-lowest": "#0b0e17",
+                        "outline": "#859399",
+                        "surface": "#10131c",
+                        "on-secondary-fixed-variant": "#530ec6",
+                        "inverse-surface": "#e0e2ef",
+                        "tertiary-container": "#ffae7d",
+                        "on-primary-fixed-variant": "#004e60",
+                        "on-primary-fixed": "#001f28",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "on-secondary-container": "#c2acff",
+                        "on-tertiary-container": "#813a00",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-container": "#00d1ff",
+                        "surface-container-high": "#272a33",
+                        "on-secondary-fixed": "#22005d",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-surface-variant": "#bbc9cf",
+                        "tertiary-fixed": "#ffdbc8",
+                        "surface-container-highest": "#32343e",
+                        "on-background": "#e0e2ef",
+                        "on-primary": "#003543",
+                        "inverse-primary": "#00677f",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "surface-container": "#1c1f29",
+                        "secondary-fixed-dim": "#cfbdff",
+                        "tertiary": "#ffd4bc",
+                        "surface-variant": "#32343e",
+                        "background": "#10131c",
+                        "secondary-fixed": "#e8ddff",
+                        "primary-fixed": "#b7eaff",
+                        "on-primary-container": "#00566a",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#e0e2ef",
+                        "inverse-on-surface": "#2d303a",
+                        "on-error": "#690005",
+                        "secondary": "#cfbdff",
+                        "primary": "#a4e6ff",
+                        "secondary-container": "#5515c9",
+                        "on-secondary": "#390093",
+                        "surface-container-low": "#181b25",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffb68b",
+                        "surface-dim": "#10131c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin": "24px",
+                        "2xl": "48px",
+                        "gutter": "20px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "display-md": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-md": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #07080D; /* Canvas Level 0 */
+            color: #e0e2ef;
+        }
+        
+        .glass-panel {
+            background-color: #11141D; /* Surface Level 1 */
+            border: 1px solid #252B3A;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-floating {
+            background-color: rgba(27, 32, 45, 0.8); /* Floating Level 2 with opacity */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid #252B3A;
+            border-top: 1px solid rgba(255, 255, 255, 0.05); /* Inner glow */
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .ai-glow-cyan {
+            box-shadow: 0 0 20px rgba(76, 214, 255, 0.15);
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #4cd6ff, #cfbdff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .grid-blueprint {
+            background-image: 
+                linear-gradient(to right, #252B3A 1px, transparent 1px),
+                linear-gradient(to bottom, #252B3A 1px, transparent 1px);
+            background-size: 8px 8px; /* 8px base rhythm */
+            background-position: center center;
+        }
+
+        /* Ambient glows */
+        .ambient-glow-tr {
+            position: fixed;
+            top: -20%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(76, 214, 255, 0.08) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .ambient-glow-bl {
+            position: fixed;
+            bottom: -20%;
+            left: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(85, 21, 201, 0.08) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #252B3A;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3c494e;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased min-h-screen flex overflow-hidden">
+<!-- Ambient Background Effects -->
+<div class="ambient-glow-tr"></div>
+<div class="ambient-glow-bl"></div>
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen py-lg fixed left-0 top-0 w-[260px] border-r border-outline-variant bg-surface-container dark:bg-surface-container shadow-sm z-40">
+<!-- Brand / Header -->
+<div class="px-lg mb-xl flex items-center gap-md">
+<div class="w-10 h-10 rounded-lg flex items-center justify-center bg-surface-container-high border border-outline-variant ai-glow-cyan">
+<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent tracking-tight">Atenda Ai</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Console Super Admin</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 flex flex-col gap-sm overflow-y-auto px-sm">
+<!-- Active: Visão Geral -->
+<a class="flex items-center gap-md border-l-2 border-primary bg-white/5 text-primary font-bold px-lg py-sm rounded-r-lg transition-all duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-lg text-label-lg">Visão Geral</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:text-primary transition-all duration-200 px-lg py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">business</span>
+<span class="font-label-lg text-label-lg font-medium">Tenants</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:text-primary transition-all duration-200 px-lg py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">network_node</span>
+<span class="font-label-lg text-label-lg font-medium">Instâncias WA</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:text-primary transition-all duration-200 px-lg py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">payments</span>
+<span class="font-label-lg text-label-lg font-medium">Planos</span>
+</a>
+</div>
+<!-- Footer Links -->
+<div class="mt-auto px-sm flex flex-col gap-sm pt-md border-t border-outline-variant/50">
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:text-primary transition-all duration-200 px-lg py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">help</span>
+<span class="font-label-lg text-label-lg font-medium">Suporte Admin</span>
+</a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-error hover:bg-error-container/10 transition-all duration-200 px-lg py-sm rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-error transition-colors">logout</span>
+<span class="font-label-lg text-label-lg font-medium">Sair</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 ml-0 md:ml-[260px] h-screen flex flex-col relative">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-full md:w-[calc(100%-260px)] h-16 border-b border-outline-variant bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-md z-30 flex justify-between items-center px-margin transition-opacity duration-200">
+<!-- Mobile Menu Toggle (Visible only on small screens) -->
+<div class="md:hidden flex items-center">
+<button class="text-on-surface-variant hover:text-primary p-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+<!-- Breadcrumb / Context (Desktop) -->
+<div class="hidden md:flex items-center gap-sm text-on-surface-variant font-label-lg text-label-lg">
+<span class="material-symbols-outlined text-sm">home</span>
+<span class="text-outline-variant">/</span>
+<span class="text-on-surface font-semibold text-gradient">Console Operacional</span>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-md ml-auto">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+</button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<button class="flex items-center gap-sm text-on-surface hover:text-primary transition-colors">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-sm text-on-surface-variant">person</span>
+</div>
+<span class="font-label-lg text-label-lg hidden lg:block">Admin.root</span>
+<span class="material-symbols-outlined text-sm text-outline-variant">expand_more</span>
+</button>
+</div>
+</header>
+<!-- Canvas Content -->
+<div class="flex-1 overflow-y-auto pt-24 pb-xl px-margin md:px-xl z-10 relative">
+<!-- Header Section -->
+<div class="mb-xl flex flex-col md:flex-row md:items-end justify-between gap-md">
+<div>
+<h2 class="font-display-md text-display-md font-bold text-on-surface tracking-tight mb-xs">Visão Geral da Plataforma</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Monitoramento de tenants e status de conectividade em tempo real.</p>
+</div>
+<div class="flex gap-md">
+<button class="h-10 px-lg rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container-high transition-colors font-label-lg text-label-lg flex items-center gap-sm bg-surface">
+<span class="material-symbols-outlined text-sm">refresh</span>
+                        Atualizar Dados
+                    </button>
+<button class="h-10 px-lg rounded-lg bg-gradient-to-r from-primary-container to-secondary-container text-on-primary font-label-lg text-label-lg font-bold flex items-center gap-sm hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(76,214,255,0.3)] border-none">
+<span class="material-symbols-outlined text-sm">add</span>
+                        Novo Tenant
+                    </button>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Status Overview Cards (Top Row) -->
+<div class="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-gutter mb-md">
+<!-- Active Tenants -->
+<div class="glass-panel p-lg rounded-xl">
+<div class="flex justify-between items-start mb-md">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Total Tenants</span>
+<span class="material-symbols-outlined text-outline-variant">business</span>
+</div>
+<div class="flex items-end gap-sm">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">142</span>
+</div>
+<div class="mt-sm w-full bg-surface-container-high h-1 rounded-full overflow-hidden">
+<div class="bg-gradient-to-r from-primary to-secondary h-full" style="width: 100%"></div>
+</div>
+</div>
+<!-- WA Instances -->
+<div class="glass-panel p-lg rounded-xl">
+<div class="flex justify-between items-start mb-md">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Saúde da Conexão WA</span>
+<span class="material-symbols-outlined text-secondary-fixed-dim">network_node</span>
+</div>
+<div class="flex items-end gap-sm">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">138 <span class="text-body-md font-normal text-on-surface-variant">Ativas</span></span>
+<span class="font-label-sm text-label-sm text-error mb-1 flex items-center ml-4"><span class="material-symbols-outlined text-[14px] mr-1">warning</span> 4 Offline</span>
+</div>
+<div class="mt-sm flex gap-xs h-1 rounded-full overflow-hidden">
+<div class="bg-primary flex-1"></div>
+<div class="bg-error w-[5%]"></div>
+</div>
+</div>
+</div>
+<!-- Tenant Directory List (Main Span) -->
+<div class="lg:col-span-12 glass-panel rounded-xl flex flex-col h-[600px]">
+<div class="p-lg border-b border-outline-variant flex justify-between items-center bg-surface-container/30">
+<h3 class="font-headline-md text-headline-md font-semibold text-on-surface flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-sm">format_list_bulleted</span>
+                            Diretório de Tenants
+                        </h3>
+<!-- Mini Search -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant text-sm">search</span>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md py-2 pl-10 pr-3 text-sm text-on-surface placeholder:text-outline-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Buscar por nome ou ID..." type="text"/>
+</div>
+</div>
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-high/90 backdrop-blur-sm z-10 border-b border-outline-variant shadow-sm">
+<tr>
+<th class="py-3 px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">Tenant</th>
+<th class="py-3 px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">ID da Instância</th>
+<th class="py-3 px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">Status WA</th>
+<th class="py-3 px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium">Plano</th>
+<th class="py-3 px-lg font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-medium text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30 font-body-md text-body-md">
+<!-- Row 1 (Connected) -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="py-4 px-lg">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-bright flex items-center justify-center font-bold text-xs border border-outline-variant">AC</div>
+<div>
+<div class="font-medium text-on-surface">Acme Corp BR</div>
+<div class="text-xs text-on-surface-variant">Criado em: 12/08/23</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-lg font-mono text-xs text-outline-variant">tnt_a8f92j1k</td>
+<td class="py-4 px-lg">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_#4cd6ff]"></span>
+<span class="text-primary text-sm font-medium">Conectado</span>
+</div>
+</td>
+<td class="py-4 px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">
+                                            Enterprise
+                                        </span>
+</td>
+<td class="py-4 px-lg text-right">
+<button class="p-1 rounded hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors tooltip-trigger relative">
+<span class="material-symbols-outlined text-sm">settings_applications</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 (Error) -->
+<tr class="hover:bg-white/5 transition-colors group bg-error-container/5">
+<td class="py-4 px-lg">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-bright flex items-center justify-center font-bold text-xs border border-error/30">VX</div>
+<div>
+<div class="font-medium text-on-surface">Varejo Xpress</div>
+<div class="text-xs text-on-surface-variant">Criado em: 05/11/23</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-lg font-mono text-xs text-outline-variant">tnt_x99b2n4m</td>
+<td class="py-4 px-lg">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-error text-sm font-medium">Desconectado</span>
+</div>
+</td>
+<td class="py-4 px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-surface-bright text-on-surface-variant border border-outline-variant">
+                                            Pro
+                                        </span>
+</td>
+<td class="py-4 px-lg text-right">
+<button class="p-1 rounded hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">settings_applications</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 (Connected) -->
+<tr class="hover:bg-white/5 transition-colors group">
+<td class="py-4 px-lg">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-bright flex items-center justify-center font-bold text-xs border border-outline-variant">CL</div>
+<div>
+<div class="font-medium text-on-surface">Clínica Vida</div>
+<div class="text-xs text-on-surface-variant">Criado em: 22/01/24</div>
+</div>
+</div>
+</td>
+<td class="py-4 px-lg font-mono text-xs text-outline-variant">tnt_c3l8v1da</td>
+<td class="py-4 px-lg">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_#4cd6ff]"></span>
+<span class="text-primary text-sm font-medium">Conectado</span>
+</div>
+</td>
+<td class="py-4 px-lg">
+<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-surface-bright text-on-surface-variant border border-outline-variant">
+                                            Starter
+                                        </span>
+</td>
+<td class="py-4 px-lg text-right">
+<button class="p-1 rounded hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-sm">settings_applications</span>
+</button>
+</td>
+</tr>
+<!-- Dummy rows for density -->
+<tr class="hover:bg-white/5 transition-colors group"><td class="py-4 px-lg"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded bg-surface-bright flex items-center justify-center font-bold text-xs border border-outline-variant">TL</div><div><div class="font-medium text-on-surface">Tech Logística</div></div></div></td><td class="py-4 px-lg font-mono text-xs text-outline-variant">tnt_p9q2r8s4</td><td class="py-4 px-lg"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_5px_#4cd6ff]"></span><span class="text-primary text-sm font-medium">Conectado</span></div></td><td class="py-4 px-lg"><span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-secondary/10 text-secondary border border-secondary/20">Enterprise</span></td><td class="py-4 px-lg text-right"><button class="p-1 rounded hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">settings_applications</span></button></td></tr>
+<tr class="hover:bg-white/5 transition-colors group opacity-70"><td class="py-4 px-lg"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded bg-surface-bright flex items-center justify-center font-bold text-xs border border-outline-variant">MB</div><div><div class="font-medium text-on-surface">Mega Brokers</div></div></div></td><td class="py-4 px-lg font-mono text-xs text-outline-variant">tnt_m5b7k9j2</td><td class="py-4 px-lg"><div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-outline-variant"></span><span class="text-on-surface-variant text-sm font-medium">Pausado</span></div></td><td class="py-4 px-lg"><span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-surface-bright text-on-surface-variant border border-outline-variant">Pro</span></td><td class="py-4 px-lg text-right"><button class="p-1 rounded hover:bg-surface-bright text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">settings_applications</span></button></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

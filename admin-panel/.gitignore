@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Auditoria visual local (não versionar PNGs)
+ui-v2-audit/
+
+
 # Symbolication related
 app.*.symbols
 

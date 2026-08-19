@@ -12,11 +12,12 @@ Future<void> showCoexistenceWizard({
   required BuildContext context,
   required String tenantId,
   required Future<void> Function() onConnected,
-  Color accentColor = const Color(0xFFF5A623),
+  Color accentColor = AppColors.primary,
+  int initialStep = 0,
 }) {
   return showDialog<void>(
     context: context,
-    barrierDismissible: false,
+    barrierDismissible: true,
     builder: (ctx) => Dialog(
       backgroundColor: AppColors.surface,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -26,6 +27,7 @@ Future<void> showCoexistenceWizard({
           tenantId: tenantId,
           onConnected: onConnected,
           accentColor: accentColor,
+          initialStep: initialStep,
           onClose: () => Navigator.of(ctx).pop(),
         ),
       ),
@@ -39,20 +41,22 @@ class CoexistenceWizard extends StatefulWidget {
     required this.tenantId,
     required this.onConnected,
     required this.onClose,
-    this.accentColor = const Color(0xFFF5A623),
+    this.accentColor = AppColors.primary,
+    this.initialStep = 0,
   });
 
   final String tenantId;
   final Future<void> Function() onConnected;
   final VoidCallback onClose;
   final Color accentColor;
+  final int initialStep;
 
   @override
   State<CoexistenceWizard> createState() => _CoexistenceWizardState();
 }
 
 class _CoexistenceWizardState extends State<CoexistenceWizard> {
-  int _step = 0;
+  late int _step;
   bool _loading = true;
   String? _error;
   Map<String, dynamic> _preflight = <String, dynamic>{};
@@ -71,6 +75,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
   @override
   void initState() {
     super.initState();
+    _step = widget.initialStep.clamp(0, 2);
     _loadPreflight();
   }
 
@@ -113,7 +118,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Nao foi possivel abrir: $url')),
+        SnackBar(content: Text('Não foi possível abrir: $url')),
       );
     }
   }
@@ -137,7 +142,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
             children: [
               const Expanded(
                 child: Text(
-                  'Assistente de coexistencia',
+                  'Assistente de coexistência',
                   style: TextStyle(
                     color: AppColors.text,
                     fontSize: 18,
@@ -153,7 +158,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Siga as etapas na ordem. Use os botoes para abrir as telas da Meta e copiar os valores.',
+            'Siga as etapas na ordem. Use os botões para abrir as telas da Meta e copiar os valores.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 16),
@@ -259,11 +264,11 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
         _checkRow('Backend online', _backendOk),
         _checkRow('META_APP_SECRET configurado', secretOk),
         _checkRow('Configuration ID ($configId)', configId.isNotEmpty),
-        _checkRow('Admin em HTTPS (obrigatorio Meta)', _isHttps),
+        _checkRow('Admin em HTTPS (obrigatório Meta)', _isHttps),
         if (!_isHttps) ...[
           const SizedBox(height: 12),
           const Text(
-            'Abra o painel pela URL https://....trycloudflare.com (nao localhost). '
+            'Abra o painel pela URL https://....trycloudflare.com (não localhost). '
             'Rode: scripts/start-coexistence-session.ps1',
             style: TextStyle(color: AppColors.warning, fontSize: 12, height: 1.4),
           ),
@@ -292,7 +297,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
         _metaLinkRow(
           'App Domains + JS SDK',
           _metaLinks['app_domains']?.toString(),
-          'Dominio (sem https://)',
+          'Domínio (sem https://)',
           _adminHost,
         ),
         const SizedBox(height: 10),
@@ -348,7 +353,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Fluxo de coexistencia (Meta 2026):',
+                'Fluxo de coexistência (Meta 2026):',
                 style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600, fontSize: 13),
               ),
               SizedBox(height: 8),
@@ -376,16 +381,16 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Tela "Selecione os ativos" (Meta) — Avancar bloqueado?',
+                'Tela "Selecione os ativos" (Meta) — Avançar bloqueado?',
                 style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w600, fontSize: 13),
               ),
               SizedBox(height: 8),
               Text(
-                'Nao use os portfolios Atende Ai ou Laranjo: eles pertencem ao app desenvolvedor '
-                'e a Meta bloqueia o botao Avancar para Tech Providers.\n\n'
-                'Combinacao correta:\n'
+                'Não use os portfólios Atende Ai ou Laranjo: eles pertencem ao app desenvolvedor '
+                'e a Meta bloqueia o botão Avançar para Tech Providers.\n\n'
+                'Combinação correta:\n'
                 '• Portfólio empresarial → Criar um portfólio empresarial (ex.: Pizzaria Bella Massa)\n'
-                '• Conta WhatsApp → Conectar um app do WhatsApp Business (NAO "Criar conta")\n\n'
+                '• Conta WhatsApp → Conectar um app do WhatsApp Business (NÃO "Criar conta")\n\n'
                 'Dica: crie o portfólio antes em business.facebook.com com outro nome de cliente, '
                 'depois selecione-o aqui em vez de criar.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
@@ -403,7 +408,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Proximo passo: Templates WhatsApp → aguardar demo_bella_massa APPROVED → Enviar.',
+                    'Próximo passo: Templates WhatsApp → aguardar demo_bella_massa APPROVED → Enviar.',
                   ),
                 ),
               );
@@ -492,7 +497,7 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
           FilledButton(
             onPressed: _loading ? null : () => setState(() => _step += 1),
             style: FilledButton.styleFrom(backgroundColor: widget.accentColor),
-            child: const Text('Proximo'),
+            child: const Text('Próximo'),
           )
         else
           TextButton(onPressed: widget.onClose, child: const Text('Fechar')),

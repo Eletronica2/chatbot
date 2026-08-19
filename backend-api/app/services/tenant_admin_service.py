@@ -156,6 +156,7 @@ class TenantAdminService:
         owner_password: str,
         plan: str = 'starter',
         monthly_message_limit: int | None = None,
+        copy_default_flows: bool = True,
     ) -> TenantProvisionRecord:
         normalized_tenant_id = self._normalize_tenant_id(tenant_id)
         if not normalized_tenant_id:
@@ -268,7 +269,8 @@ class TenantAdminService:
             status='active',
             monthly_message_limit=monthly_message_limit,
         )
-        await self.bootstrap_default_flows(normalized_tenant_id)
+        if copy_default_flows:
+            await self.bootstrap_default_flows(normalized_tenant_id)
         return await self.get_tenant(normalized_tenant_id)
 
     async def bootstrap_default_flows(self, tenant_id: str) -> None:

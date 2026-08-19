@@ -329,6 +329,10 @@ class FlowLoader:
         merged.update(self._tenant_flows.get(tenant_id, {}))
         return merged
 
+    def list_tenant_flows(self, tenant_id: str) -> Dict[str, FlowDefinition]:
+        """Tenant-scoped flows only (does not merge global YAML)."""
+        return dict(self._tenant_flows.get(tenant_id, {}))
+
     def list_flow_names(self, tenant_id: str | None = None) -> List[str]:
         names = set(path.stem for path in self.flows_path.glob("*.yaml"))
         if tenant_id:

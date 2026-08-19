@@ -322,13 +322,15 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
         );
       }
 
+      final displayPhone = (result.displayPhoneNumber ?? '').trim();
+      final resolvedPhone = displayPhone.isEmpty ? phoneNumberId : displayPhone;
       final exchange = await whatsAppOnboardingService.exchangeEmbeddedSignup(
         tenantId: widget.tenantId,
         code: result.code,
         wabaId: wabaId,
         phoneNumberId: phoneNumberId,
-        displayPhoneNumber: result.displayPhoneNumber ?? phoneNumberId,
-        displayName: 'WhatsApp ${result.displayPhoneNumber ?? phoneNumberId}',
+        displayPhoneNumber: resolvedPhone,
+        displayName: 'WhatsApp $resolvedPhone',
         coexistence: true,
       );
       await widget.onConnected();
@@ -351,7 +353,9 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
               ? 'Popup bloqueado ou fluxo cancelado. Permita popups e use a URL https do tunnel.'
               : text.contains('META_APP_SECRET')
                   ? 'Configure META_APP_SECRET no backend e reinicie o Docker.'
-                  : text;
+                  : text.contains('422')
+                      ? 'A Meta concluiu o cadastro, mas o painel rejeitou o payload (numero de exibicao vazio). Tente conectar de novo.'
+                      : text;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Falha ao conectar: $friendly')),
       );
@@ -371,7 +375,7 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.link_rounded, size: 16),
-      label: Text(_loading ? 'Conectando...' : 'Conectar via Meta (Coexistencia)'),
+      label: Text(_loading ? 'Conectando...' : 'Conectar via Meta (Coexistência)'),
       style: OutlinedButton.styleFrom(
         foregroundColor: widget.accentColor,
         side: BorderSide(color: widget.accentColor.withValues(alpha: 0.5)),

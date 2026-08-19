@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Conversas - Atenda Ai</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts: Manrope -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config injected from Style Guidance -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#522300",
+                    "surface-bright": "#363943",
+                    "surface-container-lowest": "#0b0e17",
+                    "outline": "#859399",
+                    "surface": "#10131c",
+                    "on-secondary-fixed-variant": "#530ec6",
+                    "inverse-surface": "#e0e2ef",
+                    "tertiary-container": "#ffae7d",
+                    "on-primary-fixed-variant": "#004e60",
+                    "on-primary-fixed": "#001f28",
+                    "primary-fixed-dim": "#4cd6ff",
+                    "on-secondary-container": "#c2acff",
+                    "on-tertiary-container": "#813a00",
+                    "on-tertiary-fixed": "#321200",
+                    "primary-container": "#00d1ff",
+                    "surface-container-high": "#272a33",
+                    "on-secondary-fixed": "#22005d",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-surface-variant": "#bbc9cf",
+                    "tertiary-fixed": "#ffdbc8",
+                    "surface-container-highest": "#32343e",
+                    "on-background": "#e0e2ef",
+                    "on-primary": "#003543",
+                    "inverse-primary": "#00677f",
+                    "outline-variant": "#3c494e",
+                    "error-container": "#93000a",
+                    "surface-container": "#1c1f29",
+                    "secondary-fixed-dim": "#cfbdff",
+                    "tertiary": "#ffd4bc",
+                    "surface-variant": "#32343e",
+                    "background": "#10131c",
+                    "secondary-fixed": "#e8ddff",
+                    "primary-fixed": "#b7eaff",
+                    "on-primary-container": "#00566a",
+                    "surface-tint": "#4cd6ff",
+                    "on-surface": "#e0e2ef",
+                    "inverse-on-surface": "#2d303a",
+                    "on-error": "#690005",
+                    "secondary": "#cfbdff",
+                    "primary": "#a4e6ff",
+                    "secondary-container": "#5515c9",
+                    "on-secondary": "#390093",
+                    "surface-container-low": "#181b25",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed-dim": "#ffb68b",
+                    "surface-dim": "#10131c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "32px",
+                    "margin": "24px",
+                    "2xl": "48px",
+                    "gutter": "20px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "md": "16px",
+                    "xs": "4px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Manrope"
+                    ],
+                    "label-sm": [
+                            "Manrope"
+                    ],
+                    "display-lg": [
+                            "Manrope"
+                    ],
+                    "label-lg": [
+                            "Manrope"
+                    ],
+                    "headline-lg": [
+                            "Manrope"
+                    ],
+                    "display-md": [
+                            "Manrope"
+                    ],
+                    "headline-md": [
+                            "Manrope"
+                    ],
+                    "headline-lg-mobile": [
+                            "Manrope"
+                    ],
+                    "body-lg": [
+                            "Manrope"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "letterSpacing": "0em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.04em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "56px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-lg": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "28px",
+                            {
+                                    "lineHeight": "36px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-md": [
+                            "36px",
+                            {
+                                    "lineHeight": "44px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "letterSpacing": "-0.01em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-lg": [
+                            "16px",
+                            {
+                                    "lineHeight": "24px",
+                                    "letterSpacing": "0em",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #07080D; /* Level 0 Background */
+            color: #e0e2ef;
+            overflow: hidden; /* Prevent body scroll, layout handles scrolling */
+        }
+        
+        /* Glassmorphism utils */
+        .glass-panel {
+            background: rgba(27, 32, 45, 0.4); /* Level 2 Floating base */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Scrollbar Styling for webkit */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #252B3A;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3c494e;
+        }
+
+        /* Animations */
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .slide-in-right {
+            animation: slideIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+    </style>
+</head>
+<body class="flex h-screen w-full font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Global App Shell Layout -->
+<div class="flex h-screen w-full">
+<!-- SideNavBar (Collapsed State) -->
+<nav class="flex flex-col h-screen py-lg w-[68px] border-r border-outline-variant bg-surface-container shrink-0 transition-all duration-300 shadow-sm z-50">
+<!-- Logo Area -->
+<div class="flex justify-center items-center h-16 mb-xl px-sm overflow-hidden">
+<span class="material-symbols-outlined font-headline-md text-headline-md font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent" style="font-variation-settings: 'FILL' 1;">
+                    layers
+                </span>
+</div>
+<!-- Primary Navigation -->
+<div class="flex flex-col gap-sm flex-1">
+<!-- Inactive -->
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Visão Geral">
+<span class="material-symbols-outlined">dashboard</span>
+</a>
+<!-- Active: Conversas -->
+<a class="flex justify-center items-center border-l-2 border-primary bg-white/5 text-primary font-bold py-md mx-xs rounded-r-lg group relative" href="#" title="Conversas">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat</span>
+</a>
+<!-- Inactive -->
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Automações">
+<span class="material-symbols-outlined">bolt</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Ações">
+<span class="material-symbols-outlined">smart_button</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Templates WhatsApp">
+<span class="material-symbols-outlined">description</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="WhatsApp">
+<span class="material-symbols-outlined">phone_iphone</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Equipe">
+<span class="material-symbols-outlined">group</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg group relative" href="#" title="Configurações">
+<span class="material-symbols-outlined">settings</span>
+</a>
+</div>
+<!-- Footer Navigation -->
+<div class="flex flex-col gap-sm mt-auto">
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-primary transition-all duration-200 py-md mx-xs rounded-lg" href="#" title="Suporte">
+<span class="material-symbols-outlined">help</span>
+</a>
+<a class="flex justify-center items-center text-on-surface-variant hover:bg-white/5 hover:text-error transition-all duration-200 py-md mx-xs rounded-lg" href="#" title="Sair">
+<span class="material-symbols-outlined">logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col min-w-0 bg-[#07080D]">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-margin h-16 w-full border-b border-outline-variant bg-surface-container/80 backdrop-blur-md shrink-0 z-40 hidden md:flex">
+<div class="flex items-center gap-sm">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Conversas</span>
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="h-6 w-[1px] bg-outline-variant mx-sm"></div>
+<button class="flex items-center gap-sm text-on-surface hover:text-primary transition-colors group">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant group-hover:border-primary transition-colors bg-surface-variant flex items-center justify-center">
+<img class="w-full h-full object-cover" data-alt="A highly detailed close-up portrait of a professional business person in a modern corporate setting. The lighting is soft and cinematic, emphasizing a trustworthy and capable demeanor. The aesthetic leans towards a sleek, high-tech B2B SaaS environment with deep cool tones and subtle cyan accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5_dvMcQ_dtRKXA6K24BXyHGPq_IncCvCyZd0aeyZOAIGXDqLnQlDEpKGcmzoEfo5pU7s4lP-cCYLlhL8g63jjxM9RPJ-v03CLzihjMRamN5p4NMkJtLpUrdd_Loo8JhDsZ7UeHoeE2LNWBpz7iYCyEDe9grGnKXuQR1Qyut6S2eSZognC2FcHM7OWB5NyLcH9EG3RG2jb2B55HpaXdbN4bkpj85YgcpTRxkN-5V5nCs7NAHAkVbif"/>
+</div>
+</button>
+</div>
+</header>
+<!-- Dashboard Layout Grid -->
+<div class="flex-1 flex flex-row overflow-hidden">
+<!-- INBOX COLUMN (320px) -->
+<aside class="w-[320px] border-r border-outline-variant bg-[#11141D] flex flex-col shrink-0">
+<!-- Inbox Header -->
+<div class="p-md border-b border-outline-variant shrink-0">
+<div class="flex justify-between items-center mb-md">
+<h2 class="font-label-lg text-label-lg text-on-surface">Caixa de Entrada</h2>
+<button class="text-on-surface-variant hover:text-primary">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+</button>
+</div>
+<!-- Search -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-[#07080D] border border-outline-variant rounded-lg py-2 pl-10 pr-3 text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all" placeholder="Buscar conversas..." type="text"/>
+</div>
+<!-- Tabs -->
+<div class="flex gap-4 mt-4 border-b border-outline-variant">
+<button class="font-label-sm text-label-sm text-primary border-b-2 border-primary pb-2">Abertas (12)</button>
+<button class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface pb-2">Fechadas</button>
+<button class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface pb-2">IA</button>
+</div>
+</div>
+<!-- Conversation List -->
+<div class="flex-1 overflow-y-auto">
+<!-- Chat Item Active -->
+<div class="p-md border-l-2 border-primary bg-white/5 cursor-pointer hover:bg-white/10 transition-colors">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">TechCorp Ltda.</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">10:42</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-md text-on-surface-variant truncate pr-2">Preciso de ajuda com a integração da API...</p>
+<div class="w-4 h-4 rounded-full bg-primary flex items-center justify-center shrink-0">
+<span class="text-[10px] font-bold text-[#003543]">2</span>
+</div>
+</div>
+<div class="flex gap-xs mt-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20">Suporte</span>
+</div>
+</div>
+<!-- Chat Item Inactive -->
+<div class="p-md border-l-2 border-transparent hover:bg-white/5 cursor-pointer transition-colors border-b border-outline-variant/50">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">Maria Silva</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Ontem</span>
+</div>
+<div class="flex justify-between items-center">
+<p class="text-body-md text-on-surface-variant truncate pr-2">Obrigada, o problema foi resolvido.</p>
+</div>
+</div>
+<!-- Chat Item Inactive -->
+<div class="p-md border-l-2 border-transparent hover:bg-white/5 cursor-pointer transition-colors border-b border-outline-variant/50">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-lg text-label-lg text-on-surface">João Souza</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Ontem</span>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-1 text-on-surface-variant truncate pr-2">
+<span class="material-symbols-outlined text-[14px] text-primary">robot_2</span>
+<p class="text-body-md truncate">Aguardando confirmação de dados...</p>
+</div>
+</div>
+<div class="flex gap-xs mt-2">
+<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-secondary/10 text-secondary border border-secondary/20">Montando_Pedido</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- MAIN CHAT AREA (Flexible) -->
+<section class="flex-1 flex flex-col bg-[#07080D] relative slide-in-right">
+<!-- Chat Header -->
+<div class="h-16 border-b border-outline-variant bg-[#11141D] flex items-center justify-between px-lg shrink-0">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface font-bold text-lg border border-outline-variant">
+                                T
+                            </div>
+<div>
+<h3 class="font-label-lg text-label-lg text-on-surface flex items-center gap-2">
+                                    TechCorp Ltda.
+                                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse" title="WhatsApp Conectado"></span>
+</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant">+55 11 99999-9999</p>
+</div>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">search</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary hover:bg-white/5 rounded-lg transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Messages Canvas -->
+<div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-transparent">
+<!-- Date Divider -->
+<div class="flex justify-center">
+<span class="text-[12px] text-on-surface-variant bg-[#11141D] px-3 py-1 rounded-full border border-outline-variant">Hoje</span>
+</div>
+<!-- Cliente Message -->
+<div class="flex flex-col items-start max-w-[75%]">
+<div class="bg-[#181b25] text-on-surface p-md rounded-2xl rounded-tl-sm border border-outline-variant/30 shadow-sm">
+<p>Olá, bom dia! Estamos tentando integrar a API de vocês com o nosso sistema, mas estamos recebendo um erro de autenticação 401.</p>
+</div>
+<span class="text-[11px] text-on-surface-variant mt-1 ml-1">10:35</span>
+</div>
+<!-- Cliente Message 2 -->
+<div class="flex flex-col items-start max-w-[75%]">
+<div class="bg-[#181b25] text-on-surface p-md rounded-2xl rounded-tl-sm border border-outline-variant/30 shadow-sm">
+<p>O token que geramos hoje pela manhã parou de funcionar de repente.</p>
+</div>
+<span class="text-[11px] text-on-surface-variant mt-1 ml-1">10:36</span>
+</div>
+<!-- IA Message -->
+<div class="flex flex-col items-end max-w-[75%] self-end">
+<div class="flex items-center gap-2 mb-1 justify-end w-full">
+<span class="text-[11px] text-secondary font-medium">Assistente IA</span>
+<span class="material-symbols-outlined text-[14px] text-secondary">robot_2</span>
+</div>
+<div class="bg-[#1c1f29] border border-secondary/40 text-on-surface p-md rounded-2xl rounded-tr-sm shadow-sm relative overflow-hidden">
+<!-- Subtle AI Glow -->
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+<p class="relative z-10">Olá! Entendo o problema. O erro 401 geralmente indica que o token expirou ou foi revogado. Vocês geraram um token de Produção ou de Sandbox?</p>
+</div>
+<span class="text-[11px] text-on-surface-variant mt-1 mr-1">10:36</span>
+</div>
+<!-- Cliente Message 3 -->
+<div class="flex flex-col items-start max-w-[75%]">
+<div class="bg-[#181b25] text-on-surface p-md rounded-2xl rounded-tl-sm border border-outline-variant/30 shadow-sm">
+<p>Era um token de Produção. Pode transferir para um humano, por favor?</p>
+</div>
+<span class="text-[11px] text-on-surface-variant mt-1 ml-1">10:38</span>
+</div>
+<!-- System Event -->
+<div class="flex justify-center">
+<span class="text-[12px] text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">swap_horiz</span>
+                                Transferido para Atendente (Você)
+                            </span>
+</div>
+<!-- Atendente Message -->
+<div class="flex flex-col items-end max-w-[75%] self-end">
+<div class="bg-primary/10 text-on-surface p-md rounded-2xl rounded-tr-sm shadow-sm border border-primary/30">
+<p>Olá, aqui é o suporte técnico. Vou verificar o log da sua conta para entender o que houve com esse token de produção. Um momento, por favor.</p>
+</div>
+<div class="flex items-center gap-1 mt-1 mr-1">
+<span class="text-[11px] text-on-surface-variant">10:42</span>
+<span class="material-symbols-outlined text-[14px] text-primary">done_all</span>
+</div>
+</div>
+</div>
+<!-- Composer Area -->
+<div class="p-lg bg-[#11141D] border-t border-outline-variant shrink-0">
+<div class="flex items-end gap-sm bg-[#07080D] border border-outline-variant rounded-xl p-2 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/50 transition-all">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors shrink-0">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<textarea class="w-full bg-transparent border-none text-body-md text-on-surface focus:ring-0 resize-none py-2 max-h-32" placeholder="Escreva uma mensagem..." rows="1" style="min-height: 40px;"></textarea>
+<div class="flex items-center gap-1 shrink-0">
+<button class="p-2 text-secondary hover:text-secondary-fixed transition-colors" title="Sugerir resposta com IA">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">temp_preferences_custom</span>
+</button>
+<button class="w-10 h-10 bg-primary hover:bg-primary-fixed text-on-primary rounded-lg flex items-center justify-center transition-colors shadow-sm ml-2" title="Enviar">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+<div class="flex justify-between items-center mt-2 px-1">
+<div class="flex gap-2">
+<span class="text-[10px] text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">info</span>
+                                    Pressione Shift + Enter para quebra de linha
+                                </span>
+</div>
+<div class="flex gap-2">
+<button class="text-[11px] text-primary hover:underline">Usar Template</button>
+</div>
+</div>
+</div>
+</section>
+<!-- CONTEXT PANEL (260px) -->
+<aside class="w-[260px] border-l border-outline-variant bg-[#11141D] flex flex-col shrink-0 slide-in-right z-10" style="animation-delay: 0.1s;">
+<!-- Contact Info Profile -->
+<div class="p-lg border-b border-outline-variant flex flex-col items-center text-center relative overflow-hidden">
+<!-- Abstract bg element -->
+<div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-primary/10 to-transparent pointer-events-none"></div>
+<div class="w-20 h-20 rounded-full bg-surface-variant border-2 border-[#252B3A] flex items-center justify-center text-on-surface font-display-md text-2xl mb-3 relative z-10">
+                            T
+                            <div class="absolute bottom-0 right-0 w-5 h-5 bg-primary rounded-full border-2 border-[#11141D] flex items-center justify-center" title="WhatsApp">
+<span class="material-symbols-outlined text-[#003543] text-[12px]" style="font-variation-settings: 'FILL' 1;">chat</span>
+</div>
+</div>
+<h3 class="font-headline-md text-headline-md font-semibold text-on-surface">TechCorp Ltda.</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">+55 11 99999-9999</p>
+<div class="flex gap-2 mt-4 w-full">
+<button class="flex-1 bg-[#1B202D] hover:bg-white/5 border border-outline-variant text-on-surface rounded-lg py-2 flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]">person</span>
+<span class="text-[12px] font-semibold">Perfil</span>
+</button>
+<button class="w-10 h-10 bg-[#1B202D] hover:bg-white/5 border border-outline-variant text-on-surface rounded-lg flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined text-[18px]">more_horiz</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Context Info -->
+<div class="flex-1 overflow-y-auto p-lg flex flex-col gap-xl">
+<!-- Tags Section -->
+<section>
+<div class="flex justify-between items-center mb-sm">
+<h4 class="font-label-lg text-label-lg text-on-surface">Tags</h4>
+<button class="text-primary hover:text-primary-fixed">
+<span class="material-symbols-outlined text-[18px]">add</span>
+</button>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded text-[11px] font-semibold bg-tertiary-container/10 text-tertiary-container border border-tertiary-container/20 flex items-center gap-1">
+                                    Suporte Técnico
+                                    <button class="hover:text-white"><span class="material-symbols-outlined text-[12px]">close</span></button>
+</span>
+<span class="px-2 py-1 rounded text-[11px] font-semibold bg-secondary/10 text-secondary border border-secondary/20 flex items-center gap-1">
+                                    API
+                                    <button class="hover:text-white"><span class="material-symbols-outlined text-[12px]">close</span></button>
+</span>
+<span class="px-2 py-1 rounded text-[11px] font-semibold bg-error/10 text-error border border-error/20 flex items-center gap-1">
+                                    Urgente
+                                    <button class="hover:text-white"><span class="material-symbols-outlined text-[12px]">close</span></button>
+</span>
+</div>
+</section>
+<!-- Dados do Contato -->
+<section>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-sm">Informações</h4>
+<div class="bg-[#07080D] border border-outline-variant rounded-lg p-3 flex flex-col gap-3">
+<div>
+<p class="text-[11px] text-on-surface-variant mb-0.5">E-mail</p>
+<p class="text-sm text-on-surface break-all">dev@techcorp.com.br</p>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant mb-0.5">Empresa</p>
+<p class="text-sm text-on-surface">TechCorp Soluções S.A.</p>
+</div>
+<div>
+<p class="text-[11px] text-on-surface-variant mb-0.5">Plano</p>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<p class="text-sm text-on-surface">Enterprise</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Automações Ativas -->
+<section>
+<h4 class="font-label-lg text-label-lg text-on-surface mb-sm">Fluxo Atual</h4>
+<div class="bg-[#1B202D] border border-outline-variant rounded-lg p-3 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-secondary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary text-[16px]">account_tree</span>
+</div>
+<div>
+<p class="text-sm text-on-surface font-medium">Triagem de Suporte</p>
+<p class="text-[11px] text-on-surface-variant">Pausado (Atendimento Humano)</p>
+</div>
+</div>
+</section>
+</div>
+<!-- Quick Actions Footer -->
+<div class="p-md border-t border-outline-variant bg-[#07080D] shrink-0">
+<button class="w-full bg-transparent hover:bg-white/5 text-on-surface-variant border border-outline-variant hover:border-error/50 hover:text-error font-label-lg py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-symbols-outlined text-[18px]">check_circle</span>
+                            Finalizar Conversa
+                        </button>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</body></html>

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/conversation.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 
 class ConversationList extends StatelessWidget {
@@ -18,21 +19,23 @@ class ConversationList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.transparent,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: conversations.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, index) {
-          final conversation = conversations[index];
-          return _ConversationTile(
-            conversation: conversation,
-            selected: selectedId != null && conversation.id == selectedId,
-            onTap: () => onSelectConversation(conversation),
-          );
-        },
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      itemCount: conversations.length,
+      separatorBuilder: (_, __) => const Divider(
+        height: 1,
+        thickness: 1,
+        color: AppColors.divider,
+        indent: 54,
       ),
+      itemBuilder: (context, index) {
+        final conversation = conversations[index];
+        return _ConversationTile(
+          conversation: conversation,
+          selected: selectedId != null && conversation.id == selectedId,
+          onTap: () => onSelectConversation(conversation),
+        );
+      },
     );
   }
 }
@@ -56,12 +59,11 @@ class _ConversationTileState extends State<_ConversationTile> {
   bool _hovered = false;
 
   static const List<Color> _palette = <Color>[
-    Color(0xFFF5A623),
-    Color(0xFF48C0FF),
-    Color(0xFF19C37D),
-    Color(0xFFFFB84D),
-    Color(0xFFFF6B6B),
-    Color(0xFF9B8CFF),
+    Color(0xFF22D3EE),
+    Color(0xFF8B5CF6),
+    Color(0xFF2DD4BF),
+    Color(0xFF60A5FA),
+    Color(0xFF94A3B8),
   ];
 
   Color _avatarColor(String phone) =>
@@ -89,77 +91,46 @@ class _ConversationTileState extends State<_ConversationTile> {
     final conversation = widget.conversation;
     final hasUnread = conversation.unreadCount > 0;
     final needsHuman = conversation.humanHandoffPending;
+    final accent = _avatarColor(conversation.phoneNumber);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: InkWell(
         onTap: widget.onTap,
-        borderRadius: AppRadius.lg,
         child: AnimatedContainer(
-          duration: AppDurations.fast,
-          curve: Curves.easeOutCubic,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          duration: AppMotion.hoverOf(context),
+          padding: const EdgeInsets.fromLTRB(10, 9, 12, 9),
           decoration: BoxDecoration(
-            gradient: (_hovered || widget.selected)
-                ? AppGradients.glassPanel
-                : null,
-            color: (_hovered || widget.selected)
-                ? null
-                : AppColors.background.withValues(alpha: 0.28),
-            borderRadius: AppRadius.xl,
-            border: Border.all(
-              color: widget.selected
-                  ? AppColors.primary.withValues(alpha: 0.55)
-                  : needsHuman
-                      ? AppColors.warning.withValues(alpha: 0.42)
-                      : hasUnread
-                          ? AppColors.primary.withValues(alpha: 0.24)
-                          : AppColors.borderSubtle.withValues(alpha: 0.62),
+            color: widget.selected
+                ? AppColors.primary.withValues(alpha: 0.10)
+                : (_hovered
+                    ? AppColors.surfaceAlt.withValues(alpha: 0.55)
+                    : Colors.transparent),
+            border: Border(
+              left: BorderSide(
+                width: 2.5,
+                color: widget.selected
+                    ? AppColors.primary
+                    : Colors.transparent,
+              ),
             ),
-            boxShadow: _hovered || widget.selected
-                ? AppShadows.panelHover
-                : null,
           ),
           child: Row(
             children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  CircleAvatar(
-                    radius: 23,
-                    backgroundColor: _avatarColor(conversation.phoneNumber),
-                    child: Text(
-                      _initials(conversation.phoneNumber),
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
+              CircleAvatar(
+                radius: 15,
+                backgroundColor: accent.withValues(alpha: 0.18),
+                child: Text(
+                  _initials(conversation.phoneNumber),
+                  style: GoogleFonts.manrope(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
                   ),
-                  Positioned(
-                    right: -2,
-                    bottom: -2,
-                    child: Container(
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: conversation.aiEnabled
-                            ? AppColors.success
-                            : AppColors.warning,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.background,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -170,29 +141,28 @@ class _ConversationTileState extends State<_ConversationTile> {
                           child: Text(
                             _formatPhone(conversation.phoneNumber),
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.manrope(
                               color: AppColors.text,
-                              fontSize: 14,
-                              fontWeight:
-                                  hasUnread ? FontWeight.w700 : FontWeight.w600,
-                              letterSpacing: -0.1,
+                              fontSize: 13,
+                              fontWeight: hasUnread
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
                         Text(
                           conversation.formattedUpdatedAt,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.manrope(
                             color: hasUnread
                                 ? AppColors.primarySoft
                                 : AppColors.textSoft,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 3),
                     Row(
                       children: [
                         Expanded(
@@ -202,28 +172,29 @@ class _ConversationTileState extends State<_ConversationTile> {
                                 : conversation.lastMessage,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.manrope(
                               color: AppColors.textMuted,
                               fontSize: 12,
-                              height: 1.35,
                             ),
                           ),
                         ),
                         if (hasUnread) ...[
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           Container(
+                            constraints: const BoxConstraints(minWidth: 18),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 6,
+                              vertical: 1,
                             ),
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: AppColors.primary,
                               borderRadius: AppRadius.pill,
                             ),
                             child: Text(
                               conversation.unreadCount.toString(),
-                              style: GoogleFonts.inter(
-                                color: const Color(0xFF1A1008),
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.manrope(
+                                color: AppColors.onPrimary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -232,79 +203,27 @@ class _ConversationTileState extends State<_ConversationTile> {
                         ],
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        if (needsHuman)
-                          const _ModePill(
-                            icon: Icons.support_agent_rounded,
-                            label: 'Pendente atendimento',
-                            color: AppColors.warning,
-                          )
-                        else
-                          _ModePill(
-                            icon: conversation.aiEnabled
-                                ? Icons.auto_awesome_rounded
-                                : Icons.support_agent_rounded,
-                            label: conversation.aiEnabled
-                                ? 'IA ativa'
-                                : 'Atendimento humano',
-                            color: conversation.aiEnabled
-                                ? AppColors.success
-                                : AppColors.warning,
-                          ),
-                      ],
-                    ),
+                    if (needsHuman || conversation.aiEnabled) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        needsHuman
+                            ? 'Aguardando humano'
+                            : (conversation.aiEnabled ? 'IA ativa' : ''),
+                        style: GoogleFonts.manrope(
+                          color: needsHuman
+                              ? AppColors.warning
+                              : AppColors.accentSecondary,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: _hovered ? AppColors.textMuted : AppColors.textSoft,
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ModePill extends StatelessWidget {
-  const _ModePill({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: AppRadius.pill,
-        border: Border.all(color: color.withValues(alpha: 0.28)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

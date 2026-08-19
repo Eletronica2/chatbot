@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Landing Page</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#522300",
+                        "surface-bright": "#363943",
+                        "surface-container-lowest": "#0b0e17",
+                        "outline": "#859399",
+                        "surface": "#10131c",
+                        "on-secondary-fixed-variant": "#530ec6",
+                        "inverse-surface": "#e0e2ef",
+                        "tertiary-container": "#ffae7d",
+                        "on-primary-fixed-variant": "#004e60",
+                        "on-primary-fixed": "#001f28",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "on-secondary-container": "#c2acff",
+                        "on-tertiary-container": "#813a00",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-container": "#00d1ff",
+                        "surface-container-high": "#272a33",
+                        "on-secondary-fixed": "#22005d",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-surface-variant": "#bbc9cf",
+                        "tertiary-fixed": "#ffdbc8",
+                        "surface-container-highest": "#32343e",
+                        "on-background": "#e0e2ef",
+                        "on-primary": "#003543",
+                        "inverse-primary": "#00677f",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "surface-container": "#1c1f29",
+                        "secondary-fixed-dim": "#cfbdff",
+                        "tertiary": "#ffd4bc",
+                        "surface-variant": "#32343e",
+                        "background": "#10131c",
+                        "secondary-fixed": "#e8ddff",
+                        "primary-fixed": "#b7eaff",
+                        "on-primary-container": "#00566a",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#e0e2ef",
+                        "inverse-on-surface": "#2d303a",
+                        "on-error": "#690005",
+                        "secondary": "#cfbdff",
+                        "primary": "#a4e6ff",
+                        "secondary-container": "#5515c9",
+                        "on-secondary": "#390093",
+                        "surface-container-low": "#181b25",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffb68b",
+                        "surface-dim": "#10131c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin": "24px",
+                        "2xl": "48px",
+                        "gutter": "20px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "display-md": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "display-md": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #07080D;
+            color: #e0e2ef;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23252B3A' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            font-family: 'Manrope', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-surface {
+            background: rgba(17, 20, 29, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(37, 43, 58, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .glass-surface-floating {
+            background: rgba(27, 32, 45, 0.8);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(37, 43, 58, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #a4e6ff 0%, #cfbdff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d1ff 0%, #5515c9 100%);
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(0, 209, 255, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-ghost {
+            border: 1px solid #252B3A;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: #8A5CFF;
+        }
+
+        .glow-bg {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(0,209,255,0.15) 0%, rgba(85,21,201,0.05) 40%, rgba(7,8,13,0) 70%);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(60px);
+            pointer-events: none;
+        }
+
+        .glow-violet {
+            background: radial-gradient(circle, rgba(85,21,201,0.2) 0%, rgba(7,8,13,0) 70%);
+        }
+
+        .noise-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="antialiased">
+<div class="noise-overlay"></div>
+<!-- Header -->
+<header class="fixed top-0 w-full z-50 glass-surface border-b-0 border-t-0 border-l-0 border-r-0 border-b border-outline-variant h-16 transition-all duration-300" id="main-header">
+<div class="max-w-[1440px] mx-auto px-margin h-full flex items-center justify-between">
+<div class="flex items-center gap-sm">
+<!-- Logo Abstract Shape -->
+<div class="w-8 h-8 relative flex items-center justify-center">
+<svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<path d="M16 4L2 28H30L16 4Z" stroke="url(#logo-grad)" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M16 12L8 25H24L16 12Z" stroke="url(#logo-grad)" stroke-linejoin="round" stroke-width="1.5"></path>
+<circle cx="16" cy="20" fill="#00d1ff" r="2"></circle>
+<defs>
+<lineargradient gradientunits="userSpaceOnUse" id="logo-grad" x1="2" x2="30" y1="4" y2="28">
+<stop stop-color="#00d1ff"></stop>
+<stop offset="1" stop-color="#cfbdff"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-on-surface tracking-tight">Atenda Ai</span>
+</div>
+<div>
+<a class="btn-primary px-lg py-sm rounded-lg font-label-lg text-label-lg inline-flex items-center justify-center" href="#comecar">
+                    Começar agora
+                </a>
+</div>
+</div>
+</header>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative min-h-[921px] flex flex-col items-center justify-center px-margin pt-2xl pb-xl overflow-hidden">
+<div class="glow-bg top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+<div class="max-w-4xl mx-auto text-center z-10 relative mt-xl">
+<div class="inline-flex items-center gap-xs px-sm py-xs rounded-full border border-outline-variant glass-surface mb-lg">
+<span class="w-2 h-2 rounded-full bg-primary-container animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Atendimento + Automação + IA para WhatsApp</span>
+</div>
+<h1 class="font-display-lg text-display-lg md:text-[64px] md:leading-[72px] font-bold text-on-surface mb-md tracking-tight">
+                    Transforme seu WhatsApp em uma operação de <span class="gradient-text">atendimento inteligente.</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90 max-w-2xl mx-auto mb-xl">
+                    Centralize conversas, automatize triagens com IA e equipe seus atendentes com ferramentas avançadas. Tudo em uma única plataforma projetada para escala.
+                </p>
+<div class="flex flex-col sm:flex-row items-center justify-center gap-md">
+<a class="btn-primary w-full sm:w-auto px-xl py-md rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-sm" href="#comecar">
+                        Começar agora
+                        <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+<a class="btn-ghost w-full sm:w-auto px-xl py-md rounded-lg font-label-lg text-label-lg flex items-center justify-center gap-sm" href="#demo">
+                        Ver demonstração
+                        <span class="material-symbols-outlined text-[20px]">play_circle</span>
+</a>
+</div>
+</div>
+<!-- Dashboard Preview - Structural / Glassmorphism -->
+<div class="w-full max-w-6xl mx-auto mt-2xl relative z-10 perspective-1000">
+<div class="glow-bg glow-violet bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 opacity-50"></div>
+<div class="glass-surface rounded-xl overflow-hidden border border-outline-variant shadow-[0_20px_50px_rgba(0,0,0,0.5)] transform rotate-x-[5deg] scale-[0.98] transition-transform duration-700 hover:rotate-x-0 hover:scale-100">
+<!-- Fake Window Header -->
+<div class="h-8 border-b border-outline-variant bg-surface-container-low flex items-center px-md gap-xs">
+<div class="w-3 h-3 rounded-full bg-[#3c494e]"></div>
+<div class="w-3 h-3 rounded-full bg-[#3c494e]"></div>
+<div class="w-3 h-3 rounded-full bg-[#3c494e]"></div>
+</div>
+<div class="flex h-[600px]">
+<!-- Sidebar -->
+<div class="w-64 border-r border-outline-variant bg-surface-container flex flex-col p-md hidden md:flex">
+<div class="flex items-center gap-sm mb-xl text-on-surface font-headline-md text-headline-md font-bold">
+<span class="material-symbols-outlined text-primary-container">forum</span> Conversas
+                            </div>
+<div class="space-y-sm flex-1">
+<div class="flex items-center gap-md text-primary bg-white/5 border-l-2 border-primary px-sm py-sm rounded-r-sm font-label-lg text-label-lg">
+<span class="material-symbols-outlined">chat</span> Atendimentos
+                                </div>
+<div class="flex items-center gap-md text-on-surface-variant px-sm py-sm font-label-lg text-label-lg">
+<span class="material-symbols-outlined">bolt</span> Automações
+                                </div>
+</div>
+</div>
+<!-- Main Chat Area -->
+<div class="flex-1 flex flex-col bg-surface relative">
+<!-- Chat Header -->
+<div class="h-16 border-b border-outline-variant flex items-center px-lg justify-between bg-surface-container-low/50">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface font-bold border border-outline-variant">
+                                        AC
+                                    </div>
+<div>
+<div class="font-label-lg text-label-lg text-on-surface">Ana Cliente</div>
+<div class="font-label-sm text-label-sm text-on-surface-variant flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span> Online
+                                        </div>
+</div>
+</div>
+<div class="flex gap-sm">
+<button class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[18px]">info</span>
+</button>
+</div>
+</div>
+<!-- Chat Messages -->
+<div class="flex-1 p-lg overflow-hidden flex flex-col justify-end gap-md relative">
+<div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiMzYzQ5NGUiLz48L3N2Zz4=')] opacity-20"></div>
+<div class="glass-surface-floating self-start max-w-[80%] rounded-xl rounded-tl-none p-md text-on-surface z-10">
+<p class="font-body-md text-body-md">Olá, gostaria de saber mais sobre como a plataforma funciona.</p>
+<div class="text-[10px] text-on-surface-variant mt-xs text-right">10:42</div>
+</div>
+<div class="self-end max-w-[80%] rounded-xl rounded-tr-none p-md text-white bg-gradient-to-r from-inverse-primary to-primary-container/80 border border-primary-container/30 z-10 relative">
+<div class="absolute -left-8 top-0 w-6 h-6 rounded-full bg-secondary-container flex items-center justify-center border border-outline-variant shadow-sm hidden md:flex">
+<span class="material-symbols-outlined text-[12px] text-white">smart_toy</span>
+</div>
+<p class="font-body-md text-body-md">Olá Ana! Sou o assistente virtual da Atenda Ai. Nossa plataforma centraliza seus atendimentos de WhatsApp e permite automações inteligentes.</p>
+<div class="text-[10px] text-white/70 mt-xs text-right flex justify-end items-center gap-xs">
+                                        10:43 <span class="material-symbols-outlined text-[12px]">done_all</span>
+</div>
+</div>
+<div class="glass-surface-floating self-start max-w-[80%] rounded-xl rounded-tl-none p-md text-on-surface z-10">
+<p class="font-body-md text-body-md">Entendi. Posso falar com um especialista?</p>
+<div class="text-[10px] text-on-surface-variant mt-xs text-right">10:44</div>
+</div>
+<div class="self-end max-w-[80%] rounded-xl rounded-tr-none p-md text-white bg-surface-container-high border border-outline-variant z-10 relative">
+<div class="absolute -left-8 top-0 w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center border border-outline-variant shadow-sm hidden md:flex">
+<span class="material-symbols-outlined text-[12px] text-on-surface">person</span>
+</div>
+<p class="font-body-md text-body-md">Claro, Ana. Sou o Carlos, especialista da equipe. Posso agendar uma demonstração para você amanhã às 14h?</p>
+<div class="text-[10px] text-on-surface-variant mt-xs text-right flex justify-end items-center gap-xs">
+                                        10:46 <span class="material-symbols-outlined text-[12px]">done</span>
+</div>
+</div>
+</div>
+<!-- Input Area -->
+<div class="p-md border-t border-outline-variant bg-surface-container-low/50">
+<div class="flex items-center gap-sm bg-surface border border-outline-variant rounded-lg p-xs focus-within:border-primary-container/50 focus-within:shadow-[0_0_10px_rgba(0,209,255,0.1)] transition-all">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary-container">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<input class="flex-1 bg-transparent border-none text-on-surface focus:ring-0 font-body-md text-body-md placeholder-on-surface-variant/50" placeholder="Digite uma mensagem..." type="text"/>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:text-primary-container">
+<span class="material-symbols-outlined text-primary-container">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Benefits Section - Bento Grid -->
+<section class="py-2xl px-margin relative">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-xl">
+<h2 class="font-display-md text-display-md font-bold text-on-surface mb-sm">Uma plataforma, controle total.</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90 max-w-2xl mx-auto">Projetado para eliminar o caos do atendimento via WhatsApp.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-md">
+<!-- Centralize -->
+<div class="glass-surface p-xl rounded-xl flex flex-col justify-between group hover:border-primary-container/30 transition-colors">
+<div>
+<div class="w-12 h-12 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center mb-lg group-hover:bg-primary-container/10 transition-colors">
+<span class="material-symbols-outlined text-[24px] text-primary-container">hub</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface mb-sm">Centralize</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Múltiplos atendentes em um único número de WhatsApp. Sem gargalos, com histórico completo e gestão transparente.</p>
+</div>
+</div>
+<!-- Automatize -->
+<div class="glass-surface p-xl rounded-xl flex flex-col justify-between md:col-span-2 group hover:border-secondary-container/50 transition-colors relative overflow-hidden">
+<div class="absolute right-0 top-0 w-64 h-64 bg-secondary-container/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/4"></div>
+<div class="relative z-10 flex flex-col md:flex-row gap-lg">
+<div class="flex-1">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center mb-lg group-hover:bg-secondary-container/20 transition-colors">
+<span class="material-symbols-outlined text-[24px] text-secondary">smart_toy</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface mb-sm">Automatize</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90 mb-md">Crie fluxos de triagem inteligentes que resolvem dúvidas comuns antes mesmo de chegar a um humano. IA treinada no seu negócio.</p>
+</div>
+<div class="flex-1 glass-surface-floating rounded-lg border border-outline-variant p-md flex flex-col gap-sm">
+<div class="flex items-center gap-sm text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[16px]">account_tree</span> Fluxo Ativo
+                                </div>
+<div class="bg-surface border border-outline-variant p-sm rounded flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface">Cliente envia msg</span>
+<span class="material-symbols-outlined text-primary-container text-[16px]">check_circle</span>
+</div>
+<div class="w-px h-4 bg-outline-variant ml-4"></div>
+<div class="bg-surface border border-secondary/30 p-sm rounded flex items-center justify-between">
+<span class="font-body-md text-body-md text-on-surface">IA analisa intenção</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">auto_awesome</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Atenda Melhor -->
+<div class="glass-surface p-xl rounded-xl flex flex-col justify-between md:col-span-3 group hover:border-outline transition-colors items-center text-center">
+<div class="w-12 h-12 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center mb-lg group-hover:bg-surface-bright transition-colors">
+<span class="material-symbols-outlined text-[24px] text-on-surface">speed</span>
+</div>
+<div class="max-w-2xl">
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface mb-sm">Atenda melhor</h3>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Ferramentas de produtividade como respostas rápidas, etiquetas, anotações internas e transferência de chats. Eleve a qualidade do seu suporte.</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Process Section -->
+<section class="py-2xl px-margin border-t border-outline-variant/30 relative">
+<div class="max-w-6xl mx-auto">
+<div class="text-center mb-xl">
+<h2 class="font-display-md text-display-md font-bold text-on-surface mb-sm">Setup em minutos.</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Operação pronta sem complexidade técnica.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-xl relative">
+<!-- Connecting line for desktop -->
+<div class="hidden md:block absolute top-12 left-[15%] right-[15%] h-px bg-outline-variant/50">
+<div class="h-full bg-gradient-to-r from-primary-container via-secondary-container to-primary-container/10 w-1/2"></div>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full glass-surface flex items-center justify-center mb-lg border-2 border-primary-container/30">
+<span class="material-symbols-outlined text-[32px] text-on-surface">qr_code_scanner</span>
+</div>
+<h4 class="font-headline-md text-headline-md font-bold text-on-surface mb-xs">Conecte seu WhatsApp</h4>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Leia o QR code e sincronize seu número em segundos.</p>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full glass-surface flex items-center justify-center mb-lg border-2 border-secondary/30">
+<span class="material-symbols-outlined text-[32px] text-on-surface">settings_suggest</span>
+</div>
+<h4 class="font-headline-md text-headline-md font-bold text-on-surface mb-xs">Configure seu atendimento</h4>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Convide sua equipe e defina regras básicas ou fluxos avançados de IA.</p>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center">
+<div class="w-24 h-24 rounded-full glass-surface flex items-center justify-center mb-lg border-2 border-outline-variant">
+<span class="material-symbols-outlined text-[32px] text-on-surface">rocket_launch</span>
+</div>
+<h4 class="font-headline-md text-headline-md font-bold text-on-surface mb-xs">Comece a atender</h4>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90">Tudo pronto. Acompanhe métricas e converse com seus clientes.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- IA + Humano Section -->
+<section class="py-2xl px-margin border-t border-outline-variant/30 relative">
+<div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-xl">
+<div class="flex-1">
+<h2 class="font-display-md text-display-md font-bold text-on-surface mb-md">IA e atendimento humano em perfeita sintonia.</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90 mb-lg">
+                    A inteligência artificial resolve as demandas repetitivas instantaneamente. Quando necessário, a conversa é transferida para o seu time com todo o contexto, garantindo um atendimento excepcional.
+                </p>
+<ul class="space-y-md">
+<li class="flex items-center gap-sm font-body-lg text-body-lg text-on-surface">
+<span class="material-symbols-outlined text-primary-container">check_circle</span>
+                        Transbordo inteligente por intenção
+                    </li>
+<li class="flex items-center gap-sm font-body-lg text-body-lg text-on-surface">
+<span class="material-symbols-outlined text-primary-container">check_circle</span>
+                        Histórico unificado para o atendente
+                    </li>
+<li class="flex items-center gap-sm font-body-lg text-body-lg text-on-surface">
+<span class="material-symbols-outlined text-primary-container">check_circle</span>
+                        Resumo da conversa gerado por IA
+                    </li>
+</ul>
+</div>
+<div class="flex-1 w-full glass-surface p-xl rounded-2xl border border-outline-variant relative">
+<div class="absolute right-0 top-0 w-48 h-48 bg-primary-container/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/4"></div>
+<div class="flex flex-col gap-md relative z-10">
+<div class="flex items-center gap-md bg-surface-container-low p-md rounded-xl border border-outline-variant">
+<div class="w-12 h-12 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[24px]">smart_toy</span>
+</div>
+<div class="flex-1">
+<div class="font-label-lg text-label-lg text-on-surface">Triagem Automática</div>
+<div class="font-body-md text-body-md text-on-surface-variant/90">Resolvendo dúvidas comuns e captando dados...</div>
+</div>
+</div>
+<div class="flex justify-center">
+<span class="material-symbols-outlined text-outline-variant text-[24px]">arrow_downward</span>
+</div>
+<div class="flex items-center gap-md bg-primary-container/10 p-md rounded-xl border border-primary-container/30">
+<div class="w-12 h-12 rounded-full bg-primary-container/20 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[24px]">person</span>
+</div>
+<div class="flex-1">
+<div class="font-label-lg text-label-lg text-on-surface">Atendimento Humano</div>
+<div class="font-body-md text-body-md text-on-surface-variant/90">Assumindo casos complexos com contexto completo...</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-2xl px-margin border-t border-outline-variant/30 relative overflow-hidden">
+<div class="glow-bg top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-30"></div>
+<div class="max-w-4xl mx-auto text-center relative z-10 glass-surface p-2xl rounded-2xl border border-outline-variant/50">
+<h2 class="font-display-md text-display-md font-bold text-on-surface mb-md">Pronto para elevar o nível da sua operação?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant/90 mb-xl max-w-2xl mx-auto">
+                    Não deixe seus clientes esperando. Centralize e automatize seu WhatsApp hoje.
+                </p>
+<a class="btn-primary inline-flex px-xl py-md rounded-lg font-label-lg text-label-lg items-center justify-center gap-sm" href="#comecar">
+                    Começar agora
+                    <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</a>
+</div>
+</section>
+</main>
+<!-- Footer Minimal -->
+<footer class="border-t border-outline-variant bg-surface-container-lowest py-lg px-margin">
+<div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-md">
+<div class="flex items-center gap-sm text-on-surface-variant">
+<div class="w-6 h-6 relative flex items-center justify-center opacity-50">
+<svg class="w-full h-full" fill="none" viewbox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+<path d="M16 4L2 28H30L16 4Z" stroke="currentColor" stroke-linejoin="round" stroke-width="2"></path>
+<path d="M16 12L8 25H24L16 12Z" stroke="currentColor" stroke-linejoin="round" stroke-width="1.5"></path>
+<circle cx="16" cy="20" fill="currentColor" r="2"></circle>
+</svg>
+</div>
+<span class="font-label-sm text-label-sm">© 2024 Atenda Ai.</span>
+</div>
+<div class="flex gap-lg font-label-sm text-label-sm text-on-surface-variant">
+<a class="hover:text-on-surface transition-colors" href="#">Termos</a>
+<a class="hover:text-on-surface transition-colors" href="#">Privacidade</a>
+</div>
+</div>
+</footer>
+<script>
+        // Minimal script for header blur effect on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.getElementById('main-header');
+            if (window.scrollY > 20) {
+                header.classList.add('bg-surface-container/80');
+            } else {
+                header.classList.remove('bg-surface-container/80');
+            }
+        });
+    </script>
+</body></html>

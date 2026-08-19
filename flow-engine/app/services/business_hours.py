@@ -123,12 +123,17 @@ def open_status(
     return False, "no próximo horário de funcionamento"
 
 
-def apply_contextual_cta(message: str, business_hours: Dict[str, Any] | None) -> str:
+def apply_contextual_cta(
+    message: str,
+    business_hours: Dict[str, Any] | None,
+    *,
+    now: datetime | None = None,
+) -> str:
     """Replace {cta_pedido} with open/closed appropriate copy."""
     if not message or "{cta_pedido}" not in message:
         return message
 
-    is_open, next_hint = open_status(business_hours)
+    is_open, next_hint = open_status(business_hours, now=now)
     if is_open:
         cta = "Quer fazer um pedido ou ver o cardápio? 😊"
     else:

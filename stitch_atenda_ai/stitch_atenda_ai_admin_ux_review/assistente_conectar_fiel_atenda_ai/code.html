@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Conectar WhatsApp - Atenda Ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-primary": "#003543",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb1",
+                        "inverse-primary": "#00677f",
+                        "secondary-container": "#571bc1",
+                        "on-primary-fixed-variant": "#004e60",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "surface-variant": "#2f3639",
+                        "surface-container-highest": "#2f3639",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-container-lowest": "#090f12",
+                        "on-tertiary": "#442b00",
+                        "primary-fixed": "#b7eaff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b3134",
+                        "tertiary": "#ffd59c",
+                        "secondary-fixed": "#e9ddff",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00566a",
+                        "surface-container-low": "#161d1f",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "tertiary-container": "#feb127",
+                        "outline": "#859399",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#dde3e7",
+                        "primary": "#a4e6ff",
+                        "on-secondary-container": "#c4abff",
+                        "secondary": "#d0bcff",
+                        "on-error": "#690005",
+                        "on-secondary": "#3c0091",
+                        "on-secondary-fixed": "#23005c",
+                        "on-surface-variant": "#bbc9cf",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-container": "#6b4700",
+                        "surface-container-high": "#242b2e",
+                        "surface-dim": "#0e1417",
+                        "surface": "#0e1417",
+                        "surface-container": "#1a2123",
+                        "on-primary-fixed": "#001f28",
+                        "background": "#0e1417",
+                        "on-background": "#dde3e7",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "surface-bright": "#333a3d",
+                        "inverse-surface": "#dde3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-lg": "2rem",
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Cyber-Minimalism Grid Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Modal Overlay Blur */
+        .glass-overlay {
+            backdrop-filter: blur(12px);
+            background-color: rgba(17, 20, 29, 0.8);
+        }
+
+        /* Tier 1 / Floating Surface Glow */
+        .tier-floating {
+            box-shadow: inset 0 0 10px 1px rgba(0, 209, 255, 0.1);
+        }
+
+        /* Numbered Step Circle Glow */
+        .step-glow {
+            box-shadow: 0 0 15px 2px rgba(0, 209, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex items-center justify-center p-4 sm:p-8 bg-opacity-10">
+<!-- Modal Container -->
+<div class="glass-overlay fixed inset-0 flex items-center justify-center z-50 p-4">
+<!-- Modal Card -->
+<div class="bg-surface tier-floating border border-outline-variant rounded-xl w-full max-w-4xl max-h-[921px] flex flex-col shadow-2xl relative overflow-hidden">
+<!-- Header & Progress -->
+<header class="p-6 border-b border-outline-variant flex flex-col gap-4 shrink-0 bg-surface-container-low">
+<div class="flex justify-between items-center">
+<div>
+<h1 class="font-headline-md text-headline-md text-on-surface">Conectar WhatsApp</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Configuração de Coexistência Meta (2026)</p>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Progress Indicator -->
+<div class="flex items-center gap-2 font-label-md text-label-md w-full max-w-md mx-auto pt-4">
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="w-8 h-8 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="check">check</span>
+</div>
+<span class="text-on-surface-variant">Ambiente</span>
+</div>
+<div class="h-[2px] flex-1 bg-outline-variant mb-6"></div>
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="w-8 h-8 rounded-full bg-surface-container border border-outline-variant flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]" data-icon="check">check</span>
+</div>
+<span class="text-on-surface-variant">Meta</span>
+</div>
+<div class="h-[2px] flex-1 bg-primary/30 mb-6"></div>
+<div class="flex flex-col items-center gap-2 flex-1">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container step-glow flex items-center justify-center font-bold">
+                            3
+                        </div>
+<span class="text-primary">Conectar</span>
+</div>
+</div>
+</header>
+<!-- Content Canvas -->
+<div class="p-8 overflow-y-auto flex-1 flex flex-col gap-8 custom-scrollbar">
+<!-- Main Info Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Left Col: Instructions -->
+<div class="flex flex-col gap-6">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-primary mb-2 flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="account_tree">account_tree</span>
+                                Fluxo de Coexistência
+                            </h2>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                                O novo fluxo da Meta permite que você mantenha sua infraestrutura atual enquanto migra gradualmente para a API Oficial. Siga as instruções para autorizar a conexão de forma segura.
+                            </p>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Step 1 -->
+<div class="flex gap-4 p-4 rounded-lg bg-surface-container border border-outline-variant">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center shrink-0 text-primary font-bold">1</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface mb-1">Autorização Meta Business</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Você será redirecionado para o Facebook para conceder as permissões necessárias para o Atenda Ai gerenciar suas mensagens.</p>
+</div>
+</div>
+<!-- Step 2 -->
+<div class="flex gap-4 p-4 rounded-lg bg-surface-container border border-outline-variant">
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant flex items-center justify-center shrink-0 text-primary font-bold">2</div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface mb-1">Seleção de Número</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Escolha qual número será ativado neste fluxo. Certifique-se de que o número possui as verificações necessárias.</p>
+</div>
+</div>
+<!-- Step 3 -->
+</div>
+</div>
+<!-- Right Col: Warnings & Visuals -->
+<div class="flex flex-col gap-6">
+<!-- Warning Card -->
+<div class="bg-error-container/10 border border-error/20 rounded-lg p-5 flex gap-4">
+<span class="material-symbols-outlined text-error mt-0.5" data-icon="warning">warning</span>
+<div>
+<h4 class="font-label-md text-label-md text-error mb-1">Atenção a Ativos Bloqueados</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">
+                                    Se a sua conta Business Management (BM) ou número de WhatsApp estiverem restritos pela Meta, o fluxo de coexistência falhará. Resolva pendências no <a class="text-primary hover:underline" href="#">Gerenciador de Qualidade da Meta</a> antes de prosseguir.
+                                </p>
+</div>
+</div>
+<!-- Technical Illustration/Context -->
+</div>
+</div>
+</div>
+<!-- Footer / Action -->
+<footer class="p-6 border-t border-outline-variant bg-surface-container-low flex justify-between items-center shrink-0">
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors px-4 py-2">
+                    Voltar
+                </button>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-primary-fixed transition-colors shadow-[0_0_15px_rgba(0,209,255,0.3)]">
+<span class="material-symbols-outlined text-[18px]" data-icon="link">link</span>
+                    Conectar via Meta (Coexistência)
+                </button>
+</footer>
+</div>
+</div>
+</body></html>

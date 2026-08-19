@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Cobrança</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-primary": "#003543",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb1",
+                        "inverse-primary": "#00677f",
+                        "secondary-container": "#571bc1",
+                        "on-primary-fixed-variant": "#004e60",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "surface-variant": "#2f3639",
+                        "surface-container-highest": "#2f3639",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-container-lowest": "#090f12",
+                        "on-tertiary": "#442b00",
+                        "primary-fixed": "#b7eaff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b3134",
+                        "tertiary": "#ffd59c",
+                        "secondary-fixed": "#e9ddff",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00566a",
+                        "surface-container-low": "#161d1f",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "tertiary-container": "#feb127",
+                        "outline": "#859399",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#dde3e7",
+                        "primary": "#a4e6ff",
+                        "on-secondary-container": "#c4abff",
+                        "secondary": "#d0bcff",
+                        "on-error": "#690005",
+                        "on-secondary": "#3c0091",
+                        "on-secondary-fixed": "#23005c",
+                        "on-surface-variant": "#bbc9cf",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-container": "#6b4700",
+                        "surface-container-high": "#242b2e",
+                        "surface-dim": "#0e1417",
+                        "surface": "#0e1417",
+                        "surface-container": "#1a2123",
+                        "on-primary-fixed": "#001f28",
+                        "background": "#0e1417",
+                        "on-background": "#dde3e7",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "surface-bright": "#333a3d",
+                        "inverse-surface": "#dde3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-lg": "2rem",
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .glass-panel {
+            background: rgba(26, 33, 35, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glow-active {
+            box-shadow: inset 0 0 10px rgba(0, 209, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen font-body-md text-body-md flex antialiased selection:bg-primary selection:text-on-primary" style="background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px); background-size: 24px 24px;">
+<!-- SideNavBar -->
+<nav class="bg-surface-container border-r border-outline-variant shadow-sm h-screen fixed left-0 top-0 w-[216px] transition-all duration-300 flex flex-col z-50 hidden md:flex"><div class="p-6"><h1 class="font-headline-md text-headline-md text-primary font-bold">Atenda Ai</h1><p class="text-label-md font-label-md text-on-surface-variant mt-1 uppercase tracking-wider">Inteligência Artificial</p></div></nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-screen md:ml-[216px] w-full md:w-[calc(100%-216px)]">
+<!-- TopAppBar -->
+<header class="bg-surface/80 backdrop-blur-md border-b border-outline-variant docked full-width top-0 z-40 sticky">
+<div class="flex justify-between items-center h-16 px-gutter w-full">
+<div class="flex items-center gap-4">
+<!-- Mobile Menu Button -->
+<button class="md:hidden text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="text-headline-sm font-headline-sm text-on-surface">Cobrança e Assinatura</h2>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="Foto de Perfil do Usuário" class="w-full h-full object-cover" data-alt="A futuristic geometric avatar placeholder icon rendered in deep blacks, pristine whites, and vivid cyan accents. The style is minimalist and highly technical, reflecting a sophisticated AI-driven interface aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2oi4c5o2IYd2RWQs8ZeonbCWbrSJ059-Xm5fjTGrpzoVExN28klUlXx4CC-Ds3yYabzxrTfGpItdxUPPbVEuMcZphPtJO6mPtO7GgpuU3LVB5W4moidkXoLN_0r3l7quajnlKIhIcrbg5fgmPOyEepw4bvDFxs7s8dCG3nYlcJcJvWzbEv6r1kxu_4gkLtwN_XGGlTBXE9ac-ZKz2BD6Lfoe120fhacaASkunx779ZUVHtKHnjJnS"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-margin-page max-w-[1440px] mx-auto w-full"><div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-lg"><div class="bg-surface-container-low rounded-xl p-8 lg:col-span-2 border border-outline-variant/30 flex flex-col justify-between"><div class="mb-8"><div><h3 class="text-label-md font-label-md text-on-surface-variant uppercase tracking-wider mb-2">Plano Atual</h3><div class="flex items-center gap-4"><h2 class="text-headline-lg font-headline-lg text-on-surface">Pro Intelligence</h2><span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-label-md font-label-md border border-secondary/20">Ativo</span></div><p class="text-body-md font-body-md text-on-surface-variant mt-4">Sua assinatura está ativa e configurada para renovação automática.</p></div></div><div class="flex gap-4 pt-8 border-t border-outline-variant/20"><button class="px-6 py-3 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-fixed transition-colors">Gerenciar Assinatura</button><button class="px-6 py-3 rounded border border-outline text-on-surface font-label-md text-label-md hover:bg-surface-container-high transition-colors">Histórico de Faturamento</button></div></div><div class="flex flex-col gap-stack-md"><div class="bg-surface-container-low rounded-xl p-6 border border-outline-variant/30"><div class="flex items-center gap-3 mb-4"><div class="p-2 rounded bg-primary/10 text-primary"><span class="material-symbols-outlined">account_tree</span></div><h3 class="text-headline-sm font-headline-sm text-on-surface">Integração WhatsApp</h3></div><p class="text-body-md font-body-md text-on-surface-variant mb-6">Seu número está conectado e operando com automação inteligente.</p><div class="space-y-3"><button class="w-full px-4 py-3 rounded bg-surface-container border border-outline-variant flex items-center justify-between hover:border-primary/50 transition-all group"><span class="text-body-md font-body-md text-on-surface group-hover:text-primary">Configurações do WhatsApp</span><span class="material-symbols-outlined text-sm">arrow_forward</span></button></div></div></div></div></main>
+</div>
+</body></html>

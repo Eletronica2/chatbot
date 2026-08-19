@@ -11,10 +11,10 @@ from app.services.flow_runner import FlowRunner
 class FlowService:
     """Exposes a simple API used by the FastAPI layer"""
 
-    def __init__(self, loader: FlowLoader, runner: FlowRunner, default_flow: str):
+    def __init__(self, loader: FlowLoader, runner: FlowRunner, default_flow: str = ""):
         self.loader = loader
         self.runner = runner
-        self.default_flow = default_flow
+        self.default_flow = (default_flow or "").strip()
 
     def reload(self) -> Dict[str, FlowDefinition]:
         return self.loader.load_flows()
@@ -35,7 +35,21 @@ class FlowService:
             flow = self.loader.get_flow(candidate_name, request.tenant_id)
             if flow:
                 return flow
-        return self.loader.get_flow(self.default_flow, request.tenant_id)
+
+        if self.default_flow:
+            flow = self.loader.get_flow(self.default_flow, request.tenant_id)
+            if flow:
+                return flow
+
+        return self._sole_tenant_flow(request.tenant_id)
+
+    def _sole_tenant_flow(self, tenant_id: str | None) -> Optional[FlowDefinition]:
+        if not tenant_id:
+            return None
+        tenant_flows = self.loader.list_tenant_flows(tenant_id)
+        if len(tenant_flows) != 1:
+            return None
+        return next(iter(tenant_flows.values()))
 
     def _explicit_flow(self, request: FlowExecutionRequest) -> Optional[str]:
         message = request.message or {}

@@ -6,8 +6,10 @@ import sys
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.api import flow as flow_routes
 from app.api.routes import (
@@ -234,6 +236,17 @@ async def lifespan(app: FastAPI):
         plan=settings.BOOTSTRAP_COMPANY_PLAN,
         monthly_message_limit=settings.BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT,
     )
+    await tenant_admin_service.ensure_bootstrap_tenant(
+        tenant_id=settings.BOOTSTRAP_PIZZARIA_TENANT_ID,
+        name=settings.BOOTSTRAP_PIZZARIA_NAME,
+        email=settings.BOOTSTRAP_PIZZARIA_EMAIL,
+        owner_name=settings.BOOTSTRAP_PIZZARIA_ADMIN_NAME,
+        owner_email=settings.BOOTSTRAP_PIZZARIA_ADMIN_EMAIL,
+        owner_password=settings.BOOTSTRAP_PIZZARIA_ADMIN_PASSWORD,
+        plan=settings.BOOTSTRAP_PIZZARIA_PLAN,
+        monthly_message_limit=settings.BOOTSTRAP_PIZZARIA_MONTHLY_MESSAGE_LIMIT,
+        copy_default_flows=False,
+    )
     yield
     logger.info("Backend API shutdown complete")
 
@@ -281,6 +294,23 @@ app.include_router(flow_routes.router)
 app.include_router(actions.router)
 app.include_router(leads.router)
 app.include_router(proposals.router)
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_handler(
+    request: Request,
+    exc: RequestValidationError,
+) -> JSONResponse:
+    locations = [err.get("loc") for err in exc.errors()]
+    messages = [err.get("msg") for err in exc.errors()]
+    logger.warning(
+        "Request validation failed %s %s loc=%s msg=%s",
+        request.method,
+        request.url.path,
+        locations,
+        messages,
+    )
+    return JSONResponse(status_code=422, content={"detail": exc.errors()})
 
 
 @app.get("/")

@@ -1,6 +1,6 @@
 # Credenciais de teste
 
-Atualizado em 2026-05-13, apos limpeza completa do banco e reprovisionamento da stack.
+Atualizado em 2026-08-12. Apos `docker compose up`, o backend provisiona automaticamente o superadmin, o owner da Loja Centro e o owner da Pizzaria Bella Massa.
 
 Este arquivo lista os tenants, empresas e usuarios atualmente disponiveis para login e smoke test.
 

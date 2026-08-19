@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
+import 'brand_mark.dart';
 
 String _humanizeRoleLabel(String? role) {
   final normalized = (role ?? '').trim().toLowerCase();
@@ -43,6 +45,9 @@ class AppSidebar extends StatelessWidget {
     this.activeTenantLabel,
     this.onHomeTap,
     this.homeSelected = false,
+    this.fillWidth = false,
+    this.collapsed = false,
+    this.onCollapsedChanged,
   });
 
   final List<AppSidebarItem> items;
@@ -54,13 +59,23 @@ class AppSidebar extends StatelessWidget {
   final String? activeTenantLabel;
   final VoidCallback? onHomeTap;
   final bool homeSelected;
+  final bool fillWidth;
+  final bool collapsed;
+  final ValueChanged<bool>? onCollapsedChanged;
 
   @override
   Widget build(BuildContext context) {
     final visibleItems = items.where((item) => item.visible).toList();
+    final rail = !fillWidth && collapsed;
+    final width = fillWidth
+        ? double.infinity
+        : (rail ? AppLayout.sidebarCollapsed : AppLayout.sidebarExpanded);
 
-    return Container(
-      width: 248,
+    return AnimatedContainer(
+      duration: AppMotion.sidebarOf(context),
+      curve: AppMotion.sidebarCurve,
+      width: width,
+      clipBehavior: Clip.hardEdge,
       decoration: const BoxDecoration(
         color: AppColors.sidebar,
         border: Border(
@@ -72,29 +87,35 @@ class AppSidebar extends StatelessWidget {
           _SidebarBrand(
             selected: homeSelected,
             onTap: onHomeTap,
+            collapsed: rail,
+            onToggleCollapsed: fillWidth || onCollapsedChanged == null
+                ? null
+                : () => onCollapsedChanged!(!collapsed),
           ),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 18),
+              padding: EdgeInsets.fromLTRB(rail ? 4 : 8, 0, rail ? 4 : 8, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
-                    child: Text(
-                      'Navegação principal',
-                      style: TextStyle(
-                        color: AppColors.textSoft,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.4,
+                  if (!rail)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
+                      child: Text(
+                        'Navegação principal',
+                        style: TextStyle(
+                          color: AppColors.textSoft,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                        ),
                       ),
                     ),
-                  ),
                   for (final item in visibleItems)
                     _SidebarNavItem(
                       item: item,
                       selected: item.id == selectedId,
+                      collapsed: rail,
                       onTap: () => onNavItemTap(item.id),
                     ),
                 ],
@@ -102,11 +123,13 @@ class AppSidebar extends StatelessWidget {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: EdgeInsets.fromLTRB(rail ? 6 : 10, 0, rail ? 6 : 10, 12),
             child: _UserFooter(
               email: userEmail,
               role: userRole,
+              tenantLabel: activeTenantLabel,
               onLogout: onLogout,
+              collapsed: rail,
             ),
           ),
         ],
@@ -119,10 +142,14 @@ class _SidebarBrand extends StatefulWidget {
   const _SidebarBrand({
     this.onTap,
     required this.selected,
+    required this.collapsed,
+    this.onToggleCollapsed,
   });
 
   final VoidCallback? onTap;
   final bool selected;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapsed;
 
   @override
   State<_SidebarBrand> createState() => _SidebarBrandState();
@@ -134,59 +161,85 @@ class _SidebarBrandState extends State<_SidebarBrand> {
   @override
   Widget build(BuildContext context) {
     final interactive = widget.onTap != null;
+    final mark = const BrandMark(size: 28);
+
+    if (widget.collapsed) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(8, 14, 8, 8),
+        child: Column(
+          children: [
+            Tooltip(
+              message: 'Início',
+              child: InkWell(
+                onTap: widget.onTap,
+                borderRadius: AppRadius.md,
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(child: mark),
+                ),
+              ),
+            ),
+            if (widget.onToggleCollapsed != null) ...[
+              const SizedBox(height: 4),
+              Semantics(
+                button: true,
+                label: 'Expandir menu',
+                child: IconButton(
+                  key: const ValueKey<String>('sidebar-expand'),
+                  tooltip: 'Expandir menu',
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 48, minHeight: 40),
+                  onPressed: widget.onToggleCollapsed,
+                  icon: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppColors.textMuted,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
+    }
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _hovered = true),
-        onExit: (_) => setState(() => _hovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              borderRadius: AppRadius.lg,
-              border: Border.all(
-                color: widget.selected
-                    ? AppColors.primary.withValues(alpha: 0.5)
+      padding: const EdgeInsets.fromLTRB(10, 12, 6, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          MouseRegion(
+            onEnter: (_) => setState(() => _hovered = true),
+            onExit: (_) => setState(() => _hovered = false),
+            child: AnimatedContainer(
+              duration: AppMotion.hoverOf(context),
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+              decoration: BoxDecoration(
+                borderRadius: AppRadius.lg,
+                // Neutro: não competir com item de navegação selecionado.
+                border: Border.all(
+                  color: _hovered ? AppColors.borderSubtle : Colors.transparent,
+                ),
+                color: _hovered
+                    ? AppColors.surface.withValues(alpha: 0.4)
                     : Colors.transparent,
               ),
-              color: widget.selected || _hovered
-                  ? AppColors.surface.withValues(alpha: 0.85)
-                  : Colors.transparent,
-              boxShadow: widget.selected ? AppShadows.navActive : null,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        borderRadius: AppRadius.md,
-                        border: Border.all(color: AppColors.border),
-                        color: AppColors.surface,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Image.asset(
-                        'assets/brand/atenda-ai-mark.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: AppGradients.brandIcon,
-                          ),
-                          child: Icon(
-                            Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
-                      ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: widget.onTap,
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: Center(child: mark),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: widget.onTap,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -194,17 +247,19 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                             'Atenda Ai',
                             style: GoogleFonts.manrope(
                               color: AppColors.text,
-                              fontSize: 17,
+                              fontSize: 15,
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.3,
                             ),
                           ),
-                          const SizedBox(height: 3),
+                          const SizedBox(height: 2),
                           Text(
                             interactive
                                 ? 'Automação no WhatsApp'
                                 : 'Painel operacional',
-                            style: GoogleFonts.inter(
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.manrope(
                               color: AppColors.textSoft,
                               fontSize: 11,
                               height: 1.35,
@@ -213,19 +268,30 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                         ],
                       ),
                     ),
-                    if (interactive)
-                      Icon(
-                        Icons.keyboard_arrow_right_rounded,
-                        color: widget.selected
-                            ? AppColors.primarySoft
-                            : AppColors.textSoft,
-                      ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
+          if (widget.onToggleCollapsed != null)
+            Align(
+              alignment: Alignment.centerRight,
+              child: Semantics(
+                button: true,
+                label: 'Recolher menu',
+                child: IconButton(
+                  key: const ValueKey<String>('sidebar-collapse'),
+                  tooltip: 'Recolher menu',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: widget.onToggleCollapsed,
+                  icon: const Icon(
+                    Icons.chevron_left_rounded,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -236,11 +302,13 @@ class _SidebarNavItem extends StatefulWidget {
     required this.item,
     required this.selected,
     required this.onTap,
+    required this.collapsed,
   });
 
   final AppSidebarItem item;
   final bool selected;
   final VoidCallback onTap;
+  final bool collapsed;
 
   @override
   State<_SidebarNavItem> createState() => _SidebarNavItemState();
@@ -252,74 +320,88 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
   @override
   Widget build(BuildContext context) {
     final selected = widget.selected;
+    final tip = widget.collapsed
+        ? widget.item.label
+        : (widget.item.helper?.trim().isNotEmpty == true
+            ? widget.item.helper!.trim()
+            : widget.item.label);
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 2),
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovering = true),
         onExit: (_) => setState(() => _hovering = false),
-        child: InkWell(
-          onTap: widget.onTap,
-          borderRadius: AppRadius.lg,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: selected
-                  ? AppColors.primary.withValues(alpha: 0.12)
-                  : (_hovering
-                      ? AppColors.surfaceAlt.withValues(alpha: 0.55)
-                      : Colors.transparent),
-              borderRadius: AppRadius.md,
-              border: Border.all(
+        child: Tooltip(
+          message: tip,
+          waitDuration: const Duration(milliseconds: 400),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: AppRadius.lg,
+            child: AnimatedContainer(
+              duration: AppMotion.hoverOf(context),
+              height: 40,
+              padding: EdgeInsets.symmetric(
+                horizontal: widget.collapsed ? 0 : 8,
+              ),
+              decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.primary.withValues(alpha: 0.35)
-                    : Colors.transparent,
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : (_hovering
+                        ? AppColors.surfaceAlt.withValues(alpha: 0.55)
+                        : Colors.transparent),
+                borderRadius: AppRadius.md,
+                border: Border.all(
+                  color: selected
+                      ? AppColors.primary.withValues(alpha: 0.28)
+                      : Colors.transparent,
+                ),
               ),
-            ),
-            child: Tooltip(
-              message: widget.item.helper?.trim().isNotEmpty == true
-                  ? widget.item.helper!.trim()
-                  : widget.item.label,
-              waitDuration: const Duration(milliseconds: 450),
-              child: Row(
-                children: [
-                  Container(
-                    width: 3,
-                    height: 18,
-                    margin: const EdgeInsets.only(right: 9),
-                    decoration: BoxDecoration(
-                      color: selected
-                          ? AppColors.primary
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                  Icon(
-                    widget.item.icon,
-                    size: 20,
-                    color: selected
-                        ? AppColors.primarySoft
-                        : AppColors.textMuted,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      widget.item.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+              child: widget.collapsed
+                  ? Center(
+                      child: Icon(
+                        widget.item.icon,
+                        size: 20,
                         color: selected
-                            ? const Color(0xFFFFF7ED)
-                            : AppColors.text,
-                        fontSize: 13.5,
-                        fontWeight:
-                            selected ? FontWeight.w700 : FontWeight.w600,
+                            ? AppColors.primarySoft
+                            : AppColors.textMuted,
                       ),
+                    )
+                  : Row(
+                      children: [
+                        Container(
+                          width: 3,
+                          height: 18,
+                          margin: const EdgeInsets.only(right: 9),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppColors.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                        ),
+                        Icon(
+                          widget.item.icon,
+                          size: 20,
+                          color: selected
+                              ? AppColors.primarySoft
+                              : AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            widget.item.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.text,
+                              fontSize: 13.5,
+                              fontWeight:
+                                  selected ? FontWeight.w700 : FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ),
@@ -332,47 +414,72 @@ class _UserFooter extends StatelessWidget {
   const _UserFooter({
     required this.email,
     required this.onLogout,
+    required this.collapsed,
     this.role,
+    this.tenantLabel,
   });
 
   final String email;
   final String? role;
+  final String? tenantLabel;
   final VoidCallback onLogout;
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
     final seed = email.isNotEmpty ? email[0].toUpperCase() : 'A';
-    return Container(
-      padding: const EdgeInsets.all(12),
+    final avatar = Container(
+      width: collapsed ? 34 : 28,
+      height: collapsed ? 34 : 28,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: AppRadius.lg,
-        border: Border.all(color: AppColors.border),
+        borderRadius: AppRadius.md,
+        color: AppColors.surfaceSoft,
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        seed,
+        style: TextStyle(
+          color: AppColors.textMuted,
+          fontSize: collapsed ? 13 : 12,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+
+    if (collapsed) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(message: email, child: avatar),
+          const SizedBox(height: 4),
+          IconButton(
+            onPressed: onLogout,
+            tooltip: 'Sair',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 36),
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: AppColors.textSoft,
+              size: 18,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(6, 6, 2, 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.55),
+        borderRadius: AppRadius.md,
+        border: Border.all(color: AppColors.borderSubtle),
       ),
       child: Row(
         children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: const BoxDecoration(
-              borderRadius: AppRadius.md,
-              gradient: LinearGradient(
-                colors: [AppColors.primaryStrong, AppColors.primary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              seed,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
+          avatar,
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,18 +488,24 @@ class _UserFooter extends StatelessWidget {
                   email,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  _humanizeRoleLabel(role),
+                  () {
+                    final tenant = tenantLabel?.trim() ?? '';
+                    if (tenant.isEmpty || tenant.toLowerCase() == 'default') {
+                      return _humanizeRoleLabel(role);
+                    }
+                    return tenant;
+                  }(),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textSoft,
-                    fontSize: 11,
+                    fontSize: 10,
                   ),
                 ),
               ],
@@ -401,7 +514,12 @@ class _UserFooter extends StatelessWidget {
           IconButton(
             onPressed: onLogout,
             tooltip: 'Sair',
-            icon: const Icon(Icons.logout_rounded, color: AppColors.textMuted),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(
+              Icons.logout_rounded,
+              color: AppColors.textSoft,
+              size: 18,
+            ),
           ),
         ],
       ),

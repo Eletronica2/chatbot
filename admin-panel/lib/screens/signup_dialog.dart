@@ -10,7 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/api_client.dart';
 import '../services/lead_service.dart';
 import '../theme/app_tokens.dart';
-import '../widgets/premium_ui.dart';
+import '../widgets/public_surface.dart';
 
 class SignupDialog extends StatefulWidget {
   const SignupDialog({super.key});
@@ -26,6 +26,7 @@ class _SignupDialogState extends State<SignupDialog> {
   bool _submitting = false;
   bool _submitted = false;
   String? _errorMessage;
+  String? _fieldErrorKey;
 
   final _company = TextEditingController();
   final _segment = TextEditingController();
@@ -89,14 +90,9 @@ class _SignupDialogState extends State<SignupDialog> {
         constraints: const BoxConstraints(maxWidth: 560, maxHeight: 720),
         child: Container(
           decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF141823), Color(0xFF0A0C14)],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            boxShadow: AppShadows.cinematic,
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
           ),
           child: _submitted ? _buildSuccess(context) : _buildForm(context),
         ),
@@ -122,7 +118,7 @@ class _SignupDialogState extends State<SignupDialog> {
                 ),
                 child: Text(
                   'Etapa ${_step + 1} de $_totalSteps',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.manrope(
                     color: AppColors.primary,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -142,7 +138,7 @@ class _SignupDialogState extends State<SignupDialog> {
           const SizedBox(height: 18),
           Text(
             _titleForStep(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.manrope(
               color: AppColors.text,
               fontSize: 22,
               fontWeight: FontWeight.w700,
@@ -152,7 +148,7 @@ class _SignupDialogState extends State<SignupDialog> {
           const SizedBox(height: 6),
           Text(
             _subtitleForStep(),
-            style: GoogleFonts.inter(
+            style: GoogleFonts.manrope(
               color: AppColors.textMuted,
               fontSize: 13,
               height: 1.55,
@@ -162,30 +158,7 @@ class _SignupDialogState extends State<SignupDialog> {
           ..._fieldsForStep(),
           if (_errorMessage != null) ...[
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.3)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.error_outline_rounded, color: Color(0xFFEF4444), size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFFFCA5A5),
-                        fontSize: 12.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            PublicErrorBanner(text: _errorMessage!),
           ],
           const SizedBox(height: 22),
           Row(
@@ -195,11 +168,11 @@ class _SignupDialogState extends State<SignupDialog> {
                   onPressed: _submitting ? null : () => setState(() => _step--),
                   child: Text(
                     'Voltar',
-                    style: GoogleFonts.inter(color: AppColors.textMuted),
+                    style: GoogleFonts.manrope(color: AppColors.textMuted),
                   ),
                 ),
               const Spacer(),
-              PremiumPill(
+              PublicPrimaryButton(
                 label: _submitting
                     ? 'Enviando...'
                     : (_step == _totalSteps - 1 ? 'Enviar para a equipe' : 'Continuar'),
@@ -208,14 +181,15 @@ class _SignupDialogState extends State<SignupDialog> {
                     : (_step == _totalSteps - 1
                         ? Icons.send_rounded
                         : Icons.arrow_forward_rounded),
-                onTap: _submitting ? () {} : _handlePrimary,
+                onTap: _submitting ? null : _handlePrimary,
+                loading: _submitting,
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             'Ao enviar, você concorda em receber um contato comercial da Operada.',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.manrope(
               color: AppColors.textSoft,
               fontSize: 11.5,
               height: 1.4,
@@ -238,21 +212,15 @@ class _SignupDialogState extends State<SignupDialog> {
             height: 56,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: AppGradients.premiumOrange,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.45),
-                  blurRadius: 28,
-                  spreadRadius: -4,
-                ),
-              ],
+              color: AppColors.primary.withValues(alpha: 0.16),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.35)),
             ),
-            child: const Icon(Icons.check_rounded, color: Colors.white, size: 30),
+            child: const Icon(Icons.check_rounded, color: AppColors.primarySoft, size: 30),
           ),
           const SizedBox(height: 22),
           Text(
             'Recebemos suas informações',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.manrope(
               color: AppColors.text,
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -263,7 +231,7 @@ class _SignupDialogState extends State<SignupDialog> {
           Text(
             'Nosso time já está montando uma proposta personalizada para ${_company.text.trim().isNotEmpty ? _company.text.trim() : 'sua empresa'}. '
             'Em até 1 dia útil você receberá um contato no WhatsApp e e-mail informados.',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.manrope(
               color: AppColors.textMuted,
               fontSize: 13.5,
               height: 1.55,
@@ -286,7 +254,7 @@ class _SignupDialogState extends State<SignupDialog> {
                   child: Text(
                     'Preparamos uma automação base sob medida para o seu segmento. '
                     'Assim que conversarmos, você já entra com tudo pronto para operar.',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.manrope(
                       color: AppColors.textMuted,
                       fontSize: 12.5,
                       height: 1.5,
@@ -299,7 +267,7 @@ class _SignupDialogState extends State<SignupDialog> {
           const SizedBox(height: 24),
           Align(
             alignment: Alignment.centerRight,
-            child: PremiumPill(
+            child: PublicPrimaryButton(
               label: 'Fechar',
               icon: Icons.check_circle_outline_rounded,
               onTap: () => Navigator.of(context).pop(),
@@ -311,10 +279,16 @@ class _SignupDialogState extends State<SignupDialog> {
   }
 
   void _handlePrimary() {
-    setState(() => _errorMessage = null);
+    setState(() {
+      _errorMessage = null;
+      _fieldErrorKey = null;
+    });
     final validationError = _validateStep();
     if (validationError != null) {
-      setState(() => _errorMessage = validationError);
+      setState(() {
+        _errorMessage = validationError.message;
+        _fieldErrorKey = validationError.field;
+      });
       return;
     }
     if (_step < _totalSteps - 1) {
@@ -324,33 +298,36 @@ class _SignupDialogState extends State<SignupDialog> {
     }
   }
 
-  String? _validateStep() {
+  ({String field, String message})? _validateStep() {
     if (_step == 0) {
       if (_company.text.trim().length < 2) {
-        return 'Informe o nome da empresa.';
+        return (field: 'company', message: 'Informe o nome da empresa.');
       }
       final segmentValue = _selectedSegment ?? _segment.text.trim();
       if (segmentValue.isEmpty) {
-        return 'Selecione um segmento.';
+        return (field: 'segment', message: 'Selecione um segmento.');
       }
     }
     if (_step == 1) {
       if (_objective.text.trim().length < 5) {
-        return 'Conte rapidamente o que você quer automatizar no WhatsApp.';
+        return (
+          field: 'objective',
+          message: 'Conte rapidamente o que você quer automatizar no WhatsApp.',
+        );
       }
     }
     if (_step == 2) {
       if (_name.text.trim().length < 2) {
-        return 'Informe seu nome.';
+        return (field: 'name', message: 'Informe seu nome.');
       }
       final email = _email.text.trim();
       final emailRegex = RegExp(r'^[\w.\-+]+@[\w\-]+\.[\w.\-]+$');
       if (!emailRegex.hasMatch(email)) {
-        return 'Informe um e-mail corporativo válido.';
+        return (field: 'email', message: 'Informe um e-mail corporativo válido.');
       }
       final digits = _whatsapp.text.replaceAll(RegExp(r'\D'), '');
       if (digits.length < 10) {
-        return 'Informe um WhatsApp com DDD válido.';
+        return (field: 'whatsapp', message: 'Informe um WhatsApp com DDD válido.');
       }
     }
     return null;
@@ -386,12 +363,14 @@ class _SignupDialogState extends State<SignupDialog> {
       if (!mounted) return;
       setState(() {
         _submitting = false;
+        _fieldErrorKey = null;
         _errorMessage = _friendlyError(exc.message);
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _submitting = false;
+        _fieldErrorKey = null;
         _errorMessage = 'Não foi possível enviar agora. Tente novamente em instantes.';
       });
     }
@@ -429,6 +408,7 @@ class _SignupDialogState extends State<SignupDialog> {
           label: 'Nome da empresa',
           hint: 'Ex: Bella Pizza, Studio Mariana, Casa & Estilo...',
           controller: _company,
+          error: _fieldErrorKey == 'company' ? _errorMessage : null,
         ),
         const SizedBox(height: 14),
         _DialogDropdown(
@@ -436,6 +416,7 @@ class _SignupDialogState extends State<SignupDialog> {
           hint: 'Selecione o que melhor descreve o seu negócio',
           value: _selectedSegment,
           options: _segments,
+          error: _fieldErrorKey == 'segment' ? _errorMessage : null,
           onChanged: (value) => setState(() {
             _selectedSegment = value;
             if (value != 'Outro') {
@@ -463,6 +444,7 @@ class _SignupDialogState extends State<SignupDialog> {
               'Ex: atendimento ao cliente, cardápio digital, catálogo de produtos, agendamento de horários, suporte pós-venda, qualificação de leads...',
           controller: _objective,
           maxLines: 4,
+          error: _fieldErrorKey == 'objective' ? _errorMessage : null,
         ),
         const SizedBox(height: 14),
         _DialogDropdown(
@@ -486,6 +468,7 @@ class _SignupDialogState extends State<SignupDialog> {
         label: 'Seu nome',
         hint: 'Como devemos te chamar',
         controller: _name,
+        error: _fieldErrorKey == 'name' ? _errorMessage : null,
       ),
       const SizedBox(height: 14),
       _DialogField(
@@ -493,6 +476,7 @@ class _SignupDialogState extends State<SignupDialog> {
         hint: 'voce@empresa.com',
         controller: _email,
         keyboardType: TextInputType.emailAddress,
+        error: _fieldErrorKey == 'email' ? _errorMessage : null,
       ),
       const SizedBox(height: 14),
       _DialogField(
@@ -500,6 +484,7 @@ class _SignupDialogState extends State<SignupDialog> {
         hint: '(11) 9 9999-9999',
         controller: _whatsapp,
         keyboardType: TextInputType.phone,
+        error: _fieldErrorKey == 'whatsapp' ? _errorMessage : null,
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(11),
@@ -538,7 +523,7 @@ class _StepProgress extends StatelessWidget {
         widthFactor: progress.clamp(0.0, 1.0),
         child: Container(
           decoration: BoxDecoration(
-            gradient: AppGradients.premiumOrange,
+            gradient: kPublicCtaGradient,
             borderRadius: BorderRadius.circular(999),
             boxShadow: [
               BoxShadow(
@@ -582,6 +567,7 @@ class _DialogField extends StatelessWidget {
     this.maxLines = 1,
     this.keyboardType,
     this.inputFormatters,
+    this.error,
   });
 
   final String label;
@@ -590,15 +576,23 @@ class _DialogField extends StatelessWidget {
   final int maxLines;
   final TextInputType? keyboardType;
   final List<TextInputFormatter>? inputFormatters;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
+    final hasError = error != null && error!.isNotEmpty;
+    final border = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: hasError ? AppColors.danger : Colors.white.withValues(alpha: 0.08),
+      ),
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.manrope(
             color: AppColors.textMuted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -611,27 +605,31 @@ class _DialogField extends StatelessWidget {
           minLines: 1,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
-          style: GoogleFonts.inter(color: AppColors.text, fontSize: 14),
+          style: GoogleFonts.manrope(color: AppColors.text, fontSize: 14),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(color: AppColors.textSoft, fontSize: 14),
+            hintStyle: GoogleFonts.manrope(color: AppColors.textSoft, fontSize: 14),
             filled: true,
             fillColor: const Color(0xFF080A12),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-            ),
+            border: border,
+            enabledBorder: border,
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+              borderSide: BorderSide(
+                color: hasError ? AppColors.danger : AppColors.primary,
+                width: 1.4,
+              ),
             ),
           ),
         ),
+        if (hasError) ...[
+          const SizedBox(height: 6),
+          Text(
+            error!,
+            style: GoogleFonts.manrope(color: AppColors.danger, fontSize: 12),
+          ),
+        ],
       ],
     );
   }
@@ -644,6 +642,7 @@ class _DialogDropdown extends StatelessWidget {
     required this.value,
     required this.options,
     required this.onChanged,
+    this.error,
   });
 
   final String label;
@@ -651,6 +650,7 @@ class _DialogDropdown extends StatelessWidget {
   final String? value;
   final List<String> options;
   final ValueChanged<String?> onChanged;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
@@ -659,7 +659,7 @@ class _DialogDropdown extends StatelessWidget {
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.manrope(
             color: AppColors.textMuted,
             fontSize: 12,
             fontWeight: FontWeight.w600,
@@ -670,7 +670,11 @@ class _DialogDropdown extends StatelessWidget {
           decoration: BoxDecoration(
             color: const Color(0xFF080A12),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(
+              color: (error != null && error!.isNotEmpty)
+                  ? AppColors.danger
+                  : Colors.white.withValues(alpha: 0.08),
+            ),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: DropdownButtonHideUnderline(
@@ -681,9 +685,9 @@ class _DialogDropdown extends StatelessWidget {
               iconEnabledColor: AppColors.textMuted,
               hint: Text(
                 hint,
-                style: GoogleFonts.inter(color: AppColors.textSoft, fontSize: 14),
+                style: GoogleFonts.manrope(color: AppColors.textSoft, fontSize: 14),
               ),
-              style: GoogleFonts.inter(color: AppColors.text, fontSize: 14),
+              style: GoogleFonts.manrope(color: AppColors.text, fontSize: 14),
               borderRadius: BorderRadius.circular(12),
               items: options
                   .map(
@@ -697,6 +701,13 @@ class _DialogDropdown extends StatelessWidget {
             ),
           ),
         ),
+        if (error != null && error!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            error!,
+            style: GoogleFonts.manrope(color: AppColors.danger, fontSize: 12),
+          ),
+        ],
       ],
     );
   }

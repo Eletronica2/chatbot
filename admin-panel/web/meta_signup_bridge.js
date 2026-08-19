@@ -112,8 +112,9 @@ window.MetaSignupBridge = {
       if (data.phone_number_id) {
         session.phoneNumberId = String(data.phone_number_id);
       }
-      if (data.display_phone_number) {
-        session.displayPhoneNumber = String(data.display_phone_number);
+      var displayPhone = data.display_phone_number || data.displayPhoneNumber || data.phone_number || "";
+      if (displayPhone) {
+        session.displayPhoneNumber = String(displayPhone);
       }
       window.MetaSignupBridge._tryComplete(session);
     };

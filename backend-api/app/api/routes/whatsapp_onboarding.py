@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.access import resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
@@ -22,11 +22,28 @@ class EmbeddedSignupExchangePayload(BaseModel):
     code: str = Field(..., min_length=1)
     waba_id: str = Field(..., min_length=1)
     phone_number_id: str = Field(..., min_length=1)
-    display_phone_number: str = Field(..., min_length=1)
-    display_name: str = Field(..., min_length=1)
+    display_phone_number: str = ""
+    display_name: str = ""
     verify_token: str | None = None
     coexistence: bool = True
     redirect_uri: str | None = None
+
+    @field_validator("code", "waba_id", "phone_number_id", mode="before")
+    @classmethod
+    def _stringify_ids(cls, value: object) -> object:
+        if value is None:
+            return value
+        return str(value).strip()
+
+    @model_validator(mode="after")
+    def _fill_display_fields(self) -> "EmbeddedSignupExchangePayload":
+        phone = (self.display_phone_number or "").strip()
+        if not phone:
+            self.display_phone_number = self.phone_number_id
+        name = (self.display_name or "").strip()
+        if not name:
+            self.display_name = f"WhatsApp {self.display_phone_number}"
+        return self
 
 
 class EmbeddedSignupExchangeResponse(BaseModel):

@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_user.dart';
 import 'api_config.dart';
 
-class AuthService {
+class AuthService extends ChangeNotifier {
   static const String _storageKey = 'admin_panel.auth.session';
   static const String _selectedTenantKey = 'admin_panel.auth.selected_tenant';
   static const Set<String> _superadminRoles = <String>{
@@ -20,6 +21,7 @@ class AuthService {
   AppUser? _user;
   String? _lastError;
   String? _selectedTenantId;
+  String? _selectedTenantDisplayName;
 
   AppUser? get currentUser => _user;
   bool get isAuthenticated => _user != null && (_user!.accessToken.isNotEmpty);
@@ -28,6 +30,8 @@ class AuthService {
   String? get accessToken => _user?.accessToken;
   String? get homeTenantId => _user?.tenantId;
   String? get tenantId => _selectedTenantId ?? _user?.tenantId;
+  /// Nome comercial em memória (preenchido ao selecionar empresa em Clientes).
+  String? get activeTenantDisplayName => _selectedTenantDisplayName;
   String? get lastError => _lastError;
 
   Future<void> restoreSession() async {
@@ -64,7 +68,9 @@ class AuthService {
               ? storedTenantId!.trim()
               : currentUser.tenantId)
           : currentUser.tenantId;
+      _selectedTenantDisplayName = null;
       await _persistSession(currentUser);
+      notifyListeners();
     } catch (_) {
       await _clearStoredSession();
     }
@@ -96,7 +102,9 @@ class AuthService {
         return false;
       }
       _selectedTenantId = _user!.tenantId;
+      _selectedTenantDisplayName = null;
       await _persistSession(_user!);
+      notifyListeners();
       return true;
     } on TimeoutException {
       _lastError = 'O servidor demorou para responder.';
@@ -143,30 +151,51 @@ class AuthService {
     _selectedTenantId ??= currentUser.tenantId;
     if (!isSuperadmin) {
       _selectedTenantId = currentUser.tenantId;
+      _selectedTenantDisplayName = null;
     }
     await _persistSession(currentUser);
+    notifyListeners();
   }
 
-  Future<void> setActiveTenantId(String tenantId) async {
+  Future<void> setActiveTenantId(
+    String tenantId, {
+    String? displayName,
+  }) async {
     final normalized = tenantId.trim();
     if (normalized.isEmpty) return;
-    _selectedTenantId = isSuperadmin ? normalized : (_user?.tenantId ?? normalized);
+    _selectedTenantId =
+        isSuperadmin ? normalized : (_user?.tenantId ?? normalized);
+    final home = _user?.tenantId.trim() ?? '';
+    if (!isSuperadmin ||
+        _selectedTenantId == home ||
+        _selectedTenantId == 'default') {
+      _selectedTenantDisplayName = null;
+    } else {
+      final name = displayName?.trim();
+      _selectedTenantDisplayName =
+          (name != null && name.isNotEmpty) ? name : null;
+    }
     if (_user != null) {
       await _persistSession(_user!);
     }
+    notifyListeners();
   }
 
   Future<void> resetActiveTenantId() async {
     if (_user == null) return;
     _selectedTenantId = _user!.tenantId;
+    _selectedTenantDisplayName = null;
     await _persistSession(_user!);
+    notifyListeners();
   }
 
   void logout() {
     _user = null;
     _lastError = null;
     _selectedTenantId = null;
+    _selectedTenantDisplayName = null;
     unawaited(_clearStoredSession());
+    notifyListeners();
   }
 
   Future<AppUser?> _fetchCurrentUser(String token) async {

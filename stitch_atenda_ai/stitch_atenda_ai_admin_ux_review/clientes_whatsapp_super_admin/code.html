@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Gerenciamento de WhatsApp</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "on-background": "#dde3e7",
+                        "on-surface-variant": "#bbc9cf",
+                        "surface-container": "#1a2123",
+                        "secondary-fixed": "#e9ddff",
+                        "error-container": "#93000a",
+                        "surface-container-lowest": "#090f12",
+                        "surface-container-low": "#161d1f",
+                        "surface-container-high": "#242b2e",
+                        "outline-variant": "#3c494e",
+                        "on-primary-fixed": "#001f28",
+                        "surface-dim": "#0e1417",
+                        "inverse-surface": "#dde3e7",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "outline": "#859399",
+                        "surface": "#0e1417",
+                        "secondary-container": "#571bc1",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "tertiary-container": "#feb127",
+                        "background": "#0e1417",
+                        "surface-container-highest": "#2f3639",
+                        "inverse-primary": "#00677f",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-bright": "#333a3d",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "on-tertiary-container": "#6b4700",
+                        "on-secondary-fixed": "#23005c",
+                        "inverse-on-surface": "#2b3134",
+                        "on-tertiary-fixed": "#291800",
+                        "primary": "#a4e6ff",
+                        "on-tertiary": "#442b00",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#dde3e7",
+                        "primary-fixed": "#b7eaff",
+                        "tertiary-fixed": "#ffddb1",
+                        "tertiary": "#ffd59c",
+                        "on-primary-fixed-variant": "#004e60",
+                        "on-primary-container": "#00566a",
+                        "on-secondary-container": "#c4abff",
+                        "on-primary": "#003543",
+                        "primary-container": "#00d1ff",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "secondary": "#d0bcff",
+                        "on-secondary": "#3c0091",
+                        "surface-tint": "#4cd6ff",
+                        "surface-variant": "#2f3639"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-lg": "2rem",
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-md": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["26px", {"lineHeight": "32px", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #07080d;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            color: theme('colors.on-background');
+        }
+        
+        .glass-panel {
+            background: rgba(17, 20, 29, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glow-active {
+            box-shadow: inset 0 0 10px rgba(0, 209, 255, 0.1);
+            border-color: rgba(0, 209, 255, 0.3);
+        }
+        
+        .glow-secondary {
+            box-shadow: inset 0 0 10px rgba(87, 27, 193, 0.1);
+            border-color: rgba(87, 27, 193, 0.3);
+        }
+        
+        /* Custom scrollbar for dark mode */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.surface-container');
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.outline-variant');
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.outline');
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-full py-gutter bg-surface-container dark:bg-surface-container border-r border-outline-variant fixed left-0 top-0 h-full w-64 z-40">
+<!-- Brand/Header -->
+<div class="px-gutter mb-stack-lg flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-primary-container flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">api</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary">Console Atenda Ai</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mt-1">Super Admin</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto px-4 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Visão Geral</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="chat">chat</span>
+<span>Conversas</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="bolt">bolt</span>
+<span>Automações</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="smart_button">smart_button</span>
+<span>Ações</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="article">article</span>
+<span>Templates</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold border-r-2 border-primary bg-primary/5 opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span>Clientes</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span>Cobrança</span>
+</a>
+</div>
+<!-- Footer Actions -->
+<div class="px-4 mt-auto flex flex-col gap-1 border-t border-outline-variant pt-4">
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors w-full text-left">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="truncate">admin@atenda.ai</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-error font-medium hover:bg-error-container hover:text-on-error-container transition-colors w-full text-left">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span>Sair</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col min-h-screen ml-0 md:ml-64 w-full">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 max-w-full bg-background/80 backdrop-blur-md border-b border-outline-variant sticky top-0 z-30">
+<!-- Mobile Menu Trigger -->
+<button class="md:hidden text-on-surface p-2 rounded-lg hover:bg-surface-container-high">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Brand / Context -->
+<div class="flex items-center gap-4">
+<h2 class="font-headline-sm text-headline-sm font-black text-on-surface hidden md:block">Atenda Ai</h2>
+<div class="h-4 w-px bg-outline-variant hidden md:block"></div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">business</span>
+<span class="font-label-md text-label-md">Tenant: Matriz Global</span>
+</div>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-all hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary transition-all hover:bg-surface-container">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Page Canvas -->
+<main class="flex-1 p-gutter max-w-[1440px] mx-auto w-full">
+<!-- Page Header & Global Actions -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-stack-lg">
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-1">WhatsApp Accounts</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Gerenciamento técnico de conexões WhatsApp Business API.</p>
+</div>
+<div class="flex flex-wrap items-center gap-3">
+<!-- Empresa Selector (Filtro Central) -->
+<div class="relative group min-w-[240px]">
+<div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">corporate_fare</span>
+</div>
+<select class="w-full bg-surface border border-outline-variant text-on-surface font-body-md text-body-md rounded-lg focus:ring-1 focus:ring-primary focus:border-primary block pl-10 p-2.5 appearance-none cursor-pointer hover:border-outline transition-colors">
+<option>TechCorp Solutions (ID: 8492)</option>
+<option>Alpha Industries (ID: 1102)</option>
+<option>Global Retail (ID: 3391)</option>
+</select>
+<div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Primary Actions Banner -->
+<div class="glass-panel rounded-xl p-4 mb-stack-lg flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">hub</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface text-base">Nova Conexão</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">Adicione um novo número para TechCorp Solutions</p>
+</div>
+</div>
+<div class="flex flex-wrap gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-secondary-container text-secondary-fixed-dim hover:bg-secondary-container/10 transition-colors font-label-md text-label-md glow-secondary">
+<span class="material-symbols-outlined text-[18px]">magic_button</span>
+                        Assistente de Coexistência
+                    </button>
+<button class="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-primary text-on-primary hover:bg-primary-container transition-colors font-label-md text-label-md font-bold">
+<span class="material-symbols-outlined text-[18px]">add_link</span>
+                        Conectar via Meta
+                    </button>
+<button class="w-10 h-10 flex items-center justify-center rounded-lg border border-outline-variant text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" title="Vincular manualmente">
+<span class="material-symbols-outlined">code</span>
+</button>
+</div>
+</div>
+<!-- Data Table / List -->
+<div class="glass-panel rounded-xl overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant bg-surface-container-low/50">
+<th class="p-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Conta / Número</th>
+<th class="p-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Status</th>
+<th class="p-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Identificadores (WABA / Phone ID)</th>
+<th class="p-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Token de Acesso</th>
+<th class="p-4 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider text-right">Ações</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/50">
+<!-- Row 1: Active & Default -->
+<tr class="hover:bg-surface-container/30 transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-10 bg-primary rounded-full shadow-[0_0_8px_rgba(0,209,255,0.5)]"></div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface text-sm">TechCorp Suporte Oficial</span>
+<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-secondary/10 text-secondary border border-secondary/20">PRINCIPAL</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant font-mono text-xs mt-0.5">+55 11 99999-1234</div>
+</div>
+</div>
+</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 font-label-md text-label-md text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                                        Ativo
+                                    </span>
+</td>
+<td class="p-4">
+<div class="flex flex-col gap-1 font-mono text-xs text-on-surface-variant">
+<div class="flex items-center justify-between group/copy cursor-pointer hover:text-on-surface">
+<span><span class="text-outline">WABA:</span> 109837465829103</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover/copy:opacity-100 transition-opacity">content_copy</span>
+</div>
+<div class="flex items-center justify-between group/copy cursor-pointer hover:text-on-surface">
+<span><span class="text-outline">PID:</span> 293847561029384</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover/copy:opacity-100 transition-opacity">content_copy</span>
+</div>
+</div>
+</td>
+<td class="p-4">
+<div class="flex items-center gap-2 font-mono text-xs bg-surface-container px-2 py-1.5 rounded border border-outline-variant/50 text-on-surface-variant">
+<span>EAAGm0PZ...</span>
+<button class="hover:text-primary ml-auto"><span class="material-symbols-outlined text-[16px]">visibility_off</span></button>
+</div>
+</td>
+<td class="p-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Editar">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-secondary transition-colors" title="Configurações Webhook">
+<span class="material-symbols-outlined text-[20px]">webhook</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2: Inactive -->
+<tr class="hover:bg-surface-container/30 transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-2 h-10 bg-outline-variant rounded-full"></div>
+<div>
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm text-on-surface text-sm opacity-70">TechCorp Vendas Secundário</span>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant font-mono text-xs mt-0.5 opacity-70">+55 11 98888-5678</div>
+</div>
+</div>
+</td>
+<td class="p-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-surface-container-high text-on-surface-variant border border-outline-variant font-label-md text-label-md text-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                                        Inativo
+                                    </span>
+</td>
+<td class="p-4 opacity-70">
+<div class="flex flex-col gap-1 font-mono text-xs text-on-surface-variant">
+<div class="flex items-center justify-between group/copy cursor-pointer hover:text-on-surface">
+<span><span class="text-outline">WABA:</span> 109837465829103</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover/copy:opacity-100 transition-opacity">content_copy</span>
+</div>
+<div class="flex items-center justify-between group/copy cursor-pointer hover:text-on-surface">
+<span><span class="text-outline">PID:</span> 584736291048573</span>
+<span class="material-symbols-outlined text-[14px] opacity-0 group-hover/copy:opacity-100 transition-opacity">content_copy</span>
+</div>
+</div>
+</td>
+<td class="p-4 opacity-70">
+<div class="flex items-center gap-2 font-mono text-xs bg-surface-container px-2 py-1.5 rounded border border-outline-variant/50 text-on-surface-variant">
+<span>(Não configurado)</span>
+</div>
+</td>
+<td class="p-4 text-right">
+<div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="text-xs font-label-md text-label-md text-secondary hover:text-secondary-fixed-dim px-2 py-1 rounded hover:bg-secondary/10 transition-colors border border-transparent hover:border-secondary/30">
+                                            Definir Principal
+                                        </button>
+<button class="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors" title="Editar">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Empty State / Pagination Footer -->
+<div class="p-4 border-t border-outline-variant/50 flex justify-between items-center text-sm text-on-surface-variant">
+<span>Mostrando 2 de 2 contas</span>
+<div class="flex items-center gap-2">
+<button class="p-1 rounded hover:bg-surface-container-high disabled:opacity-50" disabled=""><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+<button class="p-1 rounded hover:bg-surface-container-high disabled:opacity-50" disabled=""><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

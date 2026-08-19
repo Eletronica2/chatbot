@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import 'package:admin_panel/screens/dashboard_screen.dart';
 import 'package:admin_panel/screens/landing_screen.dart';
@@ -9,6 +11,9 @@ import 'package:admin_panel/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) {
+    SemanticsBinding.instance.ensureSemantics();
+  }
   await authService.restoreSession();
   runApp(const AdminPanelApp());
 }

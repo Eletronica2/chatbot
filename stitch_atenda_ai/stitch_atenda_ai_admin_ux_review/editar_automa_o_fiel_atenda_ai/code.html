@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Edição de Automação</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed-dim": "#d0bcff",
+                        "on-primary": "#003543",
+                        "on-tertiary-fixed": "#291800",
+                        "tertiary-fixed": "#ffddb1",
+                        "inverse-primary": "#00677f",
+                        "secondary-container": "#571bc1",
+                        "on-primary-fixed-variant": "#004e60",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "surface-variant": "#2f3639",
+                        "surface-container-highest": "#2f3639",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-container-lowest": "#090f12",
+                        "on-tertiary": "#442b00",
+                        "primary-fixed": "#b7eaff",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b3134",
+                        "tertiary": "#ffd59c",
+                        "secondary-fixed": "#e9ddff",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#00566a",
+                        "surface-container-low": "#161d1f",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "tertiary-container": "#feb127",
+                        "outline": "#859399",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#dde3e7",
+                        "primary": "#a4e6ff",
+                        "on-secondary-container": "#c4abff",
+                        "secondary": "#d0bcff",
+                        "on-error": "#690005",
+                        "on-secondary": "#3c0091",
+                        "on-secondary-fixed": "#23005c",
+                        "on-surface-variant": "#bbc9cf",
+                        "primary-container": "#00d1ff",
+                        "on-tertiary-container": "#6b4700",
+                        "surface-container-high": "#242b2e",
+                        "surface-dim": "#0e1417",
+                        "surface": "#0e1417",
+                        "surface-container": "#1a2123",
+                        "on-primary-fixed": "#001f28",
+                        "background": "#0e1417",
+                        "on-background": "#dde3e7",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "surface-bright": "#333a3d",
+                        "inverse-surface": "#dde3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-lg": "2rem",
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "body-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "label-md": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+            background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex text-body-md font-body-md" style="background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px); background-size: 20px 20px;">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col h-screen fixed left-0 top-0 w-[216px] transition-all duration-300 bg-surface-container dark:bg-surface-container border-r border-outline-variant shadow-sm z-50">
+<div class="p-4 flex flex-col items-center border-b border-outline-variant/30">
+<div class="w-12 h-12 bg-primary-container rounded-full flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-on-primary-container">psychology</span>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary font-bold">Atenda Ai</h1>
+<p class="text-label-md font-label-md text-on-surface-variant">Inteligência Artificial</p>
+</div>
+<div class="flex-1 overflow-y-auto py-4"></div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 md:ml-[216px]">
+<!-- TopAppBar -->
+<header class="flex justify-between items-center h-16 px-gutter docked full-width top-0 bg-surface/80 backdrop-blur-md border-b border-outline-variant flat no shadows sticky z-40">
+<div class="flex-1 flex items-center">
+<!-- Search bar would go here if logic dictated, omitted for focused editing view -->
+<h2 class="text-headline-sm font-headline-sm text-primary dark:text-primary">Editar Automação: <span class="text-on-surface font-normal">Boas-vindas Clientes VIP</span></h2>
+</div>
+<div class="flex items-center space-x-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150 p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors scale-95 duration-150 p-2 rounded-full hover:bg-surface-container-high">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="Foto de Perfil do Usuário" class="w-full h-full object-cover" data-alt="A small circular avatar image showing a professional, sleek profile picture placeholder. The aesthetic is clean, dark mode, with subtle neon blue highlights framing the silhouette. Corporate AI system vibe." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA1YiVh3edwObYVG1g3IKFGYEV3mMP5F9f9l-f1XfQ-RGI81pSVZJT37wjLPE78sP560FQ-bf8boNSpJ6IvDlwXsIY9YQdzRVR0b6DFVUNZiMsK_Sp595bTDGS2cq2ZzZjTlRvX6M6surgnJhCXW9iK6oHvuYs84kJXAEav1vdccmxXeyd1U_RqywpUIEP_sHlWeB--zV8UzIKQYf0DOOStC8KNQUC8O8Wu9g0fxkTG6UY9OA4xPj4-"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 p-margin-page overflow-y-auto">
+<div class="max-w-4xl mx-auto space-y-stack-lg">
+<!-- Header Actions -->
+<div class="flex justify-between items-end">
+<div>
+<p class="text-on-surface-variant mb-2">Configure os gatilhos e ações para esta automação.</p>
+<div class="flex gap-2">
+<span class="bg-primary/20 text-primary px-3 py-1 rounded-full text-label-md font-label-md border border-primary/30 shadow-[inset_0_0_8px_rgba(164,230,255,0.1)]">Ativo</span>
+<span class="bg-secondary/10 text-secondary px-3 py-1 rounded-full text-label-md font-label-md border border-secondary/30">AI-Processed</span>
+</div>
+</div>
+<div class="flex space-x-4">
+<button class="px-6 py-2 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container transition-colors">Cancelar</button>
+<button class="px-6 py-2 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-fixed transition-colors shadow-[0_0_15px_rgba(164,230,255,0.3)] shadow-[0_0_15px_rgba(0,209,255,0.3)]">Salvar Alterações</button>
+</div>
+</div>
+<!-- Bento Grid Layout for Sections -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- General Config -->
+<div class="col-span-1 lg:col-span-12 bg-surface-container rounded-xl border border-outline-variant p-6 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+<h3 class="text-headline-sm font-headline-sm text-primary mb-6 flex items-center">
+<span class="material-symbols-outlined mr-2">tune</span> Configurações Gerais
+                        </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-on-surface-variant">Nome da Automação</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all focus:shadow-[0_0_10px_rgba(164,230,255,0.2)]" type="text" value="Boas-vindas Clientes VIP"/>
+</div>
+<div class="space-y-2">
+<label class="text-label-md font-label-md text-on-surface-variant">Descrição</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-3 text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all focus:shadow-[0_0_10px_rgba(164,230,255,0.2)]" type="text" value="Envia mensagem de boas-vindas e oferece suporte premium."/>
+</div>
+</div>
+</div>
+<!-- Trigger Section -->
+<div class="col-span-1 lg:col-span-5 bg-surface-container rounded-xl border border-outline-variant p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-headline-sm font-headline-sm text-secondary flex items-center">
+<span class="material-symbols-outlined mr-2">bolt</span> Gatilho
+                            </h3>
+<button class="text-secondary hover:bg-secondary/10 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<div class="flex-1 space-y-4">
+<!-- Trigger Card -->
+<div class="bg-surface-container-lowest border border-secondary/30 rounded-lg p-4 relative group hover:border-secondary transition-colors">
+<div class="absolute -left-[1px] top-4 bottom-4 w-[3px] bg-secondary rounded-r-full shadow-[0_0_8px_rgba(208,188,255,0.5)]"></div>
+<div class="flex items-start justify-between">
+<div>
+<p class="text-label-md font-label-md text-on-surface-variant mb-1">Evento</p>
+<p class="font-bold text-on-surface">Nova Tag Adicionada</p>
+<p class="text-body-md text-on-surface-variant mt-2">Condição: Tag é exatamente <span class="text-secondary font-bold">"VIP"</span></p>
+</div>
+<button class="text-on-surface-variant hover:text-error transition-colors">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Visual Connector (Desktop only) -->
+<div class="hidden lg:flex col-span-2 items-center justify-center relative">
+<div class="w-full h-px bg-outline-variant absolute top-1/2"></div>
+<div class="w-10 h-10 rounded-full bg-surface-container border border-secondary/50 flex items-center justify-center z-10 shadow-[0_0_15px_rgba(87,27,193,0.3)]">
+<span class="material-symbols-outlined text-secondary">arrow_forward</span>
+</div>
+</div>
+<!-- Actions Section -->
+<div class="col-span-1 lg:col-span-5 bg-surface-container rounded-xl border border-outline-variant p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="text-headline-sm font-headline-sm text-primary flex items-center">
+<span class="material-symbols-outlined mr-2">smart_button</span> Ações
+                            </h3>
+<button class="text-primary hover:bg-primary/10 p-2 rounded-full transition-colors">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<div class="flex-1 space-y-4">
+<!-- Action Card 1 -->
+<div class="bg-surface-container-lowest border border-primary/30 rounded-lg p-4 relative group hover:border-primary transition-colors">
+<div class="absolute -left-[1px] top-4 bottom-4 w-[3px] bg-primary rounded-r-full shadow-[0_0_8px_rgba(164,230,255,0.5)]"></div>
+<div class="flex items-start justify-between mb-3">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-primary mr-2">send</span>
+<p class="font-bold text-on-surface">Enviar Mensagem WhatsApp</p>
+</div>
+<div class="flex space-x-2">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined text-sm">edit</span></button>
+<button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-sm">delete</span></button>
+</div>
+</div>
+<div class="bg-surface-container-high p-3 rounded text-body-md text-on-surface-variant italic border-l-2 border-primary/50">
+                                    "Olá {{nome}}, notamos que você agora faz parte do nosso grupo VIP! Como podemos ajudar com prioridade hoje?"
+                                </div>
+</div>
+<!-- AI Action Card 2 -->
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

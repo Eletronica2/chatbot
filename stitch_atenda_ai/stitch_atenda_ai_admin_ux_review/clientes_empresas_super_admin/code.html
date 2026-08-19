@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Clientes / Empresas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Grid overlay background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "on-background": "#dde3e7",
+                        "on-surface-variant": "#bbc9cf",
+                        "surface-container": "#1a2123",
+                        "secondary-fixed": "#e9ddff",
+                        "error-container": "#93000a",
+                        "surface-container-lowest": "#090f12",
+                        "surface-container-low": "#161d1f",
+                        "surface-container-high": "#242b2e",
+                        "outline-variant": "#3c494e",
+                        "on-primary-fixed": "#001f28",
+                        "surface-dim": "#0e1417",
+                        "inverse-surface": "#dde3e7",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#d0bcff",
+                        "outline": "#859399",
+                        "surface": "#0e1417",
+                        "secondary-container": "#571bc1",
+                        "tertiary-fixed-dim": "#ffba49",
+                        "tertiary-container": "#feb127",
+                        "background": "#0e1417",
+                        "surface-container-highest": "#2f3639",
+                        "inverse-primary": "#00677f",
+                        "on-secondary-fixed-variant": "#5516be",
+                        "surface-bright": "#333a3d",
+                        "on-tertiary-fixed-variant": "#624000",
+                        "on-tertiary-container": "#6b4700",
+                        "on-secondary-fixed": "#23005c",
+                        "inverse-on-surface": "#2b3134",
+                        "on-tertiary-fixed": "#291800",
+                        "primary": "#a4e6ff",
+                        "on-tertiary": "#442b00",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#dde3e7",
+                        "primary-fixed": "#b7eaff",
+                        "tertiary-fixed": "#ffddb1",
+                        "tertiary": "#ffd59c",
+                        "on-primary-fixed-variant": "#004e60",
+                        "on-primary-container": "#00566a",
+                        "on-secondary-container": "#c4abff",
+                        "on-primary": "#003543",
+                        "primary-container": "#00d1ff",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "secondary": "#d0bcff",
+                        "on-secondary": "#3c0091",
+                        "surface-tint": "#4cd6ff",
+                        "surface-variant": "#2f3639"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-md": "1rem",
+                        "gutter": "1.5rem",
+                        "stack-lg": "2rem",
+                        "grid-opacity": "0.05",
+                        "margin-page": "2rem",
+                        "stack-sm": "0.5rem"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-md": ["Manrope"],
+                        "body-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-sm": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["26px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-hidden selection:bg-primary selection:text-on-primary">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-64 bg-surface-container dark:bg-surface-container border-r border-outline-variant flex flex-col h-full py-gutter z-30">
+<!-- Brand Area -->
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">neurology</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary truncate">Console Atenda Ai</h1>
+<p class="font-label-md text-label-md text-on-surface-variant truncate">Super Admin</p>
+</div>
+</div>
+<!-- Navigation Tabs -->
+<ul class="flex-1 overflow-y-auto px-3 space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">dashboard</span>
+<span class="font-body-md text-body-md">Visão Geral</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">chat</span>
+<span class="font-body-md text-body-md">Conversas</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">bolt</span>
+<span class="font-body-md text-body-md">Automações</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">smart_button</span>
+<span class="font-body-md text-body-md">Ações</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">article</span>
+<span class="font-body-md text-body-md">Templates</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-primary font-bold border-r-2 border-primary bg-primary/5 opacity-80 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-body-md text-body-md">Clientes</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant font-medium hover:bg-surface-container-high hover:text-on-surface transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">payments</span>
+<span class="font-body-md text-body-md">Cobrança</span>
+</a>
+</li>
+</ul>
+<!-- Footer Actions -->
+<div class="mt-auto px-3 pt-4 border-t border-outline-variant/50 space-y-1">
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors text-left group">
+<span class="material-symbols-outlined group-hover:text-primary transition-colors">account_circle</span>
+<span class="font-label-md text-label-md truncate">admin@atenda.ai</span>
+</button>
+<button class="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high hover:text-error transition-colors text-left group">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Sair</span>
+</button>
+</div>
+</nav>
+<!-- Main Content Wrapper -->
+<div class="ml-64 flex flex-col h-screen">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-gutter h-16 max-w-[calc(100%-16rem)] bg-background/80 backdrop-blur-md border-b border-outline-variant z-20 fixed top-0 ml-64">
+<div class="flex items-center gap-6">
+<!-- Page Title instead of brand here to save space as brand is in sidebar, or minimal brand -->
+<h2 class="font-headline-md text-headline-md text-on-surface font-semibold tracking-tight">Gestão de Clientes</h2>
+<!-- Internal Navigation Tabs -->
+<nav class="hidden md:flex items-center gap-1 bg-surface-container-low p-1 rounded-lg border border-outline-variant/30">
+<button class="px-4 py-1.5 rounded-md bg-surface-container-highest text-primary font-label-md text-label-md shadow-sm border border-outline-variant/50 flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">domain</span>
+                        Empresas
+                    </button>
+<button class="px-4 py-1.5 rounded-md text-on-surface-variant font-label-md text-label-md hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">person_add</span>
+                        Leads
+                    </button>
+<button class="px-4 py-1.5 rounded-md text-on-surface-variant font-label-md text-label-md hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">chat_bubble</span>
+                        WhatsApp
+                    </button>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<!-- Primary Action Tenant Info -->
+<div class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border border-secondary/20 bg-secondary/5">
+<span class="w-2 h-2 rounded-full bg-secondary shadow-[0_0_8px_rgba(208,188,255,0.6)]"></span>
+<span class="font-label-md text-label-md text-secondary">Tenant: Matriz Global</span>
+</div>
+<!-- Trailing Icon Actions -->
+<div class="flex items-center gap-1">
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-high transition-all active:scale-95 duration-200">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Master-Detail Layout -->
+<main class="flex-1 flex overflow-hidden mt-16">
+<!-- Master Column (Left) -->
+<div class="w-[420px] shrink-0 border-r border-outline-variant/50 bg-surface-container-lowest/80 flex flex-col z-10 backdrop-blur-sm">
+<!-- Search & Actions Header -->
+<div class="p-4 border-b border-outline-variant/30 space-y-4">
+<div class="flex justify-between items-center">
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Empresas</h3>
+<button class="h-9 px-4 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-2 hover:bg-primary-fixed transition-colors shadow-[0_0_15px_rgba(164,230,255,0.15)]">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                            Nova Empresa
+                        </button>
+</div>
+<!-- Search Input -->
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant group-focus-within:text-primary transition-colors">search</span>
+<input class="w-full h-10 bg-background border border-outline-variant rounded-lg pl-10 pr-4 font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all shadow-[inset_0_1px_3px_rgba(0,0,0,0.2)]" placeholder="Buscar empresa, ID ou e-mail" type="text"/>
+</div>
+<!-- Summary Stats -->
+<div class="flex gap-4">
+<div class="flex-1 bg-surface-container rounded-lg p-3 border border-outline-variant/20 flex flex-col">
+<span class="font-headline-sm text-headline-sm text-on-surface">142</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Total Empresas</span>
+</div>
+<div class="flex-1 bg-surface-container rounded-lg p-3 border border-outline-variant/20 flex flex-col relative overflow-hidden">
+<!-- Subtle glow for active stat -->
+<div class="absolute inset-0 bg-primary/5"></div>
+<div class="absolute -right-4 -top-4 w-12 h-12 bg-primary/20 blur-xl rounded-full"></div>
+<span class="font-headline-sm text-headline-sm text-primary relative z-10">138</span>
+<span class="font-label-md text-label-md text-on-surface-variant relative z-10">Ativos</span>
+</div>
+</div>
+</div>
+<!-- List of Companies -->
+<div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+<!-- Company Card 1 -->
+<button class="w-full text-left p-3 rounded-xl border border-transparent hover:border-outline-variant/50 hover:bg-surface-container-low transition-all group flex flex-col gap-2 relative">
+<div class="flex justify-between items-start w-full">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors truncate max-w-[220px]">TechNova Solutions</h4>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">tag</span> technova-sol
+                                </p>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">Pro</span>
+</div>
+<div class="flex justify-between items-end w-full mt-1">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-md text-[13px] truncate">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+                                admin@technova.com.br
+                            </div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]"></span>
+<span class="font-label-md text-label-md text-on-surface">Ativo</span>
+</div>
+</div>
+</button>
+<!-- Company Card 2 -->
+<button class="w-full text-left p-3 rounded-xl border border-transparent hover:border-outline-variant/50 hover:bg-surface-container-low transition-all group flex flex-col gap-2 relative">
+<div class="flex justify-between items-start w-full">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors truncate max-w-[220px]">Kiosk Lanches</h4>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">tag</span> kiosk-lanches-01
+                                </p>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-secondary/10 text-secondary border border-secondary/20">Enterprise</span>
+</div>
+<div class="flex justify-between items-end w-full mt-1">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-md text-[13px] truncate">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+                                contato@kiosklanches.com
+                            </div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary-container shadow-[0_0_5px_rgba(254,177,39,0.5)]"></span>
+<span class="font-label-md text-label-md text-on-surface">Trialing</span>
+</div>
+</div>
+</button>
+<!-- Company Card 3 -->
+<button class="w-full text-left p-3 rounded-xl border border-transparent hover:border-outline-variant/50 hover:bg-surface-container-low transition-all group flex flex-col gap-2 relative">
+<div class="flex justify-between items-start w-full">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface-variant group-hover:text-on-surface transition-colors truncate max-w-[220px]">Oficina do Zé</h4>
+<p class="font-label-md text-label-md text-outline flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">tag</span> oficina-ze-auto
+                                </p>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-container-highest text-on-surface-variant border border-outline-variant/50">Starter</span>
+</div>
+<div class="flex justify-between items-end w-full mt-1">
+<div class="flex items-center gap-1.5 text-outline font-body-md text-[13px] truncate">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+                                ze@oficinaze.com
+                            </div>
+<div class="flex items-center gap-1 opacity-70">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+<span class="font-label-md text-label-md text-error">Inativo</span>
+</div>
+</div>
+</button>
+<!-- Company Card 4 -->
+<button class="w-full text-left p-3 rounded-xl border border-transparent hover:border-outline-variant/50 hover:bg-surface-container-low transition-all group flex flex-col gap-2 relative">
+<div class="flex justify-between items-start w-full">
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors truncate max-w-[220px]">Mega Varejo S.A</h4>
+<p class="font-label-md text-label-md text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">tag</span> megavarejo
+                                </p>
+</div>
+<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">Pro</span>
+</div>
+<div class="flex justify-between items-end w-full mt-1">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-body-md text-[13px] truncate">
+<span class="material-symbols-outlined text-[16px]">mail</span>
+                                ti@megavarejo.com.br
+                            </div>
+<div class="flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]"></span>
+<span class="font-label-md text-label-md text-on-surface">Ativo</span>
+</div>
+</div>
+</button>
+</div>
+</div>
+<!-- Detail Column (Right) - Empty State -->
+<div class="flex-1 bg-background relative flex items-center justify-center p-8">
+<!-- Atmospheric background element -->
+<div class="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center">
+<div class="w-[600px] h-[600px] rounded-full border border-outline-variant/10 absolute opacity-20"></div>
+<div class="w-[400px] h-[400px] rounded-full border border-outline-variant/20 absolute opacity-20"></div>
+<div class="w-[200px] h-[200px] rounded-full border border-primary/5 absolute bg-primary/[0.02] shadow-[inset_0_0_50px_rgba(0,209,255,0.05)]"></div>
+</div>
+<div class="relative z-10 flex flex-col items-center text-center max-w-sm">
+<!-- High-tech subtle icon container -->
+<div class="w-24 h-24 rounded-2xl bg-surface-container border border-outline-variant/30 flex items-center justify-center mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.5)] relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+<span class="material-symbols-outlined text-[48px] text-outline font-light drop-shadow-md">account_balance</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2 tracking-tight">Nenhuma empresa selecionada</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8 leading-relaxed">
+                        Selecione uma empresa na lista lateral para visualizar detalhes, gerenciar configurações, acessos e integrações.
+                    </p>
+<!-- Interactive keyboard hint to emphasize productivity -->
+<div class="flex items-center gap-2 px-4 py-2 rounded-lg border border-outline-variant/20 bg-surface-container-low/50 backdrop-blur-sm">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">keyboard</span>
+<span class="font-label-md text-label-md text-on-surface-variant">Pressione</span>
+<kbd class="px-1.5 py-0.5 rounded bg-surface border border-outline-variant/50 font-mono text-[10px] text-on-surface">⌘</kbd>
+<kbd class="px-1.5 py-0.5 rounded bg-surface border border-outline-variant/50 font-mono text-[10px] text-on-surface">K</kbd>
+<span class="font-label-md text-label-md text-on-surface-variant">para buscar rapidamente</span>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Custom scrollbar styles for the internal lists -->
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: rgba(133, 147, 153, 0.2);
+            border-radius: 10px;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(133, 147, 153, 0.4);
+        }
+    </style>
+</body></html>

@@ -5,18 +5,19 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/billing_summary.dart';
 import '../services/auth_service.dart';
 import '../services/billing_service.dart';
+import '../theme/app_tokens.dart';
 import '../widgets/premium_ui.dart';
 
-const _kSurface = Color(0xFF121826);
-const _kCard = Color(0xFF182133);
-const _kCardAlt = Color(0xFF101726);
-const _kBorder = Color(0xFF25304A);
-const _kText = Color(0xFFF5F7FF);
-const _kMuted = Color(0xFF98A4C0);
-const _kSubtle = Color(0xFF6E7B99);
-const _kAccent = Color(0xFFF5A623);
-const _kSuccess = Color(0xFF10B981);
-const _kDanger = Color(0xFFEF4444);
+const _kSurface = AppColors.surface;
+const _kCard = AppColors.surfaceAlt;
+const _kCardAlt = AppColors.surfaceSoft;
+const _kBorder = AppColors.border;
+const _kText = AppColors.text;
+const _kMuted = AppColors.textMuted;
+const _kSubtle = AppColors.textSoft;
+const _kAccent = AppColors.primary;
+const _kSuccess = AppColors.success;
+const _kDanger = AppColors.danger;
 
 String _billingPlanLabel(String value) {
   switch (value.trim().toLowerCase()) {
@@ -182,7 +183,7 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
             onRefresh: () async => _refresh(),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+              padding: AppPageInsets.of(context),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

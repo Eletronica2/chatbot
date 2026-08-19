@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard Cliente V2.1 - Atenda Ai</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary": "#522300",
+                    "surface-bright": "#363943",
+                    "surface-container-lowest": "#0b0e17",
+                    "outline": "#859399",
+                    "surface": "#10131c",
+                    "on-secondary-fixed-variant": "#530ec6",
+                    "inverse-surface": "#e0e2ef",
+                    "tertiary-container": "#ffae7d",
+                    "on-primary-fixed-variant": "#004e60",
+                    "on-primary-fixed": "#001f28",
+                    "primary-fixed-dim": "#4cd6ff",
+                    "on-secondary-container": "#c2acff",
+                    "on-tertiary-container": "#813a00",
+                    "on-tertiary-fixed": "#321200",
+                    "primary-container": "#00d1ff",
+                    "surface-container-high": "#272a33",
+                    "on-secondary-fixed": "#22005d",
+                    "on-error-container": "#ffdad6",
+                    "on-tertiary-fixed-variant": "#753400",
+                    "on-surface-variant": "#bbc9cf",
+                    "tertiary-fixed": "#ffdbc8",
+                    "surface-container-highest": "#32343e",
+                    "on-background": "#e0e2ef",
+                    "on-primary": "#003543",
+                    "inverse-primary": "#00677f",
+                    "outline-variant": "#3c494e",
+                    "error-container": "#93000a",
+                    "surface-container": "#1c1f29",
+                    "secondary-fixed-dim": "#cfbdff",
+                    "tertiary": "#ffd4bc",
+                    "surface-variant": "#32343e",
+                    "background": "#10131c",
+                    "secondary-fixed": "#e8ddff",
+                    "primary-fixed": "#b7eaff",
+                    "on-primary-container": "#00566a",
+                    "surface-tint": "#4cd6ff",
+                    "on-surface": "#e0e2ef",
+                    "inverse-on-surface": "#2d303a",
+                    "on-error": "#690005",
+                    "secondary": "#cfbdff",
+                    "primary": "#a4e6ff",
+                    "secondary-container": "#5515c9",
+                    "on-secondary": "#390093",
+                    "surface-container-low": "#181b25",
+                    "error": "#ffb4ab",
+                    "tertiary-fixed-dim": "#ffb68b",
+                    "surface-dim": "#10131c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "32px",
+                    "margin": "24px",
+                    "2xl": "48px",
+                    "gutter": "20px",
+                    "sm": "8px",
+                    "lg": "24px",
+                    "md": "16px",
+                    "xs": "4px",
+                    "base": "4px"
+            },
+            "fontFamily": {
+                    "body-md": ["Manrope"],
+                    "label-sm": ["Manrope"],
+                    "display-lg": ["Manrope"],
+                    "label-lg": ["Manrope"],
+                    "headline-lg": ["Manrope"],
+                    "display-md": ["Manrope"],
+                    "headline-md": ["Manrope"],
+                    "headline-lg-mobile": ["Manrope"],
+                    "body-lg": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-md": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: #07080D;
+            color: #e0e2ef;
+        }
+        .bg-grid {
+            background-size: 40px 40px;
+            background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+        .glow-cyan {
+            box-shadow: 0 0 40px -10px rgba(76, 214, 255, 0.3);
+        }
+        .glow-violet {
+            box-shadow: 0 0 40px -10px rgba(138, 92, 255, 0.2);
+        }
+        .glass-panel {
+            background: rgba(17, 20, 29, 0.7);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.fill {
+          font-variation-settings: 'FILL' 1;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased min-h-screen flex overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen py-lg fixed left-0 top-0 h-full w-[260px] border-r border-outline-variant bg-surface-container dark:bg-surface-container z-50">
+<div class="px-margin mb-xl">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded-DEFAULT bg-surface-bright flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary fill text-[20px]">smart_toy</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Atenda Ai</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">SaaS de Automação</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 overflow-y-auto font-label-lg text-label-lg space-y-xs">
+<a class="flex items-center gap-md border-l-2 border-primary bg-white/5 text-primary font-bold px-lg py-sm transition-all duration-200" href="#">
+<span class="material-symbols-outlined fill">dashboard</span>
+                Visão Geral
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">chat</span>
+                Conversas
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">bolt</span>
+                Automações
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">smart_button</span>
+                Ações
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">description</span>
+                Templates WhatsApp
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">phone_iphone</span>
+                WhatsApp
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">group</span>
+                Equipe
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Configurações
+            </a>
+</nav>
+<div class="mt-auto pt-lg border-t border-outline-variant/30 font-label-lg text-label-lg space-y-xs">
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">help</span>
+                Suporte
+            </a>
+<a class="flex items-center gap-md text-on-surface-variant hover:text-on-surface px-lg py-sm transition-colors hover:bg-white/5 hover:text-primary transition-all duration-200" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Sair
+            </a>
+</div>
+</aside>
+<!-- Main Content Wrapper -->
+<div class="flex-1 flex flex-col md:ml-[260px] h-screen overflow-hidden bg-grid">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-260px)] h-16 border-b border-outline-variant bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-md z-40 flex justify-between items-center px-margin transition-opacity duration-200">
+<div class="flex-1">
+<!-- Search hidden as per JSON -->
+</div>
+<div class="flex items-center gap-md">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-DEFAULT hover:bg-white/5">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-sm rounded-DEFAULT hover:bg-white/5 mr-sm">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-xs"></div>
+<button class="font-label-lg text-label-lg text-on-surface-variant hover:text-primary transition-colors px-md py-sm">
+                    Suporte
+                </button>
+<button class="flex items-center gap-sm pl-sm py-xs">
+<div class="w-8 h-8 rounded-full bg-surface-bright border border-outline-variant overflow-hidden">
+<img alt="Foto de perfil do usuário" class="w-full h-full object-cover" data-alt="A macro shot of a sleek, dark metallic texture with subtle cyan and violet chromatic aberration reflections, representing a premium AI user profile avatar in a futuristic SaaS environment. Lighting is dramatic and low-key." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdXv8CJCxrffhn_TQE9IOwzIbxUOSn7ya3AC3ETDIkS0V5XCxRmlOLtkHiLP0eE5daNC235dlFZ9yGKA5CUuLGWbQWnI6i24Pf6FQU2JzG8PZSTrOXpiTstzAMaCIKtT9euUKBxeVoosBNF89BPG6WMjn6R5JUPe6pUmROqCzKLSZXrHo-T_BbWNeDfYkKo2UcTzrM6SevQX8K_DIXRm-53W_eFpCZLErMjWnaoBUXglVhAUsXu_06"/>
+</div>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 overflow-y-auto pt-24 pb-xl px-margin lg:px-2xl relative z-10">
+<div class="max-w-7xl mx-auto space-y-xl">
+<!-- Page Header -->
+<div class="flex flex-col gap-xs">
+<h2 class="font-display-md text-display-md text-on-surface tracking-tight">Como está meu atendimento hoje?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Visão em tempo real da operação.</p>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- WhatsApp Status Card (Col 1-4) -->
+<div class="lg:col-span-4 bg-[#11141D] border border-outline-variant rounded-xl p-md flex flex-col justify-center relative overflow-hidden glass-panel">
+<!-- AI Atmosphere Glow -->
+<div class="absolute -right-8 -top-8 w-32 h-32 bg-primary/20 rounded-full blur-2xl pointer-events-none"></div>
+<div class="flex items-center justify-between mb-sm relative z-10">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant">Status do WhatsApp</h3>
+<div class="flex items-center gap-xs px-2 py-1 rounded-DEFAULT bg-primary/10 border border-primary/20">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-sm text-label-sm text-primary">Conectado</span>
+</div>
+</div>
+<div class="flex items-center gap-md mt-sm relative z-10">
+<div class="w-10 h-10 rounded-lg bg-surface-bright border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface text-[20px]">phone_iphone</span>
+</div>
+<div>
+<p class="font-headline-md text-[18px] text-on-surface leading-tight">+55 11 99999-9999</p>
+<p class="font-body-md text-[13px] text-on-surface-variant">Atendimento Principal</p>
+</div>
+</div>
+</div>
+<!-- Main Stats Bento (Col 5-12) -->
+<div class="lg:col-span-8 grid grid-cols-2 md:grid-cols-4 gap-sm">
+<!-- Stat 1 -->
+<div class="bg-[#11141D] border border-outline-variant rounded-xl p-md flex flex-col justify-between hover:border-outline transition-colors group relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center justify-between mb-md relative z-10">
+<span class="material-symbols-outlined text-on-surface-variant">chat_bubble</span>
+</div>
+<div class="relative z-10">
+<p class="font-display-md text-display-md text-on-surface">42</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Conversas abertas</p>
+</div>
+</div>
+<!-- Stat 2 -->
+<div class="bg-[#11141D] border border-outline-variant rounded-xl p-md flex flex-col justify-between hover:border-outline transition-colors group relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center justify-between mb-md relative z-10">
+<span class="material-symbols-outlined text-on-surface-variant">mark_email_unread</span>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</div>
+<div class="relative z-10">
+<p class="font-display-md text-display-md text-on-surface">12</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Não lidas</p>
+</div>
+</div>
+<!-- Stat 3 -->
+<div class="bg-[#11141D] border border-primary/30 rounded-xl p-md flex flex-col justify-between relative overflow-hidden glow-cyan">
+<div class="absolute inset-0 bg-primary/5"></div>
+<div class="flex items-center justify-between mb-md relative z-10">
+<span class="material-symbols-outlined text-primary fill">smart_toy</span>
+</div>
+<div class="relative z-10">
+<p class="font-display-md text-display-md text-primary">28</p>
+<p class="font-label-sm text-label-sm text-primary">IA Ativa</p>
+</div>
+</div>
+<!-- Stat 4 -->
+<div class="bg-[#11141D] border border-outline-variant rounded-xl p-md flex flex-col justify-between hover:border-outline transition-colors group relative overflow-hidden">
+<div class="flex items-center justify-between mb-md relative z-10">
+<span class="material-symbols-outlined text-on-surface-variant">support_agent</span>
+</div>
+<div class="relative z-10">
+<p class="font-display-md text-display-md text-on-surface">2</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Transbordo humano</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity Section -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+<div class="lg:col-span-2 bg-[#11141D] border border-outline-variant rounded-xl flex flex-col glass-panel overflow-hidden">
+<div class="p-lg border-b border-outline-variant flex items-center justify-between">
+<h3 class="font-headline-md text-headline-md text-on-surface">Atividade Recente</h3>
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-fixed transition-colors">Ver todas</button>
+</div>
+<div class="p-0">
+<!-- Activity Item 1 -->
+<div class="flex gap-md p-md border-b border-outline-variant/50 hover:bg-white/5 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px] fill">smart_toy</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface truncate">IA respondeu a Cliente A</p>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">"Claro, posso ajudar com isso. O seu pedido está a caminho..."</p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Agora</p>
+</div>
+</div>
+<!-- Activity Item 2 -->
+<div class="flex gap-md p-md border-b border-outline-variant/50 hover:bg-white/5 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-surface-bright border border-outline-variant flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface truncate">Atendente assumiu conversa</p>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">João assumiu o atendimento de Cliente B (Transbordo).</p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Há 5 min</p>
+</div>
+</div>
+<!-- Activity Item 3 -->
+<div class="flex gap-md p-md hover:bg-white/5 transition-colors group">
+<div class="w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px] fill">smart_toy</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface truncate">IA finalizou atendimento</p>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">Dúvida sobre horários resolvida com sucesso.</p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-label-sm text-label-sm text-on-surface-variant">Há 12 min</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Decorative / Secondary Action Area (Col 3) -->
+<div class="lg:col-span-1 flex flex-col gap-lg">
+<div class="bg-gradient-to-br from-[#11141D] to-[#181b25] border border-outline-variant rounded-xl p-lg flex flex-col relative overflow-hidden h-full min-h-[240px] justify-between">
+<div class="relative z-10">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-xs">Precisa ajustar a IA?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-md">Vá para a área de Automações para refinar o comportamento.</p>
+</div>
+<button class="relative z-10 w-full bg-transparent border border-[#252B3A] text-on-surface hover:text-primary hover:border-primary transition-all duration-200 py-2 rounded-DEFAULT font-label-lg text-label-lg flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+                                Ir para Automações
+                            </button>
+<!-- Abstract Graphic -->
+<div class="absolute -bottom-10 -right-10 opacity-20 pointer-events-none">
+<svg fill="none" height="150" viewbox="0 0 100 100" width="150" xmlns="http://www.w3.org/2000/svg">
+<circle cx="50" cy="50" r="49" stroke="#4cd6ff" stroke-dasharray="4 4" stroke-width="2"></circle>
+<circle cx="50" cy="50" r="35" stroke="#a4e6ff" stroke-width="1"></circle>
+<path d="M50 15L50 85M15 50L85 50" stroke="#4cd6ff" stroke-dasharray="2 2" stroke-width="1"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

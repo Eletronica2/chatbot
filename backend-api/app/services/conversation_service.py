@@ -195,7 +195,7 @@ class ConversationService:
                         intent_result=intent_result,
                         fallback_intent=flow_result.detected_intent,
                     )
-                    flow_name = str(flow_metadata.get("flow") or session.active_flow or "start")
+                    flow_name = self._resolve_flow_name(flow_metadata, session)
                     state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
                     self._append_message(session, role="assistant", content=reply)
                     session = await self.session_service.update_session(
@@ -243,7 +243,7 @@ class ConversationService:
         if flow_result.handled and flow_result.reply_text:
             logger.info("Flow engine resolved message %s with reply", message.message_id)
             flow_metadata = flow_result.metadata or {}
-            flow_name = str(flow_metadata.get("flow") or session.active_flow or "start")
+            flow_name = self._resolve_flow_name(flow_metadata, session)
             state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
 
             persisted_intent = self._resolve_persisted_intent(
@@ -497,6 +497,17 @@ class ConversationService:
             return result
         first_line = intro.split("\n")[0].strip()
         return first_line
+
+    @staticmethod
+    def _resolve_flow_name(flow_metadata: Dict[str, Any], session) -> str | None:
+        raw = None
+        if isinstance(flow_metadata, dict):
+            raw = flow_metadata.get("flow")
+        if not raw:
+            raw = getattr(session, "active_flow", None)
+        if isinstance(raw, str) and raw.strip():
+            return raw.strip()
+        return None
 
     def _with_detected_intent(
         self,

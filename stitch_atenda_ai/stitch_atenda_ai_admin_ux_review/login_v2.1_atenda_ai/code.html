@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Atenda Ai - Login</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary": "#522300",
+                        "surface-bright": "#363943",
+                        "surface-container-lowest": "#0b0e17",
+                        "outline": "#859399",
+                        "surface": "#10131c",
+                        "on-secondary-fixed-variant": "#530ec6",
+                        "inverse-surface": "#e0e2ef",
+                        "tertiary-container": "#ffae7d",
+                        "on-primary-fixed-variant": "#004e60",
+                        "on-primary-fixed": "#001f28",
+                        "primary-fixed-dim": "#4cd6ff",
+                        "on-secondary-container": "#c2acff",
+                        "on-tertiary-container": "#813a00",
+                        "on-tertiary-fixed": "#321200",
+                        "primary-container": "#00d1ff",
+                        "surface-container-high": "#272a33",
+                        "on-secondary-fixed": "#22005d",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#753400",
+                        "on-surface-variant": "#bbc9cf",
+                        "tertiary-fixed": "#ffdbc8",
+                        "surface-container-highest": "#32343e",
+                        "on-background": "#e0e2ef",
+                        "on-primary": "#003543",
+                        "inverse-primary": "#00677f",
+                        "outline-variant": "#3c494e",
+                        "error-container": "#93000a",
+                        "surface-container": "#1c1f29",
+                        "secondary-fixed-dim": "#cfbdff",
+                        "tertiary": "#ffd4bc",
+                        "surface-variant": "#32343e",
+                        "background": "#10131c",
+                        "secondary-fixed": "#e8ddff",
+                        "primary-fixed": "#b7eaff",
+                        "on-primary-container": "#00566a",
+                        "surface-tint": "#4cd6ff",
+                        "on-surface": "#e0e2ef",
+                        "inverse-on-surface": "#2d303a",
+                        "on-error": "#690005",
+                        "secondary": "#cfbdff",
+                        "primary": "#a4e6ff",
+                        "secondary-container": "#5515c9",
+                        "on-secondary": "#390093",
+                        "surface-container-low": "#181b25",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#ffb68b",
+                        "surface-dim": "#10131c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "xl": "32px",
+                        "margin": "24px",
+                        "2xl": "48px",
+                        "gutter": "20px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "base": "4px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Manrope"],
+                        "label-sm": ["Manrope"],
+                        "display-lg": ["Manrope"],
+                        "label-lg": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "display-md": ["Manrope"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg-mobile": ["Manrope"],
+                        "body-lg": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500" }],
+                        "display-lg": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "600" }],
+                        "headline-lg": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "display-md": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Ambient Noise Texture (CSS Only to avoid data URIs) */
+        .ambient-noise {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image: repeating-radial-gradient(
+                circle at 50% 50%,
+                #fff,
+                #fff 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            background-size: 4px 4px;
+        }
+
+        /* Technical Blueprint Grid */
+        .blueprint-grid {
+            position: absolute;
+            inset: 0;
+            z-index: 1;
+            background-image: 
+                linear-gradient(to right, rgba(60, 73, 78, 0.15) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(60, 73, 78, 0.15) 1px, transparent 1px);
+            background-size: 64px 64px;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Panel specific styling */
+        .glass-panel {
+            background: rgba(28, 31, 41, 0.6); /* surface-container with opacity */
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+        }
+
+        /* Focus glow for inputs */
+        .input-glow:focus-within {
+            box-shadow: 0 0 0 1px #00d1ff, 0 0 12px rgba(0, 209, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex items-center justify-center relative overflow-hidden antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Ambient Grid & Noise -->
+<div class="ambient-noise"></div>
+<div class="blueprint-grid"></div>
+<!-- Atmospheric Glows -->
+<div class="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-primary-container/[0.13] rounded-full blur-[120px] mix-blend-screen pointer-events-none z-0"></div>
+<div class="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-secondary-container/[0.13] rounded-full blur-[150px] mix-blend-screen pointer-events-none z-0"></div>
+<!-- Main Login Card -->
+<main class="w-full max-w-[440px] px-margin relative z-10">
+<div class="glass-panel rounded-xl border border-outline-variant p-2xl flex flex-col items-center w-full">
+<!-- Brand Mark -->
+<div class="flex flex-col items-center mb-xl">
+<!-- Abstract 'A' Logo SVG mimicking the provided image style -->
+<svg class="mb-sm" fill="none" height="64" viewbox="0 0 100 100" width="64" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<lineargradient id="brand-grad" x1="10%" x2="90%" y1="10%" y2="90%">
+<stop offset="0%" stop-color="#4cd6ff"></stop> <!-- primary-fixed-dim -->
+<stop offset="100%" stop-color="#cfbdff"></stop> <!-- secondary -->
+</lineargradient>
+<lineargradient id="brand-grad-dark" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#00677f"></stop> <!-- inverse-primary -->
+<stop offset="100%" stop-color="#5515c9"></stop> <!-- secondary-container -->
+</lineargradient>
+</defs>
+<!-- Structural Grid lines behind logo -->
+<path d="M50 10 L50 90 M10 50 L90 50 M20 20 L80 80 M20 80 L80 20" opacity="0.3" stroke="#3c494e" stroke-width="0.5"></path>
+<!-- Overlapping A Shapes -->
+<path d="M50 20 L25 80 L38 80 L44 65 L56 65 L62 80 L75 80 Z" fill="rgba(76, 214, 255, 0.05)" stroke="url(#brand-grad)" stroke-linejoin="round" stroke-width="4"></path>
+<path d="M50 35 L35 70 L65 70 Z" fill="none" stroke="url(#brand-grad-dark)" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Nodes / Tech Accents -->
+<circle cx="50" cy="20" fill="#a4e6ff" r="3"></circle>
+<circle cx="25" cy="80" fill="#cfbdff" r="3"></circle>
+<circle cx="75" cy="80" fill="#cfbdff" r="3"></circle>
+</svg>
+<h1 class="font-display-md text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">
+                    Atenda Ai
+                </h1>
+</div>
+<!-- Form -->
+<form action="#" class="w-full flex flex-col gap-lg" method="POST">
+<!-- Email Field -->
+<div class="flex flex-col gap-xs">
+<label class="font-label-sm text-on-surface-variant" for="email">
+                        E-mail
+                    </label>
+<div class="relative input-glow rounded border border-outline-variant bg-surface-container-lowest overflow-hidden transition-all duration-200">
+<span class="absolute left-md top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[18px]">
+                            mail
+                        </span>
+<input class="w-full bg-transparent border-none py-sm pr-md pl-[44px] text-body-md text-on-surface placeholder:text-outline focus:ring-0" id="email" name="email" placeholder="seu@email.com" required="" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between items-center">
+<label class="font-label-sm text-on-surface-variant" for="password">
+                            Senha
+                        </label>
+<a class="font-label-sm text-primary hover:text-primary-fixed transition-colors" href="#">
+                            Esqueceu sua senha?
+                        </a>
+</div>
+<div class="relative input-glow rounded border border-outline-variant bg-surface-container-lowest overflow-hidden transition-all duration-200">
+<span class="absolute left-md top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[18px]">
+                            lock
+                        </span>
+<input class="w-full bg-transparent border-none py-sm pr-md pl-[44px] text-body-md text-on-surface placeholder:text-outline focus:ring-0" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+</div>
+</div>
+<!-- Action Button -->
+<button class="mt-sm w-full bg-gradient-to-r from-primary to-secondary text-surface-container-lowest font-label-lg py-md rounded transition-all duration-200 hover:opacity-90 hover:shadow-[0_0_20px_rgba(164,230,255,0.3)] active:scale-[0.98] flex items-center justify-center gap-sm group" type="submit">
+                    Entrar na plataforma
+                    <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">
+                        arrow_forward
+                    </span>
+</button>
+</form>
+<!-- Registration Link -->
+<div class="mt-xl text-center">
+<span class="font-body-md text-on-surface-variant">
+                    Ainda não tem conta? 
+                    <a class="text-primary font-label-lg hover:text-primary-fixed hover:underline underline-offset-4 transition-all ml-xs" href="#">
+                        Cadastre-se
+                    </a>
+</span>
+</div>
+</div>
+</main>
+</body></html>

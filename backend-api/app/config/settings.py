@@ -40,6 +40,14 @@ class Settings(BaseSettings):
     BOOTSTRAP_COMPANY_ADMIN_PASSWORD: str = "empresa123"
     BOOTSTRAP_COMPANY_PLAN: str = "starter"
     BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT: int = 1000
+    BOOTSTRAP_PIZZARIA_TENANT_ID: str = "pizzaria_bella_massa"
+    BOOTSTRAP_PIZZARIA_NAME: str = "Pizzaria Bella Massa"
+    BOOTSTRAP_PIZZARIA_EMAIL: str = "contato@bellamassa.com.br"
+    BOOTSTRAP_PIZZARIA_ADMIN_NAME: str = "Admin Bella Massa"
+    BOOTSTRAP_PIZZARIA_ADMIN_EMAIL: str = "admin@bellamassa.com.br"
+    BOOTSTRAP_PIZZARIA_ADMIN_PASSWORD: str = "Bella@2026!"
+    BOOTSTRAP_PIZZARIA_PLAN: str = "professional"
+    BOOTSTRAP_PIZZARIA_MONTHLY_MESSAGE_LIMIT: int = 10000
 
     APP_SECRET_KEY: str = "change-me-backend-secret"
     JWT_EXPIRES_MINUTES: int = 720
