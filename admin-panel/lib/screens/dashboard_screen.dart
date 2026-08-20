@@ -20,6 +20,7 @@ import 'overview_screen.dart';
 import 'settings_screen.dart';
 import 'team_screen.dart';
 import 'template_dispatch_screen.dart';
+import 'whatsapp_connection_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key, required this.onLogout});
@@ -386,13 +387,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _navWhatsApp:
         return KeyedSubtree(
           key: ValueKey<String>('whatsapp-${authService.tenantId}'),
-          child: BackofficeScreen(
-            embedded: true,
-            onLogout: _logout,
-            onOpenTenantFlows: () => _selectNav(_navAutomations),
-            initialAdminView: 'whatsapp',
-            lockToCurrentTenant: true,
-          ),
+          child: const WhatsAppConnectionScreen(),
         );
       case _navTeam:
         return KeyedSubtree(

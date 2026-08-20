@@ -5,56 +5,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/billing_summary.dart';
 import '../services/auth_service.dart';
 import '../services/billing_service.dart';
+import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/premium_ui.dart';
 
-const _kSurface = AppColors.surface;
-const _kCard = AppColors.surfaceAlt;
-const _kCardAlt = AppColors.surfaceSoft;
-const _kBorder = AppColors.border;
-const _kText = AppColors.text;
-const _kMuted = AppColors.textMuted;
-const _kSubtle = AppColors.textSoft;
-const _kAccent = AppColors.primary;
-const _kSuccess = AppColors.success;
-const _kDanger = AppColors.danger;
-
-String _billingPlanLabel(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'starter':
-      return 'Inicial';
-    case 'growth':
-      return 'Crescimento';
-    case 'pro':
-      return 'Profissional';
-    case 'enterprise':
-      return 'Empresarial';
-    default:
-      return value.isEmpty ? 'Plano' : value;
-  }
-}
-
-String _billingStatusLabel(String value) {
-  switch (value.trim().toLowerCase()) {
-    case 'active':
-      return 'Ativa';
-    case 'trialing':
-      return 'Em teste';
-    case 'past_due':
-      return 'Pagamento pendente';
-    case 'canceled':
-      return 'Cancelada';
-    case 'inactive':
-      return 'Inativa';
-    case 'paid':
-      return 'Paga';
-    case 'open':
-      return 'Em aberto';
-    default:
-      return value.isEmpty ? 'Sem status' : value;
-  }
-}
-
+/// Cobrança — assinatura / uso / catálogo / checkout+portal existentes.
+/// API exige superadmin. Não confundir com Assinatura em Clientes (Fase 5).
 class BillingHubScreen extends StatefulWidget {
   const BillingHubScreen({
     super.key,
@@ -76,20 +32,67 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
       authService.isSuperadmin &&
       authService.tenantId == (authService.homeTenantId ?? '');
 
+  String get _tenantLabel {
+    final name = authService.activeTenantDisplayName?.trim();
+    if (name != null && name.isNotEmpty) return name;
+    return authService.tenantId ?? 'tenant';
+  }
+
   @override
   void initState() {
     super.initState();
-    _future = _loadSummary();
-  }
-
-  Future<BillingSummaryModel> _loadSummary() {
-    return billingService.fetchSummary();
+    _future = billingService.fetchSummary();
   }
 
   void _refresh() {
     setState(() {
-      _future = _loadSummary();
+      _future = billingService.fetchSummary();
     });
+  }
+
+  Future<void> _confirmAndCheckout(String plan) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final width = MediaQuery.sizeOf(ctx).width;
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: width < 420 ? 16 : 24,
+            vertical: 24,
+          ),
+          title: const Text(
+            'Abrir pagamento?',
+            style: TextStyle(color: AppColors.text),
+          ),
+          content: SizedBox(
+            width: width < 520 ? width - 48 : 400,
+            child: Text(
+              'Será aberta a página de checkout do provedor para o plano '
+              '${_planLabel(plan)}. Nada é cobrado nesta tela — a cobrança '
+              'ocorre apenas se o fluxo externo for concluído.',
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    await _openCheckout(plan);
   }
 
   Future<void> _openCheckout(String plan) async {
@@ -101,17 +104,21 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
         mode: LaunchMode.platformDefault,
       );
       if (!ok && mounted) {
-        _showSnack('Não foi possível abrir a página de pagamento.', isError: true);
+        _showSnack(
+          'Não foi possível abrir a página de pagamento.',
+          isError: true,
+        );
       }
       _refresh();
     } catch (err) {
       if (mounted) {
-        _showSnack('Não foi possível iniciar o pagamento: $err', isError: true);
+        _showSnack(
+          'Não foi possível iniciar o pagamento: $err',
+          isError: true,
+        );
       }
     } finally {
-      if (mounted) {
-        setState(() => _loadingPlan = null);
-      }
+      if (mounted) setState(() => _loadingPlan = null);
     }
   }
 
@@ -124,7 +131,10 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
         mode: LaunchMode.platformDefault,
       );
       if (!ok && mounted) {
-        _showSnack('Não foi possível abrir o portal de cobrança.', isError: true);
+        _showSnack(
+          'Não foi possível abrir o portal de cobrança.',
+          isError: true,
+        );
       }
       _refresh();
     } catch (err) {
@@ -132,9 +142,7 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
         _showSnack('Não foi possível abrir o portal: $err', isError: true);
       }
     } finally {
-      if (mounted) {
-        setState(() => _openingPortal = false);
-      }
+      if (mounted) setState(() => _openingPortal = false);
     }
   }
 
@@ -142,7 +150,7 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? _kDanger : _kSuccess,
+        backgroundColor: isError ? AppColors.danger : AppColors.success,
       ),
     );
   }
@@ -152,7 +160,7 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
     if (_isSystemHomeContext) {
       return PremiumPageBackground(
         intensity: AmbientIntensity.soft,
-        child: _SystemBillingState(onOpenBackoffice: widget.onOpenBackoffice),
+        child: _SystemBillingEmpty(onOpenBackoffice: widget.onOpenBackoffice),
       );
     }
 
@@ -165,15 +173,14 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return _BillingErrorState(
+            return _BillingError(
               message: snapshot.error.toString(),
               onRetry: _refresh,
             );
           }
-
           final summary = snapshot.data;
           if (summary == null) {
-            return _BillingErrorState(
+            return _BillingError(
               message: 'Nenhum resumo de cobrança foi retornado.',
               onRetry: _refresh,
             );
@@ -185,72 +192,51 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: AppPageInsets.of(context),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _BillingHero(
+                  _Header(
+                    tenantLabel: _tenantLabel,
                     summary: summary,
-                    onOpenPortal: summary.customer?.providerCustomerId.isNotEmpty == true
-                        ? _openPortal
-                        : null,
                     openingPortal: _openingPortal,
+                    onRefresh: _refresh,
+                    onOpenPortal:
+                        summary.customer?.providerCustomerId.isNotEmpty == true
+                            ? _openPortal
+                            : null,
                   ),
-                  const SizedBox(height: 24),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      _BillingMetricCard(
-                        label: 'Plano atual',
-                        value: _billingPlanLabel(summary.currentPlan),
-                        helper: _billingStatusLabel(summary.subscriptionStatus),
-                      ),
-                      _BillingMetricCard(
-                        label: 'Renovação',
-                        value: _formatDate(summary.renewalDate),
-                        helper: '${summary.graceDays} dias de tolerância após vencimento',
-                      ),
-                      _BillingMetricCard(
-                        label: 'Mensagens usadas',
-                        value: '${summary.usedMessages}',
-                        helper: 'de ${summary.monthlyMessageLimit} no período atual',
-                      ),
-                      _BillingMetricCard(
-                        label: 'Mensagens restantes',
-                        value: '${summary.remainingMessages}',
-                        helper: 'Capacidade disponível no plano',
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      final stacked = constraints.maxWidth < 1160;
-                      final left = _PlansCatalogPanel(
-                        summary: summary,
-                        loadingPlan: _loadingPlan,
-                        onOpenCheckout: _openCheckout,
-                      );
-                      final right = _InvoicesPanel(summary: summary);
-
+                      final stacked = constraints.maxWidth < 960;
+                      final planCard = _CurrentPlanCard(summary: summary);
+                      final usageCard = _UsageCard(summary: summary);
                       if (stacked) {
                         return Column(
                           children: [
-                            left,
-                            const SizedBox(height: 16),
-                            right,
+                            planCard,
+                            const SizedBox(height: 12),
+                            usageCard,
                           ],
                         );
                       }
                       return Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(flex: 6, child: left),
-                          const SizedBox(width: 16),
-                          Expanded(flex: 5, child: right),
+                          Expanded(flex: 5, child: planCard),
+                          const SizedBox(width: 12),
+                          Expanded(flex: 5, child: usageCard),
                         ],
                       );
                     },
                   ),
+                  const SizedBox(height: 12),
+                  _CatalogCard(
+                    summary: summary,
+                    loadingPlan: _loadingPlan,
+                    onSelectPlan: _confirmAndCheckout,
+                  ),
+                  const SizedBox(height: 12),
+                  _InvoicesCard(summary: summary),
                 ],
               ),
             ),
@@ -259,613 +245,637 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
       ),
     );
   }
+}
 
-  String _formatDate(DateTime? value) {
-    if (value == null) return 'Não informado';
-    return DateFormat('dd/MM/yyyy').format(value.toLocal());
+/// Exibe o ID do plano retornado pela API — sem nomenclatura comercial inventada.
+String _planLabel(String value) {
+  final raw = value.trim();
+  if (raw.isEmpty) return 'Plano';
+  return raw;
+}
+
+String _statusLabel(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'active':
+      return 'Ativa';
+    case 'trialing':
+      return 'Em teste';
+    case 'past_due':
+      return 'Pagamento pendente';
+    case 'canceled':
+      return 'Cancelada';
+    case 'inactive':
+      return 'Inativa';
+    case 'paid':
+      return 'Paga';
+    case 'open':
+      return 'Em aberto';
+    case 'draft':
+      return 'Rascunho';
+    case 'void':
+      return 'Anulada';
+    case 'uncollectible':
+      return 'Incobrável';
+    default:
+      return value.isEmpty ? 'Sem status' : value;
   }
 }
 
-class _SystemBillingState extends StatelessWidget {
-  const _SystemBillingState({this.onOpenBackoffice});
+Color _statusColor(String value) {
+  switch (value.trim().toLowerCase()) {
+    case 'active':
+    case 'paid':
+      return AppColors.success;
+    case 'trialing':
+      return AppColors.warning;
+    case 'past_due':
+    case 'uncollectible':
+      return AppColors.danger;
+    case 'canceled':
+    case 'inactive':
+    case 'void':
+      return AppColors.textMuted;
+    default:
+      return AppColors.textSoft;
+  }
+}
+
+String _formatDate(DateTime? value) {
+  if (value == null) return 'Não informado';
+  return DateFormat('dd/MM/yyyy').format(value.toLocal());
+}
+
+String _formatMoney(int cents, String currency) {
+  final code = currency.trim().toLowerCase();
+  final locale = code == 'brl' ? 'pt_BR' : 'en_US';
+  final symbol = code == 'brl'
+      ? 'R\$'
+      : code == 'usd'
+          ? '\$'
+          : code.toUpperCase();
+  return NumberFormat.currency(
+    locale: locale,
+    symbol: symbol,
+    decimalDigits: 2,
+  ).format(cents / 100);
+}
+
+/// Percentual visual derivado de used/limit (não vem como campo da API).
+double _usageRatio(BillingSummaryModel summary) {
+  if (summary.monthlyMessageLimit <= 0) return 0;
+  final ratio = summary.usedMessages / summary.monthlyMessageLimit;
+  if (ratio.isNaN || ratio.isInfinite) return 0;
+  if (ratio < 0) return 0;
+  if (ratio > 1) return 1;
+  return ratio;
+}
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.tenantLabel,
+    required this.summary,
+    required this.openingPortal,
+    required this.onRefresh,
+    this.onOpenPortal,
+  });
+
+  final String tenantLabel;
+  final BillingSummaryModel summary;
+  final bool openingPortal;
+  final VoidCallback onRefresh;
+  final VoidCallback? onOpenPortal;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 800;
+    final status = summary.subscriptionStatus;
+    final color = _statusColor(status);
+
+    final copy = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Cobrança',
+          style: TextStyle(
+            color: AppColors.text,
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'Qual é o plano e o uso de $tenantLabel?',
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            height: 1.4,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _Pill(
+              label: _statusLabel(status),
+              color: color,
+            ),
+            _Pill(
+              label: summary.providerReady
+                  ? 'Provedor pronto (${summary.provider})'
+                  : 'Provedor indisponível',
+              color: summary.providerReady
+                  ? AppColors.primary
+                  : AppColors.textMuted,
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final actions = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: compact ? WrapAlignment.start : WrapAlignment.end,
+      children: [
+        IconButton(
+          tooltip: 'Atualizar',
+          onPressed: onRefresh,
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+        if (onOpenPortal != null)
+          FilledButton.icon(
+            onPressed: openingPortal ? null : onOpenPortal,
+            icon: const Icon(Icons.open_in_new_rounded, size: 16),
+            label: Text(openingPortal ? 'Abrindo…' : 'Portal de cobrança'),
+          ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.92),
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: compact
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [copy, const SizedBox(height: 12), actions],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: copy),
+                actions,
+              ],
+            ),
+    );
+  }
+}
+
+class _CurrentPlanCard extends StatelessWidget {
+  const _CurrentPlanCard({required this.summary});
+
+  final BillingSummaryModel summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Plano atual',
+            style: TextStyle(
+              color: AppColors.textSoft,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _planLabel(summary.currentPlan),
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _KV('Status', _statusLabel(summary.subscriptionStatus)),
+          _KV('Renovação', _formatDate(summary.renewalDate)),
+          if (summary.graceDays > 0)
+            _KV(
+              'Tolerância',
+              '${summary.graceDays} dia${summary.graceDays == 1 ? '' : 's'} após vencimento',
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageCard extends StatelessWidget {
+  const _UsageCard({required this.summary});
+
+  final BillingSummaryModel summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final ratio = _usageRatio(summary);
+    final over = summary.monthlyMessageLimit > 0 &&
+        summary.usedMessages > summary.monthlyMessageLimit;
+    final barColor = over || ratio >= 0.9 ? AppColors.danger : AppColors.primary;
+
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Uso do ciclo',
+            style: TextStyle(
+              color: AppColors.textSoft,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            summary.monthlyMessageLimit <= 0
+                ? '${summary.usedMessages} mensagens'
+                : '${summary.usedMessages} de ${summary.monthlyMessageLimit}',
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            summary.monthlyMessageLimit <= 0
+                ? 'Limite mensal não informado'
+                : '${summary.remainingMessages} restantes · '
+                    '${(ratio * 100).toStringAsFixed(0)}% do limite',
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: AppRadius.pill,
+            child: LinearProgressIndicator(
+              minHeight: 10,
+              value: summary.monthlyMessageLimit <= 0 ? 0 : ratio,
+              backgroundColor: AppColors.surfaceSoft,
+              valueColor: AlwaysStoppedAnimation<Color>(barColor),
+            ),
+          ),
+          if (over) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Uso acima do limite do plano.',
+              style: TextStyle(
+                color: AppColors.danger,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CatalogCard extends StatelessWidget {
+  const _CatalogCard({
+    required this.summary,
+    required this.loadingPlan,
+    required this.onSelectPlan,
+  });
+
+  final BillingSummaryModel summary;
+  final String? loadingPlan;
+  final ValueChanged<String> onSelectPlan;
+
+  @override
+  Widget build(BuildContext context) {
+    final plans = summary.availablePlans;
+    final compact = MediaQuery.sizeOf(context).width < 800;
+
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Planos disponíveis',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            summary.providerReady
+                ? 'Contratar ou trocar abre o checkout do provedor configurado.'
+                : 'Catálogo visível; checkout indisponível enquanto o provedor não estiver pronto.',
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (plans.isEmpty)
+            const Text(
+              'Nenhum plano retornado pela API.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            )
+          else
+            ...plans.map((plan) {
+              final isCurrent =
+                  plan.trim().toLowerCase() ==
+                  summary.currentPlan.trim().toLowerCase();
+              final loading = loadingPlan == plan;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: EdgeInsets.all(compact ? 12 : 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSoft,
+                    borderRadius: AppRadius.md,
+                    border: Border.all(
+                      color: isCurrent
+                          ? AppColors.primary.withValues(alpha: 0.45)
+                          : AppColors.border,
+                    ),
+                  ),
+                  child: compact
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _planLabel(plan),
+                                    style: const TextStyle(
+                                      color: AppColors.text,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                                if (isCurrent)
+                                  const _Pill(
+                                    label: 'Plano atual',
+                                    color: AppColors.primary,
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton(
+                              onPressed: summary.providerReady && !loading
+                                  ? () => onSelectPlan(plan)
+                                  : null,
+                              child: Text(
+                                loading
+                                    ? 'Abrindo…'
+                                    : isCurrent
+                                        ? 'Trocar / renovar'
+                                        : 'Contratar',
+                              ),
+                            ),
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Text(
+                                        _planLabel(plan),
+                                        style: const TextStyle(
+                                          color: AppColors.text,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                      if (isCurrent) ...[
+                                        const SizedBox(width: 8),
+                                        const _Pill(
+                                          label: 'Plano atual',
+                                          color: AppColors.primary,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            FilledButton(
+                              onPressed: summary.providerReady && !loading
+                                  ? () => onSelectPlan(plan)
+                                  : null,
+                              child: Text(
+                                loading
+                                    ? 'Abrindo…'
+                                    : isCurrent
+                                        ? 'Trocar / renovar'
+                                        : 'Contratar',
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoicesCard extends StatelessWidget {
+  const _InvoicesCard({required this.summary});
+
+  final BillingSummaryModel summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SurfaceCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Faturas',
+            style: TextStyle(
+              color: AppColors.text,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Histórico retornado pelo provedor para este tenant.',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (summary.invoices.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceSoft,
+                borderRadius: AppRadius.md,
+                border: Border.all(color: AppColors.border),
+              ),
+              child: const Text(
+                'Nenhuma fatura sincronizada para este cliente.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+            )
+          else
+            ...summary.invoices.map((invoice) {
+              final color = _statusColor(invoice.status);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceSoft,
+                    borderRadius: AppRadius.md,
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              invoice.providerInvoiceId,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          _Pill(
+                            label: _statusLabel(invoice.status),
+                            color: color,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${_formatMoney(invoice.amountPaid, invoice.currency)} pago · '
+                        '${_formatMoney(invoice.amountDue, invoice.currency)} devido',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Criada ${_formatDate(invoice.createdAt)} · '
+                        'Venc. ${_formatDate(invoice.dueDate)}',
+                        style: const TextStyle(
+                          color: AppColors.textSoft,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+}
+
+class _SystemBillingEmpty extends StatelessWidget {
+  const _SystemBillingEmpty({this.onOpenBackoffice});
 
   final VoidCallback? onOpenBackoffice;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: 640,
-        padding: const EdgeInsets.all(28),
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(28),
-          border: Border.all(color: _kBorder),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.apartment_rounded, size: 46, color: _kAccent),
-            const SizedBox(height: 18),
-            const Text(
-              'Selecione um cliente para ver a cobrança',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _kText,
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'A conta system-admin não possui assinatura própria. Escolha um cliente na administração SaaS para acompanhar plano, faturas e pagamento.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _kMuted,
-                fontSize: 13,
-                height: 1.5,
-              ),
-            ),
-            if (onOpenBackoffice != null) ...[
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: onOpenBackoffice,
-                icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: const Text('Abrir administração SaaS'),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BillingHero extends StatelessWidget {
-  const _BillingHero({
-    required this.summary,
-    this.onOpenPortal,
-    required this.openingPortal,
-  });
-
-  final BillingSummaryModel summary;
-  final VoidCallback? onOpenPortal;
-  final bool openingPortal;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusColor = switch (summary.subscriptionStatus) {
-      'active' => _kSuccess,
-      'trialing' => const Color(0xFFF59E0B),
-      'past_due' => _kDanger,
-      'canceled' => const Color(0xFF64748B),
-      _ => _kMuted,
-    };
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _kBorder),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF182235), Color(0xFF0F172A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x22000000),
-            blurRadius: 28,
-            offset: Offset(0, 16),
-          ),
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 920;
-          final intro = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: statusColor.withValues(alpha: 0.35)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: _SurfaceCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.apartment_rounded,
+                  size: 40,
+                  color: AppColors.primarySoft,
                 ),
-                child: Text(
-                  'Status: ${_billingStatusLabel(summary.subscriptionStatus)}',
+                const SizedBox(height: 14),
+                const Text(
+                  'Selecione um cliente',
+                  textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: statusColor,
-                    fontSize: 11,
+                    color: AppColors.text,
+                    fontSize: 20,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Cobrança e assinatura',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
+                const SizedBox(height: 8),
+                const Text(
+                  'A conta administrativa do sistema não possui assinatura própria. '
+                  'Abra Clientes, escolha uma empresa e volte à Cobrança para ver '
+                  'plano, uso e faturas daquele tenant.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    height: 1.45,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                summary.providerReady
-                    ? 'Gerencie upgrade, downgrade, portal de pagamento e faturas do cliente.'
-                    : 'O provedor de cobrança ainda não está configurado. Você pode acompanhar uso e plano atual, mas o pagamento e o portal seguem indisponíveis.',
-                style: const TextStyle(
-                  color: _kMuted,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-            ],
-          );
-
-          final side = Column(
-            crossAxisAlignment:
-                compact ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-            children: [
-              if (summary.customer != null &&
-                  summary.customer!.providerCustomerId.isNotEmpty)
-                _SmallPill(
-                  label: 'Cliente no provedor: ${summary.customer!.providerCustomerId}',
-                ),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: onOpenPortal == null || openingPortal ? null : onOpenPortal,
-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                label: Text(openingPortal ? 'Abrindo...' : 'Portal de cobrança'),
-              ),
-            ],
-          );
-
-          if (compact) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                intro,
-                const SizedBox(height: 20),
-                side,
+                if (onOpenBackoffice != null) ...[
+                  const SizedBox(height: 18),
+                  FilledButton.icon(
+                    onPressed: onOpenBackoffice,
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+                    label: const Text('Abrir Clientes'),
+                  ),
+                ],
               ],
-            );
-          }
-
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 6, child: intro),
-              const SizedBox(width: 20),
-              Expanded(flex: 4, child: side),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _PlansCatalogPanel extends StatelessWidget {
-  const _PlansCatalogPanel({
-    required this.summary,
-    required this.loadingPlan,
-    required this.onOpenCheckout,
-  });
-
-  final BillingSummaryModel summary;
-  final String? loadingPlan;
-  final ValueChanged<String> onOpenCheckout;
-
-  @override
-  Widget build(BuildContext context) {
-    final plans = summary.availablePlans.isEmpty
-        ? const ['starter', 'growth', 'pro', 'enterprise']
-        : summary.availablePlans;
-
-    return _PanelCard(
-      title: 'Catálogo de planos',
-      subtitle:
-          'Use a página de pagamento para upgrade, downgrade ou reativação. O status em atraso bloqueia o processamento após a janela de tolerância.',
-      child: Column(
-        children: plans.map((plan) {
-          final isCurrent = plan == summary.currentPlan;
-          final isLoading = loadingPlan == plan;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Container(
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: isCurrent ? _kCard : _kCardAlt,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isCurrent ? _kAccent : _kBorder,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _billingPlanLabel(plan),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            if (isCurrent) ...[
-                              const SizedBox(width: 8),
-                              const _SmallPill(label: 'Atual'),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          _planDescription(plan),
-                          style: const TextStyle(
-                            color: _kMuted,
-                            fontSize: 12,
-                            height: 1.45,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: summary.providerReady && !isLoading
-                        ? () => onOpenCheckout(plan)
-                        : null,
-                    child: Text(
-                      isCurrent
-                          ? 'Trocar plano'
-                          : isLoading
-                              ? 'Abrindo...'
-                              : 'Contratar plano',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  String _planDescription(String plan) {
-    switch (plan) {
-      case 'growth':
-        return 'Para operações em crescimento, com mais mensagens e equipe.';
-      case 'pro':
-        return 'Ideal para negócios com automações mais intensas e volume alto.';
-      case 'enterprise':
-        return 'Camada premium para operações com alto volume e governança.';
-      default:
-        return 'Plano de entrada para validar a operação e os primeiros clientes.';
-    }
-  }
-}
-
-class _InvoicesPanel extends StatelessWidget {
-  const _InvoicesPanel({required this.summary});
-
-  final BillingSummaryModel summary;
-
-  @override
-  Widget build(BuildContext context) {
-    final usagePercent = summary.monthlyMessageLimit <= 0
-        ? 0.0
-        : (summary.usedMessages / summary.monthlyMessageLimit).clamp(0.0, 1.0);
-
-    return Column(
-      children: [
-        _PanelCard(
-          title: 'Uso do período',
-          subtitle: 'Acompanhe a pressão sobre o plano e antecipe upgrades.',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '${summary.usedMessages} usadas de ${summary.monthlyMessageLimit}',
-                      style: const TextStyle(
-                        color: _kText,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${(usagePercent * 100).toStringAsFixed(0)}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: LinearProgressIndicator(
-                  minHeight: 10,
-                  value: usagePercent,
-                  backgroundColor: const Color(0xFF1E293B),
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    usagePercent >= 0.9 ? _kDanger : _kAccent,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        _PanelCard(
-          title: 'Faturas recentes',
-          subtitle: 'Histórico retornado pelo provedor de cobrança.',
-          child: summary.invoices.isEmpty
-              ? const _EmptyPanelMessage(
-                  message: 'Ainda não existem faturas sincronizadas para este cliente.',
-                )
-              : Column(
-                  children: summary.invoices.map((invoice) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _kCardAlt,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: _kBorder),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    invoice.providerInvoiceId,
-                                    style: const TextStyle(
-                                      color: _kText,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                _SmallPill(label: _billingStatusLabel(invoice.status)),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${_formatMoney(invoice.amountPaid)} pago de ${_formatMoney(invoice.amountDue)}',
-                              style: const TextStyle(
-                                color: _kMuted,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Criada em ${_formatDate(invoice.createdAt)}  •  Vencimento ${_formatDate(invoice.dueDate)}',
-                              style: const TextStyle(
-                                color: _kSubtle,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-        ),
-      ],
-    );
-  }
-
-  String _formatDate(DateTime? value) {
-    if (value == null) return 'Não informado';
-    return DateFormat('dd/MM/yyyy').format(value.toLocal());
-  }
-
-  String _formatMoney(int cents) {
-    final value = cents / 100;
-    return NumberFormat.currency(
-      locale: 'pt_BR',
-      symbol: 'R\$',
-      decimalDigits: 2,
-    ).format(value);
-  }
-}
-
-class _BillingMetricCard extends StatelessWidget {
-  const _BillingMetricCard({
-    required this.label,
-    required this.value,
-    required this.helper,
-  });
-
-  final String label;
-  final String value;
-  final String helper;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 250,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: _kMuted,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            helper,
-            style: const TextStyle(
-              color: _kSubtle,
-              fontSize: 12,
-              height: 1.45,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PanelCard extends StatelessWidget {
-  const _PanelCard({
-    required this.title,
-    required this.subtitle,
-    required this.child,
-  });
-
-  final String title;
-  final String subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _kSurface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _kBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 24,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: _kText,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: _kMuted,
-              fontSize: 12,
-              height: 1.45,
-            ),
-          ),
-          const SizedBox(height: 18),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _SmallPill extends StatelessWidget {
-  const _SmallPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0x141E293B),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFF334155)),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: _kText,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
 
-class _EmptyPanelMessage extends StatelessWidget {
-  const _EmptyPanelMessage({required this.message});
-
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _kCardAlt,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _kBorder),
-      ),
-      child: Text(
-        message,
-        style: const TextStyle(
-          color: _kMuted,
-          fontSize: 12,
-          height: 1.45,
-        ),
-      ),
-    );
-  }
-}
-
-class _BillingErrorState extends StatelessWidget {
-  const _BillingErrorState({
+class _BillingError extends StatelessWidget {
+  const _BillingError({
     required this.message,
     required this.onRetry,
   });
@@ -876,46 +886,135 @@ class _BillingErrorState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Container(
-        width: 480,
+      child: Padding(
         padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: _kSurface,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _kBorder),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.credit_card_off_rounded, size: 42, color: _kMuted),
-            const SizedBox(height: 14),
-            const Text(
-              'Não foi possível carregar a cobrança',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _kText,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: _SurfaceCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.credit_card_off_rounded,
+                  size: 40,
+                  color: AppColors.textMuted,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Não foi possível carregar a cobrança',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Tentar novamente'),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SurfaceCard extends StatelessWidget {
+  const _SurfaceCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withValues(alpha: 0.92),
+        borderRadius: AppRadius.lg,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: AppMotion.hoverOf(context),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: AppRadius.pill,
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _KV extends StatelessWidget {
+  const _KV(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
               style: const TextStyle(
-                color: _kMuted,
+                color: AppColors.textSoft,
                 fontSize: 12,
-                height: 1.45,
               ),
             ),
-            const SizedBox(height: 18),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded, size: 16),
-              label: const Text('Tentar novamente'),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

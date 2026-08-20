@@ -38,7 +38,12 @@ async def list_conversations(
         human_handoff_pending = bool(context.get("human_handoff_pending"))
         rows.append(
             {
-                "id": session.key,
+                # Empty phone makes `tenant:` an invalid URL path segment; use "_" sentinel.
+                "id": (
+                    session.key
+                    if (session.phone_number or "").strip()
+                    else f"{session.tenant_id}:_"
+                ),
                 "session_id": session.session_id,
                 "tenant_id": session.tenant_id,
                 "phone_number": session.phone_number,
@@ -210,8 +215,11 @@ def _parse_conversation_id(conversation_id: str) -> Tuple[str, str]:
     if ":" not in conversation_id:
         raise HTTPException(status_code=400, detail="Invalid conversation_id")
     tenant_id, phone_number = conversation_id.split(":", 1)
-    if not tenant_id or not phone_number:
+    if not tenant_id.strip():
         raise HTTPException(status_code=400, detail="Invalid conversation_id")
+    # "_" sentinel = empty phone (simulation / local sessions)
+    if phone_number == "_":
+        phone_number = ""
     return tenant_id, phone_number
 def _safe_iso_datetime(raw: Any) -> str:
     if isinstance(raw, str):

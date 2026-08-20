@@ -15,14 +15,20 @@ Future<void> showCoexistenceWizard({
   Color accentColor = AppColors.primary,
   int initialStep = 0,
 }) {
+  final size = MediaQuery.sizeOf(context);
+  final horizontal = size.width < 500 ? 12.0 : 16.0;
+  final vertical = size.height < 700 ? 12.0 : 24.0;
   return showDialog<void>(
     context: context,
     barrierDismissible: true,
     builder: (ctx) => Dialog(
       backgroundColor: AppColors.surface,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(horizontal: horizontal, vertical: vertical),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 720, maxHeight: 820),
+        constraints: BoxConstraints(
+          maxWidth: 720,
+          maxHeight: size.height - (vertical * 2),
+        ),
         child: CoexistenceWizard(
           tenantId: tenantId,
           onConnected: onConnected,
@@ -285,12 +291,18 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
   }
 
   Widget _buildStepMeta() {
-    final verifyToken = _preflight['verify_token']?.toString() ?? 'super-secret-webhook-token';
+    final verifyToken = _preflight['verify_token']?.toString() ?? '';
+    final verifyPreview = verifyToken.isEmpty
+        ? '(não configurado)'
+        : (verifyToken.length <= 8
+            ? '••••••••'
+            : '${verifyToken.substring(0, 4)}…${verifyToken.substring(verifyToken.length - 4)}');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Clique para abrir a tela na Meta, depois copie e cole o valor indicado.',
+          'Abra cada tela na Meta e use Copiar para colar os valores. '
+          'O token de verificação é necessário no webhook — copie sob demanda.',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 14),
@@ -312,16 +324,18 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
           'WhatsApp Webhook',
           _metaLinks['whatsapp_webhook']?.toString(),
           'Verify token',
-          verifyToken,
+          verifyToken.isEmpty ? verifyPreview : verifyToken,
+          displayValue: verifyPreview,
         ),
         const SizedBox(height: 10),
         TextField(
           controller: _webhookUrlCtrl,
+          style: const TextStyle(color: AppColors.text, fontSize: 13),
           decoration: const InputDecoration(
             labelText: 'Callback URL (webhook gateway)',
             hintText: 'https://seu-tunnel.trycloudflare.com/webhook',
             border: OutlineInputBorder(),
-            helperText: 'URL do tunnel na porta 40000 + /webhook',
+            helperText: 'URL pública HTTPS do gateway + /webhook',
           ),
         ),
         const SizedBox(height: 8),
@@ -359,10 +373,10 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
               SizedBox(height: 8),
               Text(
                 '1. Clique em Conectar e permita o popup da Meta no navegador\n'
-                '2. No popup: escolha conectar conta existente do WhatsApp Business\n'
-                '3. Informe o numero +55 34 3195-1773 e copie o codigo de verificacao\n'
-                '4. No celular: mensagem da Meta → Conectar → Confirmar → colar o codigo\n'
-                '5. Aguarde status CONNECTED (pode levar alguns minutos)',
+                '2. No popup: escolha conectar a conta existente do WhatsApp Business\n'
+                '3. Informe o número Business e copie o código de verificação\n'
+                '4. No celular: mensagem da Meta → Conectar → Confirmar → colar o código\n'
+                '5. Aguarde a Meta concluir a verificação (pode levar alguns minutos)',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
               ),
             ],
@@ -386,13 +400,14 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
               ),
               SizedBox(height: 8),
               Text(
-                'Não use os portfólios Atende Ai ou Laranjo: eles pertencem ao app desenvolvedor '
-                'e a Meta bloqueia o botão Avançar para Tech Providers.\n\n'
+                'Não use o portfólio do app desenvolvedor: a Meta bloqueia '
+                'o botão Avançar para Tech Providers.\n\n'
                 'Combinação correta:\n'
-                '• Portfólio empresarial → Criar um portfólio empresarial (ex.: Pizzaria Bella Massa)\n'
-                '• Conta WhatsApp → Conectar um app do WhatsApp Business (NÃO "Criar conta")\n\n'
-                'Dica: crie o portfólio antes em business.facebook.com com outro nome de cliente, '
-                'depois selecione-o aqui em vez de criar.',
+                '• Portfólio empresarial → criar/selecionar o portfólio da sua empresa\n'
+                '• Conta WhatsApp → conectar o app do WhatsApp Business '
+                '(não “Criar conta” se o número já existe)\n\n'
+                'Dica: prepare o portfólio em business.facebook.com antes, '
+                'depois selecione-o no fluxo.',
                 style: TextStyle(color: AppColors.textMuted, fontSize: 12, height: 1.5),
               ),
             ],
@@ -408,7 +423,8 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Próximo passo: Templates WhatsApp → aguardar demo_bella_massa APPROVED → Enviar.',
+                    'Conta vinculada. Próximo passo: Templates WhatsApp → '
+                    'aguarde APPROVED → enviar teste.',
                   ),
                 ),
               );
@@ -442,8 +458,9 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
     String title,
     String? metaUrl,
     String valueLabel,
-    String value,
-  ) {
+    String value, {
+    String? displayValue,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(12),
@@ -461,12 +478,12 @@ class _CoexistenceWizardState extends State<CoexistenceWizard> {
             children: [
               Expanded(
                 child: Text(
-                  '$valueLabel: $value',
+                  '$valueLabel: ${displayValue ?? value}',
                   style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
               ),
               TextButton(
-                onPressed: () => _copy(valueLabel, value),
+                onPressed: value.isEmpty ? null : () => _copy(valueLabel, value),
                 child: const Text('Copiar'),
               ),
             ],

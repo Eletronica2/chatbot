@@ -1,1 +1,2 @@
-.env.meta.local
+node_modules/
+package-lock.json
