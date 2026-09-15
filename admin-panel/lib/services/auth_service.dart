@@ -7,16 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_user.dart';
 import 'api_config.dart';
+import 'capabilities.dart';
 
 class AuthService extends ChangeNotifier {
   static const String _storageKey = 'admin_panel.auth.session';
   static const String _selectedTenantKey = 'admin_panel.auth.selected_tenant';
-  static const Set<String> _superadminRoles = <String>{
-    'superadmin',
-    'system-admin',
-    'system_admin',
-    'systemadmin',
-  };
+  static const Set<String> _superadminRoles = UserCapabilities.superadminRoles;
 
   AppUser? _user;
   String? _lastError;
@@ -27,6 +23,8 @@ class AuthService extends ChangeNotifier {
   bool get isAuthenticated => _user != null && (_user!.accessToken.isNotEmpty);
   bool get isSuperadmin =>
       _user != null && _superadminRoles.contains(_user!.role.toLowerCase());
+  UserCapabilities get capabilities =>
+      UserCapabilities.fromRole(_user?.role);
   String? get accessToken => _user?.accessToken;
   String? get homeTenantId => _user?.tenantId;
   String? get tenantId => _selectedTenantId ?? _user?.tenantId;

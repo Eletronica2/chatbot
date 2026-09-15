@@ -51,7 +51,14 @@ class SessionService:
             phone_number=phone_number,
             phone_number_id=phone_number_id,
             display_phone_number=display_phone_number,
+            assignment_mode="ai",
+            assigned_user_id=None,
+            group_id=None,
         )
+        session.context = {
+            "assignment_mode": "ai",
+            "group_name": "Geral",
+        }
         return await self.repository.save_session(session)
 
     async def update_session(

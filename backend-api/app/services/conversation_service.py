@@ -8,7 +8,9 @@ from datetime import datetime
 from typing import Any, Dict
 
 from app.domain.conversation_log import ConversationLog
+from app.domain.execution_context import ExecutionContext
 from app.domain.message import ConversationAction, NormalizedMessage
+from app.domain.session import ConversationSession
 from app.services.ai_service import AIService, IntentDetectionResult
 from app.services.conversation_log_service import ConversationLogService
 from app.services.flow_service import FlowService
@@ -41,11 +43,22 @@ class ConversationService:
         self.conversation_log_service = conversation_log_service
         self.message_service = message_service
 
-    async def handle_incoming_message(self, message: NormalizedMessage) -> ConversationAction:
+    async def handle_incoming_message(
+        self,
+        message: NormalizedMessage,
+        *,
+        execution_context: ExecutionContext | None = None,
+    ) -> ConversationAction:
         started_at = time.perf_counter()
-        logger.info("Handling message %s for tenant %s", message.message_id, message.tenant_id)
+        ctx = execution_context or ExecutionContext.production()
+        logger.info(
+            "Handling message %s for tenant %s (mode=%s)",
+            message.message_id,
+            message.tenant_id,
+            ctx.mode.value,
+        )
 
-        if await self.message_service.was_processed(
+        if ctx.persist and await self.message_service.was_processed(
             tenant_id=message.tenant_id,
             external_message_id=message.message_id,
             direction="incoming",
@@ -60,79 +73,113 @@ class ConversationService:
                 session_state={},
             )
 
-        allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
-        if not allowance.allowed:
-            handoff_reply = (
-                "Aguarde um momento — já vamos te responder! 🙋\n"
-                "Um atendente da casa vai continuar essa conversa com você."
-            )
-            session = await self.session_service.get_or_create_session(
-                message.tenant_id,
-                message.phone_number,
-                phone_number_id=message.phone_number_id,
-                display_phone_number=message.display_phone_number,
-            )
+        if ctx.allow_billing:
+            allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
+            if not allowance.allowed:
+                handoff_reply = (
+                    "Aguarde um momento — já vamos te responder! 🙋\n"
+                    "Um atendente da casa vai continuar essa conversa com você."
+                )
+                session = await self._resolve_session(message, ctx)
+                self._append_message(session, role="user", content=message.content)
+                await self._persist_message(
+                    ctx,
+                    tenant_id=message.tenant_id,
+                    session_id=session.session_id,
+                    direction="incoming",
+                    role="user",
+                    content=message.content,
+                    source="gateway",
+                    metadata={
+                        **(message.metadata or {}),
+                        "handoff_reason": allowance.reason,
+                    },
+                    external_message_id=message.message_id,
+                    phone_number_id=message.phone_number_id,
+                )
+                context = dict(session.context or {})
+                context["human_handoff_pending"] = True
+                context["human_handoff_reason"] = allowance.reason
+                context["human_handoff_at"] = datetime.utcnow().isoformat()
+                context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+                session = await self._persist_session_update(
+                    ctx,
+                    session,
+                    context_updates=context,
+                )
+                handoff_metadata = {
+                    "error": allowance.reason,
+                    "human_handoff_pending": True,
+                    "plan": allowance.subscription.plan,
+                    "used_messages": allowance.used_messages,
+                    "monthly_message_limit": allowance.subscription.monthly_message_limit,
+                }
+                if ctx.is_test:
+                    handoff_metadata["dry_run"] = True
+                action = ConversationAction(
+                    source="subscription_handoff",
+                    reply_text=handoff_reply,
+                    tenant_id=message.tenant_id,
+                    phone_number=message.phone_number,
+                    metadata=handoff_metadata,
+                    session_state=session.conversation_state,
+                    requires_handoff=True,
+                )
+                await self._log_interaction(
+                    message=message,
+                    session_id=session.session_id,
+                    flow_used=None,
+                    state=None,
+                    user_message=message.content,
+                    bot_response=handoff_reply,
+                    source="subscription_handoff",
+                    started_at=started_at,
+                    detected_intent=None,
+                    execution_context=ctx,
+                )
+                return action
+
+        session = await self._resolve_session(message, ctx)
+        if ctx.persist:
+            session = await self._ensure_operational_defaults(session)
+
+        # Human ownership: persist inbound, do NOT auto-reply.
+        if ctx.persist and self._is_human_owned(session):
             self._append_message(session, role="user", content=message.content)
-            await self.message_service.append(
+            await self._persist_message(
+                ctx,
                 tenant_id=message.tenant_id,
                 session_id=session.session_id,
                 direction="incoming",
                 role="user",
                 content=message.content,
                 source="gateway",
-                metadata={
-                    **(message.metadata or {}),
-                    "handoff_reason": allowance.reason,
-                },
+                metadata={**(message.metadata or {}), "awaiting_human": True},
                 external_message_id=message.message_id,
                 phone_number_id=message.phone_number_id,
             )
             context = dict(session.context or {})
-            context["human_handoff_pending"] = True
-            context["human_handoff_reason"] = allowance.reason
-            context["human_handoff_at"] = datetime.utcnow().isoformat()
             context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
-            session = await self.session_service.update_session(
-                session,
-                context_updates=context,
-            )
-            handoff_metadata = {
-                "error": allowance.reason,
-                "human_handoff_pending": True,
-                "plan": allowance.subscription.plan,
-                "used_messages": allowance.used_messages,
-                "monthly_message_limit": allowance.subscription.monthly_message_limit,
-            }
-            action = ConversationAction(
-                source="subscription_handoff",
-                reply_text=handoff_reply,
+            context["last_message"] = message.content
+            context["updated_at"] = datetime.utcnow().isoformat()
+            session = await self._persist_session_update(ctx, session, context_updates=context)
+            return ConversationAction(
+                source="human_owned",
+                reply_text="",
                 tenant_id=message.tenant_id,
                 phone_number=message.phone_number,
-                metadata=handoff_metadata,
+                metadata={
+                    "assignment_mode": "human",
+                    "assigned_user_id": session.assigned_user_id,
+                    "suppressed_auto_reply": True,
+                },
                 session_state=session.conversation_state,
                 requires_handoff=True,
             )
-            await self._log_interaction(
-                message=message,
-                session_id=session.session_id,
-                flow_used=None,
-                state=None,
-                user_message=message.content,
-                bot_response=handoff_reply,
-                source="subscription_handoff",
-                started_at=started_at,
-                detected_intent=None,
-            )
-            return action
 
-        session = await self.session_service.get_or_create_session(
-            message.tenant_id,
-            message.phone_number,
-            phone_number_id=message.phone_number_id,
-            display_phone_number=message.display_phone_number,
-        )
         self._append_message(session, role="user", content=message.content)
-        await self.message_service.append(
+        await self._persist_message(
+            ctx,
             tenant_id=message.tenant_id,
             session_id=session.session_id,
             direction="incoming",
@@ -180,6 +227,8 @@ class ConversationService:
                     metadata_overrides=tenant_settings.as_ai_metadata(),
                 )
                 if ai_response.handled and ai_response.reply_text:
+                    if await self._should_suppress_auto_reply(message, ctx):
+                        return self._suppressed_late_reply(message, session, source="ai_fallback")
                     flow_state_message = flow_metadata.get("flow_state_message")
                     reply = self._compose_ai_fallback_reply(
                         ai_response.reply_text,
@@ -198,7 +247,8 @@ class ConversationService:
                     flow_name = self._resolve_flow_name(flow_metadata, session)
                     state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
                     self._append_message(session, role="assistant", content=reply)
-                    session = await self.session_service.update_session(
+                    session = await self._persist_session_update(
+                        ctx,
                         session,
                         state_updates=flow_result.session_state,
                         active_flow=flow_name,
@@ -208,7 +258,10 @@ class ConversationService:
                         phone_number_id=message.phone_number_id,
                         display_phone_number=message.display_phone_number,
                     )
-                    await self.message_service.append(
+                    if ctx.is_test:
+                        combined_metadata["dry_run"] = True
+                    await self._persist_message(
+                        ctx,
                         tenant_id=message.tenant_id,
                         session_id=session.session_id,
                         direction="outgoing",
@@ -237,11 +290,14 @@ class ConversationService:
                         source=source,
                         started_at=started_at,
                         detected_intent=persisted_intent,
+                        execution_context=ctx,
                     )
                     return action
 
         if flow_result.handled and flow_result.reply_text:
             logger.info("Flow engine resolved message %s with reply", message.message_id)
+            if await self._should_suppress_auto_reply(message, ctx):
+                return self._suppressed_late_reply(message, session, source="flow")
             flow_metadata = flow_result.metadata or {}
             flow_name = self._resolve_flow_name(flow_metadata, session)
             state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
@@ -251,7 +307,8 @@ class ConversationService:
                 fallback_intent=flow_result.detected_intent,
             )
             self._append_message(session, role="assistant", content=flow_result.reply_text)
-            session = await self.session_service.update_session(
+            session = await self._persist_session_update(
+                ctx,
                 session,
                 state_updates=flow_result.session_state,
                 active_flow=flow_name,
@@ -261,7 +318,8 @@ class ConversationService:
                 phone_number_id=message.phone_number_id,
                 display_phone_number=message.display_phone_number,
             )
-            await self.message_service.append(
+            await self._persist_message(
+                ctx,
                 tenant_id=message.tenant_id,
                 session_id=session.session_id,
                 direction="outgoing",
@@ -280,6 +338,8 @@ class ConversationService:
                 response_metadata["smart_reentry"] = True
             if flow_result.collected_data:
                 response_metadata["collected_data"] = flow_result.collected_data
+            if ctx.is_test:
+                response_metadata["dry_run"] = True
 
             # Enrich handoff with context summary
             if flow_result.requires_handoff:
@@ -310,6 +370,7 @@ class ConversationService:
                 source="flow",
                 started_at=started_at,
                 detected_intent=persisted_intent,
+                execution_context=ctx,
             )
             return action
 
@@ -322,18 +383,23 @@ class ConversationService:
                 "Posso transferir para atendimento humano."
             )
             self._append_message(session, role="assistant", content=disabled_reply)
-            session = await self.session_service.update_session(
+            session = await self._persist_session_update(
+                ctx,
                 session,
                 detected_intent=self._resolve_persisted_intent(intent_result=intent_result),
             )
-            await self.message_service.append(
+            disabled_metadata: Dict[str, Any] = {"error": "ai_disabled"}
+            if ctx.is_test:
+                disabled_metadata["dry_run"] = True
+            await self._persist_message(
+                ctx,
                 tenant_id=message.tenant_id,
                 session_id=session.session_id,
                 direction="outgoing",
                 role="assistant",
                 content=disabled_reply,
                 source="flow",
-                metadata={"error": "ai_disabled"},
+                metadata=disabled_metadata,
                 phone_number_id=message.phone_number_id,
             )
             action = ConversationAction(
@@ -341,7 +407,7 @@ class ConversationService:
                 reply_text=disabled_reply,
                 tenant_id=message.tenant_id,
                 phone_number=message.phone_number,
-                metadata={"error": "ai_disabled"},
+                metadata=disabled_metadata,
                 session_state=session.conversation_state,
                 requires_handoff=True,
             )
@@ -355,6 +421,7 @@ class ConversationService:
                 source="flow",
                 started_at=started_at,
                 detected_intent=session.detected_intent,
+                execution_context=ctx,
             )
             return action
 
@@ -363,19 +430,23 @@ class ConversationService:
             session,
             metadata_overrides=tenant_settings.as_ai_metadata(),
         )
+        if await self._should_suppress_auto_reply(message, ctx):
+            return self._suppressed_late_reply(message, session, source="ai")
         detected_intent = ai_response.detected_intent or intent_result.intent
         confidence = ai_response.confidence if ai_response.confidence is not None else intent_result.confidence
         persist_intent = detected_intent if detected_intent and confidence > 0.7 else session.detected_intent
 
         self._append_message(session, role="assistant", content=ai_response.reply_text)
-        session = await self.session_service.update_session(
+        session = await self._persist_session_update(
+            ctx,
             session,
             state_updates=ai_response.session_state,
             detected_intent=persist_intent,
             phone_number_id=message.phone_number_id,
             display_phone_number=message.display_phone_number,
         )
-        await self.message_service.append(
+        await self._persist_message(
+            ctx,
             tenant_id=message.tenant_id,
             session_id=session.session_id,
             direction="outgoing",
@@ -391,6 +462,8 @@ class ConversationService:
             metadata["detected_intent"] = detected_intent
         if confidence is not None:
             metadata["confidence"] = confidence
+        if ctx.is_test:
+            metadata["dry_run"] = True
 
         action = ConversationAction(
             source="ai",
@@ -410,8 +483,136 @@ class ConversationService:
             source="ai",
             started_at=started_at,
             detected_intent=persist_intent,
+            execution_context=ctx,
         )
         return action
+
+
+    @staticmethod
+    def _is_human_owned(session: ConversationSession) -> bool:
+        mode = str(getattr(session, "assignment_mode", None) or "").strip().lower()
+        if mode == "human":
+            return True
+        if mode == "ai":
+            return False
+        context = session.context or {}
+        legacy = str(context.get("assignment_mode") or "").strip().lower()
+        if legacy == "human":
+            return True
+        return bool(context.get("human_handoff_pending")) and bool(
+            context.get("assigned_user_id") or context.get("assumed_by")
+        )
+
+    async def _should_suppress_auto_reply(
+        self,
+        message: NormalizedMessage,
+        ctx: ExecutionContext,
+    ) -> bool:
+        if not ctx.persist:
+            return False
+        fresh = await self.session_service.repository.get_session(
+            message.tenant_id,
+            message.phone_number,
+        )
+        if fresh is None:
+            return False
+        return self._is_human_owned(fresh)
+
+    def _suppressed_late_reply(
+        self,
+        message: NormalizedMessage,
+        session: ConversationSession,
+        *,
+        source: str,
+    ) -> ConversationAction:
+        logger.info(
+            "Suppressing late auto-reply (%s) for %s — conversation is human-owned",
+            source,
+            message.message_id,
+        )
+        return ConversationAction(
+            source="suppressed_late_ai",
+            reply_text="",
+            tenant_id=message.tenant_id,
+            phone_number=message.phone_number,
+            metadata={
+                "suppressed_late_ai": True,
+                "original_source": source,
+                "assignment_mode": "human",
+            },
+            session_state=session.conversation_state,
+            requires_handoff=True,
+        )
+
+    async def _ensure_operational_defaults(self, session: ConversationSession) -> ConversationSession:
+        changed = False
+        if not getattr(session, "assignment_mode", None):
+            session.assignment_mode = "ai"
+            changed = True
+        context = dict(session.context or {})
+        if "assignment_mode" not in context:
+            context["assignment_mode"] = session.assignment_mode or "ai"
+            changed = True
+        if not session.group_id and not context.get("group_id"):
+            context.setdefault("group_name", "Geral")
+            changed = True
+        if changed:
+            session.context = context
+            return await self.session_service.update_session(session)
+        return session
+
+    async def _resolve_session(
+        self,
+        message: NormalizedMessage,
+        ctx: ExecutionContext,
+    ) -> ConversationSession:
+        if not ctx.persist:
+            return ConversationSession(
+                tenant_id=message.tenant_id,
+                phone_number=message.phone_number,
+                phone_number_id=message.phone_number_id,
+                display_phone_number=message.display_phone_number,
+            )
+        return await self.session_service.get_or_create_session(
+            message.tenant_id,
+            message.phone_number,
+            phone_number_id=message.phone_number_id,
+            display_phone_number=message.display_phone_number,
+        )
+
+    async def _persist_session_update(
+        self,
+        ctx: ExecutionContext,
+        session: ConversationSession,
+        **kwargs: Any,
+    ) -> ConversationSession:
+        if not ctx.persist:
+            state_updates = kwargs.get("state_updates")
+            context_updates = kwargs.get("context_updates")
+            if state_updates:
+                session.conversation_state.update(state_updates)
+            if context_updates:
+                session.context.update(context_updates)
+            if kwargs.get("last_flow"):
+                session.last_flow = kwargs["last_flow"]
+            if "active_flow" in kwargs and kwargs["active_flow"] is not None:
+                session.active_flow = kwargs["active_flow"]
+            if "current_state" in kwargs and kwargs["current_state"] is not None:
+                session.current_state = kwargs["current_state"]
+            if "detected_intent" in kwargs and kwargs["detected_intent"] is not None:
+                session.detected_intent = kwargs["detected_intent"]
+            if kwargs.get("phone_number_id") is not None:
+                session.phone_number_id = kwargs["phone_number_id"]
+            if kwargs.get("display_phone_number") is not None:
+                session.display_phone_number = kwargs["display_phone_number"]
+            session.touch()
+            return session
+        return await self.session_service.update_session(session, **kwargs)
+
+    async def _persist_message(self, ctx: ExecutionContext, **kwargs: Any) -> None:
+        if not ctx.persist:
+            return
+        await self.message_service.append(**kwargs)
 
     def _append_message(self, session, role: str, content: str) -> None:
         if not content:
@@ -545,7 +746,11 @@ class ConversationService:
         source: str,
         started_at: float,
         detected_intent: str | None,
+        execution_context: ExecutionContext | None = None,
     ) -> None:
+        ctx = execution_context or ExecutionContext.production()
+        if not ctx.persist:
+            return
         elapsed_ms = int((time.perf_counter() - started_at) * 1000)
         await self.conversation_log_service.append(
             ConversationLog(

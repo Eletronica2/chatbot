@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/atenda_logo.dart';
 import '../widgets/public_surface.dart';
 import 'signup_dialog.dart';
 
@@ -85,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          const Positioned.fill(child: PublicAtmosphere()),
+          const Positioned.fill(child: LoginNetworkBackdrop()),
           SafeArea(
             child: Column(
               children: [
@@ -133,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Center(child: BrandLockup(markSize: 40, fontSize: 22)),
+              const Center(child: AtendaLogo(height: 40)),
               const SizedBox(height: 28),
               Text(
                 'E-mail',

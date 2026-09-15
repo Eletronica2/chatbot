@@ -3,9 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../models/conversation.dart';
+import '../models/conversation_group.dart';
 import '../models/flow_state.dart';
 import '../models/message.dart';
+import '../models/quick_reply.dart';
+import '../models/tenant_user.dart';
+import '../services/auth_service.dart';
+import '../services/conversation_group_service.dart';
 import '../services/conversation_service.dart';
+import '../services/quick_reply_service.dart';
+import '../services/tenant_user_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/message_bubble.dart';
@@ -18,12 +25,13 @@ class ConversationDetailScreen extends StatefulWidget {
     required this.conversation,
     this.embedded = false,
     this.onClose,
+    this.onConversationUpdated,
   });
 
   final Conversation conversation;
-  /// When true, renders without a full-screen Scaffold (inbox split-pane).
   final bool embedded;
   final VoidCallback? onClose;
+  final ValueChanged<Conversation>? onConversationUpdated;
 
   @override
   State<ConversationDetailScreen> createState() =>
@@ -31,6 +39,7 @@ class ConversationDetailScreen extends StatefulWidget {
 }
 
 class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
+  late Conversation _conversation;
   List<ChatMessageModel> _messages = <ChatMessageModel>[];
   bool _loadingMessages = true;
   String? _messagesError;
@@ -38,17 +47,26 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   FlowStateModel? _flowState;
   bool _loadingFlow = true;
 
+  List<ConversationGroup> _groups = const [];
+  List<TenantUserModel> _team = const [];
+  List<QuickReply> _quickReplies = const [];
+
   final TextEditingController _replyCtrl = TextEditingController();
   final ScrollController _scrollCtrl = ScrollController();
   bool _sending = false;
+  bool _assignmentBusy = false;
   bool _showContext = true;
   bool _contextSeeded = false;
+  bool _showQuickPicker = false;
 
   @override
   void initState() {
     super.initState();
+    _conversation = widget.conversation;
+    _replyCtrl.addListener(_onReplyChanged);
     _loadMessages();
     _loadFlowState();
+    _loadAssignmentMeta();
   }
 
   @override
@@ -65,17 +83,216 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   void didUpdateWidget(covariant ConversationDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.conversation.id != widget.conversation.id) {
+      _conversation = widget.conversation;
       _replyCtrl.clear();
+      _showQuickPicker = false;
       _loadMessages();
       _loadFlowState();
+      _loadAssignmentMeta();
+    } else if (oldWidget.conversation != widget.conversation) {
+      _conversation = widget.conversation;
     }
   }
 
   @override
   void dispose() {
+    _replyCtrl.removeListener(_onReplyChanged);
     _replyCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _onReplyChanged() {
+    final show = _slashQuery() != null;
+    if (show != _showQuickPicker) {
+      setState(() => _showQuickPicker = show);
+    } else if (show) {
+      setState(() {});
+    }
+  }
+
+  String? _slashQuery() {
+    final text = _replyCtrl.text;
+    final slash = text.lastIndexOf('/');
+    if (slash < 0) return null;
+    if (slash > 0 && text[slash - 1] != ' ' && text[slash - 1] != '\n') {
+      return null;
+    }
+    final fragment = text.substring(slash + 1);
+    if (fragment.contains(' ') || fragment.contains('\n')) return null;
+    return fragment.toLowerCase();
+  }
+
+  List<QuickReply> get _filteredQuickReplies {
+    final q = _slashQuery();
+    if (q == null) return const [];
+    return _quickReplies.where((item) {
+      if (q.isEmpty) return true;
+      return item.bareShortcut.contains(q) ||
+          item.title.toLowerCase().contains(q);
+    }).take(8).toList();
+  }
+
+  void _insertQuickReply(QuickReply reply) {
+    final text = _replyCtrl.text;
+    final slash = text.lastIndexOf('/');
+    if (slash < 0) {
+      _replyCtrl.text = reply.content;
+    } else {
+      _replyCtrl.text = '${text.substring(0, slash)}${reply.content}';
+    }
+    _replyCtrl.selection = TextSelection.collapsed(
+      offset: _replyCtrl.text.length,
+    );
+    setState(() => _showQuickPicker = false);
+  }
+
+  Future<void> _loadAssignmentMeta() async {
+    final tenantId = authService.tenantId ?? '';
+    try {
+      final groups = await conversationGroupService.listGroups().catchError(
+            (_) => <ConversationGroup>[],
+          );
+      final team = tenantId.isEmpty
+          ? <TenantUserModel>[]
+          : await tenantUserService.listUsers(tenantId).catchError(
+                (_) => <TenantUserModel>[],
+              );
+      final replies = await quickReplyService.listQuickReplies().catchError(
+            (_) => <QuickReply>[],
+          );
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
+        _team = team;
+        _quickReplies = replies;
+      });
+    } catch (_) {}
+  }
+
+  void _applyConversation(Conversation updated) {
+    setState(() => _conversation = updated);
+    widget.onConversationUpdated?.call(updated);
+  }
+
+  Future<void> _assume() async {
+    setState(() => _assignmentBusy = true);
+    try {
+      final updated = await conversationService.assume(_conversation.id);
+      if (!mounted) return;
+      _applyConversation(updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conversa assumida.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível assumir: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _assignmentBusy = false);
+    }
+  }
+
+  Future<void> _returnToAi() async {
+    setState(() => _assignmentBusy = true);
+    try {
+      final updated = await conversationService.returnToAi(_conversation.id);
+      if (!mounted) return;
+      _applyConversation(updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conversa devolvida para a IA.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível devolver: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _assignmentBusy = false);
+    }
+  }
+
+  Future<void> _transfer() async {
+    if (_team.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum membro da equipe disponível.')),
+      );
+      return;
+    }
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        return SimpleDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text(
+            'Transferir para',
+            style: TextStyle(color: AppColors.text),
+          ),
+          children: [
+            for (final user in _team)
+              SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, user.userId),
+                child: Text(
+                  user.displayName.isNotEmpty ? user.displayName : user.email,
+                  style: const TextStyle(color: AppColors.text),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+    if (selected == null || selected.isEmpty) return;
+    setState(() => _assignmentBusy = true);
+    try {
+      final updated = await conversationService.transfer(
+        conversationId: _conversation.id,
+        userId: selected,
+      );
+      if (!mounted) return;
+      _applyConversation(updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Conversa transferida.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível transferir: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _assignmentBusy = false);
+    }
+  }
+
+  Future<void> _setGroup(String? groupId) async {
+    setState(() => _assignmentBusy = true);
+    try {
+      final updated = await conversationService.setGroup(
+        conversationId: _conversation.id,
+        groupId: groupId,
+      );
+      if (!mounted) return;
+      _applyConversation(updated);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível alterar o grupo: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _assignmentBusy = false);
+    }
   }
 
   Future<void> _loadMessages() async {
@@ -86,7 +303,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
     try {
       final messages =
-          await conversationService.fetchMessages(widget.conversation.id);
+          await conversationService.fetchMessages(_conversation.id);
       if (!mounted) return;
       setState(() {
         _messages = messages;
@@ -105,8 +322,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   Future<void> _loadFlowState() async {
     setState(() => _loadingFlow = true);
     try {
-      final state =
-          await conversationService.fetchFlowState(widget.conversation.id);
+      final state = await conversationService.fetchFlowState(_conversation.id);
       if (!mounted) return;
       setState(() {
         _flowState = state;
@@ -136,14 +352,12 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
     setState(() => _sending = true);
     try {
-      await conversationService.sendReply(widget.conversation.id, text);
+      await conversationService.sendReply(_conversation.id, text);
       _replyCtrl.clear();
       await _loadMessages();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Resposta enviada com sucesso.'),
-        ),
+        const SnackBar(content: Text('Resposta enviada com sucesso.')),
       );
     } catch (err) {
       if (!mounted) return;
@@ -154,9 +368,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         ),
       );
     } finally {
-      if (mounted) {
-        setState(() => _sending = false);
-      }
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -172,26 +384,30 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     return Column(
       children: [
         _ConversationHeader(
-          conversation: widget.conversation,
+          conversation: _conversation,
+          groups: _groups,
+          busy: _assignmentBusy,
           onBack: _handleBack,
           onRefresh: () {
             _loadMessages();
             _loadFlowState();
+            _loadAssignmentMeta();
           },
+          onAssume: _assume,
+          onTransfer: _transfer,
+          onReturnToAi: _returnToAi,
+          onGroupChanged: _setGroup,
           contextVisible: _showContext,
           onToggleContext: () => setState(() => _showContext = !_showContext),
           showBack: !widget.embedded || !AppBreakpoints.useInboxSplit(context),
         ),
-        if (widget.conversation.humanHandoffPending)
-          const _HandoffBanner(),
+        if (_conversation.humanHandoffPending) const _HandoffBanner(),
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final canShowRail =
-                  allowContextRail &&
+              final canShowRail = allowContextRail &&
                   constraints.maxWidth >= AppLayout.contextPanelMinDetailWidth;
-              final open =
-                  _showContext && canShowRail;
+              final open = _showContext && canShowRail;
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -204,9 +420,31 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       replyCtrl: _replyCtrl,
                       sending: _sending,
                       onSend: _sendReply,
+                      showQuickPicker: _showQuickPicker,
+                      filteredQuickReplies: _filteredQuickReplies,
+                      onPickQuickReply: _insertQuickReply,
+                      onToggleQuickPicker: () {
+                        setState(() {
+                          if (_showQuickPicker) {
+                            _showQuickPicker = false;
+                          } else {
+                            final text = _replyCtrl.text;
+                            if (!text.contains('/')) {
+                              final needsSpace = text.isNotEmpty &&
+                                  !text.endsWith(' ') &&
+                                  !text.endsWith('\n');
+                              _replyCtrl.text =
+                                  '$text${needsSpace ? ' ' : ''}/';
+                              _replyCtrl.selection = TextSelection.collapsed(
+                                offset: _replyCtrl.text.length,
+                              );
+                            }
+                            _showQuickPicker = true;
+                          }
+                        });
+                      },
                     ),
                   ),
-                  // B↔C: só a largura muda; chat e estado permanecem.
                   AnimatedContainer(
                     duration: AppMotion.of(context, AppMotion.contextPanel),
                     curve: AppMotion.pageCurve,
@@ -220,7 +458,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                     child: SizedBox(
                       width: AppLayout.contextPanelWidth,
                       child: _InfoSidebar(
-                        conversation: widget.conversation,
+                        conversation: _conversation,
                         flowState: _flowState,
                         loading: _loadingFlow,
                       ),
@@ -291,19 +529,32 @@ class _HandoffBanner extends StatelessWidget {
   }
 }
 
+
 class _ConversationHeader extends StatelessWidget {
   const _ConversationHeader({
     required this.conversation,
+    required this.groups,
+    required this.busy,
     required this.onBack,
     required this.onRefresh,
+    required this.onAssume,
+    required this.onTransfer,
+    required this.onReturnToAi,
+    required this.onGroupChanged,
     required this.contextVisible,
     required this.onToggleContext,
     required this.showBack,
   });
 
   final Conversation conversation;
+  final List<ConversationGroup> groups;
+  final bool busy;
   final VoidCallback onBack;
   final VoidCallback onRefresh;
+  final VoidCallback onAssume;
+  final VoidCallback onTransfer;
+  final VoidCallback onReturnToAi;
+  final ValueChanged<String?> onGroupChanged;
   final bool contextVisible;
   final VoidCallback onToggleContext;
   final bool showBack;
@@ -327,94 +578,149 @@ class _ConversationHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final me = authService.currentUser?.userId;
+    final isMine = me != null &&
+        me.isNotEmpty &&
+        conversation.assignedUserId == me;
+    final onAi = conversation.isAssignedToAi;
+
     return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 8),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (showBack)
-            IconButton(
-              onPressed: onBack,
-              tooltip: 'Voltar',
-              icon: const Icon(
-                Icons.arrow_back_rounded,
-                color: AppColors.textMuted,
-                size: 20,
-              ),
-            ),
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: _avatarColor(conversation.phoneNumber)
-                .withValues(alpha: 0.22),
-            child: Text(
-              _initials(conversation.phoneNumber),
-              style: TextStyle(
-                color: _avatarColor(conversation.phoneNumber),
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  conversation.phoneNumber,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.manrope(
-                    color: AppColors.text,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              if (showBack)
+                IconButton(
+                  onPressed: onBack,
+                  tooltip: 'Voltar',
+                  icon: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.textMuted,
+                    size: 20,
                   ),
                 ),
-                Text(
-                  conversation.humanHandoffPending
-                      ? 'Aguardando atendimento'
-                      : (conversation.aiEnabled
-                          ? 'IA ativa'
-                          : 'Atendimento humano'),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: _avatarColor(conversation.phoneNumber)
+                    .withValues(alpha: 0.22),
+                child: Text(
+                  _initials(conversation.phoneNumber),
                   style: TextStyle(
-                    color: conversation.humanHandoffPending
-                        ? AppColors.warning
-                        : AppColors.textMuted,
-                    fontSize: 11,
+                    color: _avatarColor(conversation.phoneNumber),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
                   ),
                 ),
-              ],
-            ),
-          ),
-          Semantics(
-            button: true,
-            label: contextVisible ? 'Recolher contexto' : 'Abrir contexto',
-            child: IconButton(
-              tooltip: contextVisible ? 'Recolher contexto' : 'Abrir contexto',
-              onPressed: onToggleContext,
-              icon: Icon(
-                contextVisible
-                    ? Icons.view_sidebar_rounded
-                    : Icons.info_outline_rounded,
-                color: contextVisible
-                    ? AppColors.primarySoft
-                    : AppColors.textMuted,
-                size: 20,
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      conversation.phoneNumber,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                        color: AppColors.text,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Responsável: ${conversation.isAssignedToAi ? 'IA' : conversation.assigneeLabel}',
+                      style: TextStyle(
+                        color: conversation.humanHandoffPending
+                            ? AppColors.warning
+                            : AppColors.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: contextVisible ? 'Recolher contexto' : 'Abrir contexto',
+                onPressed: onToggleContext,
+                icon: Icon(
+                  contextVisible
+                      ? Icons.view_sidebar_rounded
+                      : Icons.info_outline_rounded,
+                  color: contextVisible
+                      ? AppColors.primarySoft
+                      : AppColors.textMuted,
+                  size: 20,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Atualizar',
+                onPressed: onRefresh,
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  color: AppColors.textMuted,
+                  size: 20,
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Atualizar',
-            onPressed: onRefresh,
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: AppColors.textMuted,
-              size: 20,
-            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: 180,
+                child: DropdownButtonFormField<String?>(
+                  value: groups.any((g) => g.id == conversation.groupId)
+                      ? conversation.groupId
+                      : null,
+                  isDense: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Grupo',
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                  dropdownColor: AppColors.surface,
+                  items: [
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Sem grupo'),
+                    ),
+                    for (final group in groups)
+                      DropdownMenuItem<String?>(
+                        value: group.id,
+                        child: Text(group.name),
+                      ),
+                  ],
+                  onChanged: busy ? null : onGroupChanged,
+                ),
+              ),
+              if (onAi || !isMine)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : onAssume,
+                  icon: const Icon(Icons.handshake_rounded, size: 16),
+                  label: const Text('Assumir'),
+                ),
+              OutlinedButton.icon(
+                onPressed: busy ? null : onTransfer,
+                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                label: const Text('Transferir'),
+              ),
+              if (!onAi)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : onReturnToAi,
+                  icon: const Icon(Icons.auto_awesome_rounded, size: 16),
+                  label: const Text('Devolver para IA'),
+                ),
+            ],
           ),
         ],
       ),
@@ -431,6 +737,10 @@ class _ChatPanel extends StatelessWidget {
     required this.replyCtrl,
     required this.sending,
     required this.onSend,
+    required this.showQuickPicker,
+    required this.filteredQuickReplies,
+    required this.onPickQuickReply,
+    required this.onToggleQuickPicker,
   });
 
   final List<ChatMessageModel> messages;
@@ -440,6 +750,10 @@ class _ChatPanel extends StatelessWidget {
   final TextEditingController replyCtrl;
   final bool sending;
   final VoidCallback onSend;
+  final bool showQuickPicker;
+  final List<QuickReply> filteredQuickReplies;
+  final ValueChanged<QuickReply> onPickQuickReply;
+  final VoidCallback onToggleQuickPicker;
 
   @override
   Widget build(BuildContext context) {
@@ -448,10 +762,16 @@ class _ChatPanel extends StatelessWidget {
       child: Column(
         children: [
           Expanded(child: _buildMessages()),
+          if (showQuickPicker && filteredQuickReplies.isNotEmpty)
+            _QuickReplySuggestions(
+              items: filteredQuickReplies,
+              onPick: onPickQuickReply,
+            ),
           _ReplyBar(
             ctrl: replyCtrl,
             sending: sending,
             onSend: onSend,
+            onToggleQuickPicker: onToggleQuickPicker,
           ),
         ],
       ),
@@ -489,21 +809,69 @@ class _ChatPanel extends StatelessWidget {
   }
 }
 
+class _QuickReplySuggestions extends StatelessWidget {
+  const _QuickReplySuggestions({
+    required this.items,
+    required this.onPick,
+  });
+
+  final List<QuickReply> items;
+  final ValueChanged<QuickReply> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxHeight: 180),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: items.length,
+        itemBuilder: (context, index) {
+          final item = items[index];
+          return ListTile(
+            dense: true,
+            leading: const Icon(
+              Icons.flash_on_rounded,
+              size: 16,
+              color: AppColors.primarySoft,
+            ),
+            title: Text(
+              item.title,
+              style: const TextStyle(color: AppColors.text, fontSize: 13),
+            ),
+            subtitle: Text(
+              '/${item.bareShortcut}',
+              style: const TextStyle(color: AppColors.textSoft, fontSize: 11),
+            ),
+            onTap: () => onPick(item),
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _ReplyBar extends StatelessWidget {
   const _ReplyBar({
     required this.ctrl,
     required this.sending,
     required this.onSend,
+    required this.onToggleQuickPicker,
   });
 
   final TextEditingController ctrl;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onToggleQuickPicker;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(8, 10, 12, 12),
       decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
@@ -511,6 +879,15 @@ class _ReplyBar extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          IconButton(
+            tooltip: 'Respostas rápidas (/)',
+            onPressed: onToggleQuickPicker,
+            icon: const Icon(
+              Icons.bolt_rounded,
+              color: AppColors.primarySoft,
+              size: 22,
+            ),
+          ),
           Expanded(
             child: TextField(
               controller: ctrl,
@@ -520,7 +897,7 @@ class _ReplyBar extends StatelessWidget {
               onSubmitted: (_) => onSend(),
               style: GoogleFonts.manrope(fontSize: 14, color: AppColors.text),
               decoration: InputDecoration(
-                hintText: 'Digite uma resposta para enviar ao cliente...',
+                hintText: 'Digite uma resposta… ou /atalho',
                 filled: true,
                 fillColor: AppColors.surfaceAlt,
                 contentPadding: const EdgeInsets.symmetric(

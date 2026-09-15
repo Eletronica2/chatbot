@@ -4,7 +4,8 @@ import '../models/message.dart';
 import 'api_client.dart';
 
 class ConversationService {
-  ConversationService({ApiClient? apiClient}) : _apiClient = apiClient ?? ApiClient();
+  ConversationService({ApiClient? apiClient})
+      : _apiClient = apiClient ?? ApiClient();
 
   final ApiClient _apiClient;
 
@@ -22,13 +23,15 @@ class ConversationService {
 
   Future<List<ChatMessageModel>> fetchMessages(String conversationId) async {
     final encodedConversationId = conversationPathId(conversationId);
-    final data = await _apiClient.get('/api/v1/conversations/$encodedConversationId/messages');
+    final data = await _apiClient
+        .get('/api/v1/conversations/$encodedConversationId/messages');
     return ChatMessageModel.listFromJson(data);
   }
 
   Future<FlowStateModel?> fetchFlowState(String conversationId) async {
     final encodedConversationId = conversationPathId(conversationId);
-    final data = await _apiClient.get('/api/v1/conversations/$encodedConversationId/flow');
+    final data = await _apiClient
+        .get('/api/v1/conversations/$encodedConversationId/flow');
     if (data is Map<String, dynamic>) {
       return FlowStateModel.fromJson(data);
     }
@@ -41,6 +44,58 @@ class ConversationService {
       '/api/v1/conversations/$encodedConversationId/reply',
       body: {'text': text},
     );
+  }
+
+  Future<Conversation> assume(String conversationId) async {
+    final encodedConversationId = conversationPathId(conversationId);
+    final data = await _apiClient.post(
+      '/api/v1/conversations/$encodedConversationId/assume',
+    );
+    if (data is Map<String, dynamic>) {
+      return Conversation.fromJson(data);
+    }
+    throw ApiException('Resposta inválida ao assumir conversa');
+  }
+
+  Future<Conversation> transfer({
+    required String conversationId,
+    required String userId,
+  }) async {
+    final encodedConversationId = conversationPathId(conversationId);
+    final data = await _apiClient.post(
+      '/api/v1/conversations/$encodedConversationId/transfer',
+      body: {'user_id': userId},
+    );
+    if (data is Map<String, dynamic>) {
+      return Conversation.fromJson(data);
+    }
+    throw ApiException('Resposta inválida ao transferir conversa');
+  }
+
+  Future<Conversation> returnToAi(String conversationId) async {
+    final encodedConversationId = conversationPathId(conversationId);
+    final data = await _apiClient.post(
+      '/api/v1/conversations/$encodedConversationId/return-to-ai',
+    );
+    if (data is Map<String, dynamic>) {
+      return Conversation.fromJson(data);
+    }
+    throw ApiException('Resposta inválida ao devolver para IA');
+  }
+
+  Future<Conversation> setGroup({
+    required String conversationId,
+    required String? groupId,
+  }) async {
+    final encodedConversationId = conversationPathId(conversationId);
+    final data = await _apiClient.patch(
+      '/api/v1/conversations/$encodedConversationId/group',
+      body: {'group_id': groupId},
+    );
+    if (data is Map<String, dynamic>) {
+      return Conversation.fromJson(data);
+    }
+    throw ApiException('Resposta inválida ao definir grupo');
   }
 }
 

@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_capability, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.repositories.flow_snapshot_repository import FlowSnapshotRepository
 from app.services.admin_audit_service import AdminAuditService
@@ -113,6 +113,7 @@ async def upsert_flow_yaml(
     snapshots: FlowSnapshotRepository = Depends(flow_snapshot_repository_dependency),
 ) -> Dict[str, Any]:
     try:
+        assert_capability(user, "canManageAutomations")
         target_tenant_id = resolve_tenant_scope(user, request)
 
         # Auto-snapshot of the "base" version BEFORE first user edit.
@@ -197,6 +198,7 @@ async def upsert_flow_base_snapshot(
     audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
     snapshots: FlowSnapshotRepository = Depends(flow_snapshot_repository_dependency),
 ) -> FlowSnapshotResponse:
+    assert_capability(user, "canManageAutomations")
     target_tenant_id = resolve_tenant_scope(user, request)
     yaml_content = (payload.yaml_content or "").strip()
     if not yaml_content:
@@ -256,6 +258,7 @@ async def restore_flow_to_base(
     audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
     snapshots: FlowSnapshotRepository = Depends(flow_snapshot_repository_dependency),
 ) -> Dict[str, Any]:
+    assert_capability(user, "canManageAutomations")
     target_tenant_id = resolve_tenant_scope(user, request)
     snapshot = await snapshots.get(tenant_id=target_tenant_id, flow_name=flow_name)
     if snapshot is None:
@@ -299,9 +302,10 @@ async def restore_flow_to_base(
 
 @router.post("/reload")
 async def reload_flows(
-    _: AuthenticatedUser = Depends(authenticated_user_dependency),
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
     flow_service: FlowService = Depends(flow_service_dependency),
 ) -> Dict[str, Any]:
+    assert_capability(user, "canManageAutomations")
     try:
         return await flow_service.reload_admin_flows()
     except httpx.HTTPStatusError as exc:

@@ -20,12 +20,17 @@ class SubscriptionCheck:
     used_messages: int
 
 
-_PLAN_LIMITS = {
+# monthly_message_limit=0 means unlimited for allowance checks.
+# on_demand: always allowed for message processing; billing is via usage_events /
+# Stripe meters separately (not gated by a fixed monthly cap).
+PLAN_LIMITS = {
     "starter": 1000,
     "growth": 5000,
     "pro": 20000,
     "enterprise": 100000,
+    "on_demand": 0,
 }
+_PLAN_LIMITS = PLAN_LIMITS
 
 
 class SubscriptionService:
@@ -120,7 +125,11 @@ class SubscriptionService:
             return SubscriptionCheck(False, "subscription_inactive", subscription, used)
 
         used_messages = await self._count_usage(tenant_id)
-        if subscription.monthly_message_limit > 0 and used_messages >= subscription.monthly_message_limit:
+        plan_key = str(subscription.plan or "").strip().lower()
+        # on_demand (limit 0): unlimited allowance; metered billing is separate.
+        if plan_key == "on_demand" or subscription.monthly_message_limit == 0:
+            return SubscriptionCheck(True, None, subscription, used_messages)
+        if used_messages >= subscription.monthly_message_limit:
             return SubscriptionCheck(False, "message_limit_reached", subscription, used_messages)
         return SubscriptionCheck(True, None, subscription, used_messages)
 

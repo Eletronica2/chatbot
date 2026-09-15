@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/whatsapp_template.dart';
+import '../services/billing_service.dart';
 import '../services/whatsapp_onboarding_service.dart';
 import '../services/whatsapp_template_service.dart';
 import '../utils/meta_embedded_signup.dart';
@@ -45,9 +46,9 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
   final _bodyCtrl = TextEditingController(
     text: 'Ola! Bem-vindo ao atendimento automatizado da sua empresa.',
   );
-  String _language = 'pt_BR';
   String _category = 'UTILITY';
   String? _error;
+  List<MetaRateCard> _metaRates = const [];
 
   @override
   void initState() {
@@ -55,6 +56,25 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
     if (widget.showExistingList) {
       _loadTemplates();
     }
+    _loadMetaRates();
+  }
+
+  Future<void> _loadMetaRates() async {
+    try {
+      final rates = await billingService.fetchMetaRates();
+      if (!mounted) return;
+      setState(() => _metaRates = rates);
+    } catch (_) {}
+  }
+
+  String? _rateHint(String category) {
+    for (final rate in _metaRates) {
+      if (rate.category.toUpperCase() == category.toUpperCase()) {
+        final value = (rate.rateMicros / 1000000.0).toStringAsFixed(2);
+        return 'Estimativa Meta BR: R\$ $value / msg';
+      }
+    }
+    return null;
   }
 
   @override
@@ -93,7 +113,7 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
       await whatsAppTemplateService.createTemplate(
         tenantId: widget.tenantId,
         name: _nameCtrl.text.trim(),
-        language: _language,
+        language: 'pt_BR',
         category: _category,
         bodyText: _bodyCtrl.text.trim(),
         accountKey: widget.accountKey,
@@ -156,55 +176,108 @@ class _WhatsAppTemplatesSectionState extends State<WhatsAppTemplatesSection> {
           decoration: _inputDecoration('Corpo da mensagem (BODY)'),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _category,
-                dropdownColor: widget.cardColor,
-                style: TextStyle(color: widget.textColor, fontSize: 13),
-                decoration: _inputDecoration('Categoria'),
-                items: const [
-                  DropdownMenuItem(value: 'UTILITY', child: Text('UTILITY')),
-                  DropdownMenuItem(value: 'MARKETING', child: Text('MARKETING')),
-                  DropdownMenuItem(
-                    value: 'AUTHENTICATION',
-                    child: Text('AUTHENTICATION'),
+        Text(
+          'Categoria',
+          style: TextStyle(
+            color: widget.mutedColor,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...[
+          (
+            'MARKETING',
+            'Promoções, novidades e campanhas. Maior custo Meta.',
+          ),
+          (
+            'UTILITY',
+            'Atualizações transacionais (pedido, lembrete, alerta).',
+          ),
+          (
+            'AUTHENTICATION',
+            'Códigos OTP e verificação de identidade.',
+          ),
+        ].map((entry) {
+          final selected = _category == entry.$1;
+          final rateHint = _rateHint(entry.$1);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Material(
+              color: selected
+                  ? widget.accentColor.withValues(alpha: 0.12)
+                  : widget.cardColor,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: () => setState(() => _category = entry.$1),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: selected
+                          ? widget.accentColor
+                          : widget.borderColor,
+                    ),
                   ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _category = value);
-                },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.$1,
+                        style: TextStyle(
+                          color: widget.textColor,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        entry.$2,
+                        style: TextStyle(
+                          color: widget.mutedColor,
+                          fontSize: 11,
+                          height: 1.35,
+                        ),
+                      ),
+                      if (rateHint != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          rateHint,
+                          style: TextStyle(
+                            color: widget.accentColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _language,
-                dropdownColor: widget.cardColor,
-                style: TextStyle(color: widget.textColor, fontSize: 13),
-                decoration: _inputDecoration('Idioma'),
-                items: const [
-                  DropdownMenuItem(value: 'pt_BR', child: Text('pt_BR')),
-                  DropdownMenuItem(value: 'en_US', child: Text('en_US')),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _language = value);
-                },
-              ),
-            ),
-          ],
+          );
+        }),
+        const SizedBox(height: 4),
+        Text(
+          'Idioma: pt_BR (fixo)',
+          style: TextStyle(color: widget.mutedColor, fontSize: 11),
         ),
         const SizedBox(height: 12),
         Align(
           alignment: Alignment.centerRight,
-          child: FilledButton(
+          child: FilledButton.icon(
             onPressed: _creating ? null : _createTemplate,
-            style: FilledButton.styleFrom(
-              backgroundColor: widget.accentColor,
-              foregroundColor: const Color(0xFF042F2E),
-            ),
-            child: Text(_creating ? 'Criando...' : 'Criar modelo'),
+            icon: _creating
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.add_rounded, size: 16),
+            label: Text(_creating ? 'Enviando…' : 'Criar modelo'),
           ),
         ),
         if (_error != null) ...[

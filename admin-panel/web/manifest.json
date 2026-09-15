@@ -1,11 +1,11 @@
 {
-    "name": "admin_panel",
-    "short_name": "admin_panel",
+    "name": "Atenda Ai",
+    "short_name": "Atenda Ai",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B0F19",
+    "theme_color": "#0B0F19",
+    "description": "Painel operacional Atenda Ai — automação e atendimento no WhatsApp.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

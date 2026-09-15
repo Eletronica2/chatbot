@@ -420,7 +420,7 @@ class _WhatsAppConnectionScreenState extends State<WhatsAppConnectionScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Wrap(
+              Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
@@ -431,15 +431,6 @@ class _WhatsAppConnectionScreenState extends State<WhatsAppConnectionScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: AppColors.onPrimary,
-                ),
-              ),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : () => _openWizard(),
-                icon: const Icon(Icons.checklist_rounded, size: 18),
-                label: const Text('Assistente'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textMuted,
-                  side: const BorderSide(color: AppColors.border),
                 ),
               ),
               if (account.status.toLowerCase() == 'active')

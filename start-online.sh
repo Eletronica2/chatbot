@@ -55,7 +55,10 @@ cleanup() {
   done
 }
 
-trap cleanup EXIT INT TERM
+# INT/TERM must exit — otherwise Ctrl+C during flutter build leaves an incomplete
+# build/web and the script continues serving a blank admin panel.
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT TERM
 
 wait_http() {
   local url="$1"
@@ -139,11 +142,19 @@ if [[ "$SKIP_FLUTTER" != "1" ]]; then
   fi
 
   log "Gerando Admin Panel (release) apontando a API para o túnel HTTPS"
-  (
+  if ! (
     cd "$ROOT/admin-panel"
-    flutter build web --release --no-tree-shake-icons \
+    flutter build web --release --no-tree-shake-icons --no-wasm-dry-run \
       --dart-define="API_BASE_URL=${API_PUBLIC}"
-  ) >"$LOG_DIR/flutter.log" 2>&1
+  ) >"$LOG_DIR/flutter.log" 2>&1; then
+    die "flutter build web falhou. Veja $LOG_DIR/flutter.log"
+  fi
+  if [[ ! -f "$ROOT/admin-panel/build/web/main.dart.js" ]]; then
+    die "build incompleto: falta main.dart.js em admin-panel/build/web (veja $LOG_DIR/flutter.log)"
+  fi
+  if [[ ! -f "$ROOT/admin-panel/build/web/flutter_bootstrap.js" ]]; then
+    die "build incompleto: falta flutter_bootstrap.js"
+  fi
 
   log "Servindo build estático em :${ADMIN_PORT}"
   (
@@ -152,6 +163,9 @@ if [[ "$SKIP_FLUTTER" != "1" ]]; then
   ) >"$LOG_DIR/admin-static.log" 2>&1 &
   PIDS+=("$!")
   wait_http "$ADMIN_LOCAL" "admin-panel" 30
+  if ! curl -fsS "$ADMIN_LOCAL/main.dart.js" >/dev/null 2>&1; then
+    die "admin-panel respondeu, mas main.dart.js não está acessível em :${ADMIN_PORT}"
+  fi
 
   log "Abrindo túnel Cloudflare do Admin Panel (:${ADMIN_PORT})"
   cloudflared tunnel --no-autoupdate --url "http://127.0.0.1:${ADMIN_PORT}" \

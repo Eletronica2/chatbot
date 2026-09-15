@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_capability, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.services.dependencies import (
     actions_service_dependency,
@@ -75,6 +75,7 @@ async def create_action(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: FlowActionsService = Depends(actions_service_dependency),
 ) -> ActionResponse:
+    assert_capability(user, "canManageActions")
     tenant_key = resolve_tenant_scope(user, request)
     try:
         row = service.create_action(
@@ -96,6 +97,7 @@ async def update_action(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: FlowActionsService = Depends(actions_service_dependency),
 ) -> ActionResponse:
+    assert_capability(user, "canManageActions")
     tenant_key = resolve_tenant_scope(user, request)
     row = service.update_action(
         action_id=action_id,
@@ -115,6 +117,7 @@ async def delete_action(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: FlowActionsService = Depends(actions_service_dependency),
 ) -> Response:
+    assert_capability(user, "canManageActions")
     tenant_key = resolve_tenant_scope(user, request)
     deleted = service.delete_action(action_id, tenant_key)
     if not deleted:

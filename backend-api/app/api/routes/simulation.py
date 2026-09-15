@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.api.access import resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
+from app.domain.execution_context import ExecutionContext
 from app.domain.message import ConversationAction, MessageDirection, MessageType, NormalizedMessage
 from app.services.conversation_service import ConversationService
 from app.services.dependencies import authenticated_user_dependency, conversation_service_dependency
@@ -74,7 +75,10 @@ async def simulation_send(
         timestamp=datetime.utcnow(),
         metadata=metadata,
     )
-    result: ConversationAction = await conversation_service.handle_incoming_message(incoming)
+    result: ConversationAction = await conversation_service.handle_incoming_message(
+        incoming,
+        execution_context=ExecutionContext.dry_run(),
+    )
 
     metadata = dict(result.metadata or {})
     flow_used = _resolve_flow_used(result, metadata)

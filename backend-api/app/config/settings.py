@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     LOG_LEVEL: str = "INFO"
+    # Comma-separated origins. "*" keeps current local/dev behaviour.
+    CORS_ORIGINS: str = "*"
+    TRUST_PROXY: bool = False
 
     HOST: str = "0.0.0.0"
     PORT: int = 8000
@@ -75,7 +78,13 @@ class Settings(BaseSettings):
     STRIPE_PRICE_GROWTH: str = ""
     STRIPE_PRICE_PRO: str = ""
     STRIPE_PRICE_ENTERPRISE: str = ""
+    STRIPE_ON_DEMAND_PRICE_ID: str = ""
+    STRIPE_METER_EVENT_NAME: str = ""
     STRIPE_DEFAULT_CURRENCY: str = "brl"
+
+    # Fiscal / NFS-e — leave unset until a real provider is wired.
+    FISCAL_PROVIDER: str = "none"
+    FISCAL_PROVIDER_READY: bool = False
 
     GATEWAY_API_URL: str = "http://whatsapp-gateway:40000"
     GATEWAY_API_TIMEOUT: int = 15

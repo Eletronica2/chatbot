@@ -521,6 +521,232 @@ class MySQLDatabase:
             column="detected_intent",
             ddl="ALTER TABLE conversation_logs ADD COLUMN detected_intent VARCHAR(120) NULL AFTER source",
         )
+        self._ensure_product_hardening_schema(cursor)
+
+    def _ensure_product_hardening_schema(self, cursor) -> None:
+        """Groups, assignment columns, quick replies, usage ledger, rate cards, fiscal stubs."""
+        self._ensure_column(
+            cursor,
+            table="sessions",
+            column="assignment_mode",
+            ddl="ALTER TABLE sessions ADD COLUMN assignment_mode VARCHAR(16) NOT NULL DEFAULT 'ai' AFTER context",
+        )
+        self._ensure_column(
+            cursor,
+            table="sessions",
+            column="assigned_user_id",
+            ddl="ALTER TABLE sessions ADD COLUMN assigned_user_id VARCHAR(64) NULL AFTER assignment_mode",
+        )
+        self._ensure_column(
+            cursor,
+            table="sessions",
+            column="group_id",
+            ddl="ALTER TABLE sessions ADD COLUMN group_id CHAR(36) NULL AFTER assigned_user_id",
+        )
+        self._ensure_index(
+            cursor,
+            table="sessions",
+            index_name="idx_sessions_assignment",
+            ddl="ALTER TABLE sessions ADD KEY idx_sessions_assignment (tenant_id, assignment_mode, assigned_user_id)",
+        )
+        self._ensure_index(
+            cursor,
+            table="sessions",
+            index_name="idx_sessions_group",
+            ddl="ALTER TABLE sessions ADD KEY idx_sessions_group (tenant_id, group_id)",
+        )
+
+        for ddl in (
+            """
+            CREATE TABLE IF NOT EXISTS conversation_groups (
+                id CHAR(36) NOT NULL,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                name VARCHAR(120) NOT NULL,
+                description VARCHAR(500) NULL,
+                is_default TINYINT(1) NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_conversation_groups_tenant_name (tenant_id, name),
+                KEY idx_conversation_groups_tenant_default (tenant_id, is_default),
+                CONSTRAINT fk_conversation_groups_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS conversation_group_members (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                group_id CHAR(36) NOT NULL,
+                user_id VARCHAR(64) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_group_member (group_id, user_id),
+                KEY idx_group_members_tenant_user (tenant_id, user_id),
+                CONSTRAINT fk_group_members_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_group_members_group
+                    FOREIGN KEY (group_id) REFERENCES conversation_groups(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS quick_replies (
+                id CHAR(36) NOT NULL,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                user_id VARCHAR(64) NOT NULL,
+                title VARCHAR(160) NOT NULL,
+                shortcut VARCHAR(64) NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_quick_replies_owner_shortcut (tenant_id, user_id, shortcut),
+                KEY idx_quick_replies_owner (tenant_id, user_id),
+                CONSTRAINT fk_quick_replies_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS usage_events (
+                id CHAR(36) NOT NULL,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                provider_message_id VARCHAR(120) NOT NULL,
+                direction VARCHAR(16) NOT NULL DEFAULT 'outgoing',
+                category VARCHAR(32) NULL,
+                market VARCHAR(16) NOT NULL DEFAULT 'BR',
+                event_type VARCHAR(32) NOT NULL DEFAULT 'delivered',
+                quantity INT UNSIGNED NOT NULL DEFAULT 1,
+                delivered_at DATETIME NULL,
+                billing_period CHAR(7) NULL,
+                stripe_meter_event_id VARCHAR(120) NULL,
+                stripe_status VARCHAR(32) NOT NULL DEFAULT 'pending',
+                metadata JSON NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_usage_provider_msg (tenant_id, provider_message_id, event_type),
+                KEY idx_usage_tenant_period (tenant_id, billing_period),
+                KEY idx_usage_stripe_status (stripe_status),
+                CONSTRAINT fk_usage_events_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS meta_rate_cards (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                market VARCHAR(16) NOT NULL,
+                currency VARCHAR(8) NOT NULL,
+                category VARCHAR(32) NOT NULL,
+                rate_micros BIGINT NOT NULL,
+                effective_from DATE NOT NULL,
+                effective_to DATE NULL,
+                source_reference VARCHAR(255) NULL,
+                notes VARCHAR(500) NULL,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_meta_rate (market, currency, category, effective_from),
+                KEY idx_meta_rate_lookup (market, category, effective_from)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS fiscal_documents (
+                id CHAR(36) NOT NULL,
+                tenant_id BIGINT UNSIGNED NOT NULL,
+                competence CHAR(7) NOT NULL,
+                document_number VARCHAR(64) NULL,
+                amount_cents INT NOT NULL DEFAULT 0,
+                currency VARCHAR(8) NOT NULL DEFAULT 'BRL',
+                status VARCHAR(32) NOT NULL DEFAULT 'not_configured',
+                issued_at DATETIME NULL,
+                download_url VARCHAR(500) NULL,
+                provider VARCHAR(64) NULL,
+                external_id VARCHAR(120) NULL,
+                metadata JSON NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_fiscal_tenant_competence (tenant_id, competence),
+                CONSTRAINT fk_fiscal_documents_tenant
+                    FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+                    ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            """,
+        ):
+            cursor.execute(ddl)
+
+        # Seed Meta BR rate card estimates (consulted Meta docs 2026-09-03).
+        seeds = (
+            ("BR", "BRL", "MARKETING", 321700, "2026-07-01", None, "Estimativa Meta Brasil — marketing"),
+            ("BR", "BRL", "UTILITY", 35000, "2026-07-01", None, "Estimativa Meta Brasil — utility"),
+            ("BR", "BRL", "AUTHENTICATION", 35000, "2026-07-01", None, "Estimativa Meta Brasil — authentication"),
+            ("BR", "BRL", "SERVICE", 0, "2026-07-01", "2026-09-30", "Service free until 2026-09-30 (Meta announced)"),
+        )
+        for market, currency, category, rate_micros, effective_from, effective_to, notes in seeds:
+            existing = self._fetchone(
+                cursor,
+                """
+                SELECT id FROM meta_rate_cards
+                WHERE market=%s AND currency=%s AND category=%s AND effective_from=%s
+                LIMIT 1
+                """,
+                (market, currency, category, effective_from),
+            )
+            if existing:
+                continue
+            cursor.execute(
+                """
+                INSERT INTO meta_rate_cards
+                    (market, currency, category, rate_micros, effective_from, effective_to, source_reference, notes)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    market,
+                    currency,
+                    category,
+                    rate_micros,
+                    effective_from,
+                    effective_to,
+                    "https://developers.facebook.com/docs/whatsapp/pricing/",
+                    notes,
+                ),
+            )
+
+        # Default "Geral" group per tenant
+        cursor.execute("SELECT id FROM tenants")
+        tenants = list(cursor.fetchall() or [])
+        for tenant in tenants:
+            tenant_pk = int(tenant["id"])
+            existing = self._fetchone(
+                cursor,
+                "SELECT id FROM conversation_groups WHERE tenant_id=%s AND is_default=1 LIMIT 1",
+                (tenant_pk,),
+            )
+            if existing:
+                continue
+            from uuid import uuid4
+
+            cursor.execute(
+                """
+                INSERT INTO conversation_groups (id, tenant_id, name, description, is_default)
+                VALUES (%s, %s, 'Geral', 'Grupo padrão de atendimento', 1)
+                """,
+                (str(uuid4()), tenant_pk),
+            )
+
+        # Backfill sessions without group
+        cursor.execute(
+            """
+            UPDATE sessions s
+            INNER JOIN conversation_groups g
+                ON g.tenant_id = s.tenant_id AND g.is_default = 1
+            SET s.group_id = g.id
+            WHERE s.group_id IS NULL
+            """
+        )
 
     def _ensure_default_tenant(
         self,

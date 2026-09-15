@@ -203,19 +203,37 @@ class _ConversationTileState extends State<_ConversationTile> {
                         ],
                       ],
                     ),
-                    if (needsHuman || conversation.aiEnabled) ...[
+                    if (needsHuman ||
+                        conversation.aiEnabled ||
+                        conversation.assigneeLabel.isNotEmpty ||
+                        (conversation.groupName?.trim().isNotEmpty ??
+                            false)) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        needsHuman
-                            ? 'Aguardando humano'
-                            : (conversation.aiEnabled ? 'IA ativa' : ''),
-                        style: GoogleFonts.manrope(
-                          color: needsHuman
-                              ? AppColors.warning
-                              : AppColors.accentSecondary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (needsHuman)
+                            _MiniChip(
+                              label: 'Aguardando humano',
+                              color: AppColors.warning,
+                            )
+                          else
+                            _MiniChip(
+                              label: conversation.isAssignedToAi
+                                  ? 'IA'
+                                  : conversation.assigneeLabel,
+                              color: conversation.isAssignedToAi
+                                  ? AppColors.accentSecondary
+                                  : AppColors.primarySoft,
+                            ),
+                          if (conversation.groupName != null &&
+                              conversation.groupName!.trim().isNotEmpty)
+                            _MiniChip(
+                              label: conversation.groupName!.trim(),
+                              color: AppColors.textMuted,
+                            ),
+                        ],
                       ),
                     ],
                   ],
@@ -223,6 +241,33 @@ class _ConversationTileState extends State<_ConversationTile> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.manrope(
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import assert_capability, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.whatsapp_template import (
     WhatsAppTemplate,
@@ -46,6 +46,7 @@ async def create_template(
     service: WhatsAppTemplateService = Depends(whatsapp_template_service_dependency),
     audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
 ) -> WhatsAppTemplate:
+    assert_capability(user, "canManageTemplates")
     target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
     try:
         item = await service.create_template(target_tenant_id, payload)

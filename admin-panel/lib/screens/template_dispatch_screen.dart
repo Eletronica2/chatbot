@@ -398,6 +398,17 @@ class _TemplateDispatchScreenState extends State<TemplateDispatchScreen> {
                       ),
                     ),
                   ),
+                  FilledButton.icon(
+                    onPressed: _loading || _selectedAccountKey == null
+                        ? null
+                        : () => setState(() => _createExpanded = true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('Novo template'),
+                  ),
                   IconButton(
                     tooltip: 'Atualizar lista',
                     onPressed: _loading || _sending ? null : _load,

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
-import 'brand_mark.dart';
+import 'atenda_logo.dart';
 
 String _humanizeRoleLabel(String? role) {
   final normalized = (role ?? '').trim().toLowerCase();
@@ -63,6 +62,77 @@ class AppSidebar extends StatelessWidget {
   final bool collapsed;
   final ValueChanged<bool>? onCollapsedChanged;
 
+  List<Widget> _buildNavChildren({
+    required List<AppSidebarItem> visibleItems,
+    required String selectedId,
+    required bool rail,
+    required ValueChanged<String> onNavItemTap,
+  }) {
+    final children = <Widget>[];
+    String? lastSection;
+    var sawSection = false;
+
+    for (final item in visibleItems) {
+      final section = item.section?.trim();
+      final hasSection = section != null && section.isNotEmpty;
+      if (hasSection && section != lastSection) {
+        sawSection = true;
+        lastSection = section;
+        if (!rail) {
+          children.add(
+            Padding(
+              padding: EdgeInsets.fromLTRB(6, children.isEmpty ? 0 : 12, 6, 6),
+              child: Text(
+                section.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.textSoft,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.55,
+                ),
+              ),
+            ),
+          );
+        } else if (children.isNotEmpty) {
+          children.add(
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+              child: Divider(
+                height: 1,
+                color: AppColors.border.withValues(alpha: 0.7),
+              ),
+            ),
+          );
+        }
+      } else if (!hasSection && !sawSection && children.isEmpty && !rail) {
+        children.add(
+          const Padding(
+            padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
+            child: Text(
+              'Navegação principal',
+              style: TextStyle(
+                color: AppColors.textSoft,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.4,
+              ),
+            ),
+          ),
+        );
+      }
+
+      children.add(
+        _SidebarNavItem(
+          item: item,
+          selected: item.id == selectedId,
+          collapsed: rail,
+          onTap: () => onNavItemTap(item.id),
+        ),
+      );
+    }
+    return children;
+  }
+
   @override
   Widget build(BuildContext context) {
     final visibleItems = items.where((item) => item.visible).toList();
@@ -98,26 +168,12 @@ class AppSidebar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!rail)
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(6, 0, 6, 10),
-                      child: Text(
-                        'Navegação principal',
-                        style: TextStyle(
-                          color: AppColors.textSoft,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
-                        ),
-                      ),
-                    ),
-                  for (final item in visibleItems)
-                    _SidebarNavItem(
-                      item: item,
-                      selected: item.id == selectedId,
-                      collapsed: rail,
-                      onTap: () => onNavItemTap(item.id),
-                    ),
+                  ..._buildNavChildren(
+                    visibleItems: visibleItems,
+                    selectedId: selectedId,
+                    rail: rail,
+                    onNavItemTap: onNavItemTap,
+                  ),
                 ],
               ),
             ),
@@ -160,8 +216,7 @@ class _SidebarBrandState extends State<_SidebarBrand> {
 
   @override
   Widget build(BuildContext context) {
-    final interactive = widget.onTap != null;
-    final mark = const BrandMark(size: 28);
+    final mark = const AtendaLogo(height: 28, showWordmark: false);
 
     if (widget.collapsed) {
       return Padding(
@@ -240,33 +295,7 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                   Expanded(
                     child: GestureDetector(
                       onTap: widget.onTap,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Atenda Ai',
-                            style: GoogleFonts.manrope(
-                              color: AppColors.text,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            interactive
-                                ? 'Automação no WhatsApp'
-                                : 'Painel operacional',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: GoogleFonts.manrope(
-                              color: AppColors.textSoft,
-                              fontSize: 11,
-                              height: 1.35,
-                            ),
-                          ),
-                        ],
-                      ),
+                      child: const AtendaLogo(height: 28, showWordmark: true),
                     ),
                   ),
                 ],

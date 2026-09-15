@@ -166,6 +166,30 @@ def _build_client(account_context: dict | None):
     return build_meta_client(access_token=access_token, phone_number_id=phone_number_id)
 
 
+async def _report_delivered_usage(*, tenant_id: str, provider_message_id: str) -> None:
+    """Best-effort usage ledger for Atenda Ai on-demand billing. Never raises to callers."""
+    try:
+        async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
+            response = await client.post(
+                f"{settings.BACKEND_API_URL}/api/v1/internal/usage/delivered",
+                headers={"x-internal-api-key": settings.BACKEND_INTERNAL_API_KEY},
+                json={
+                    "tenant_id": tenant_id,
+                    "provider_message_id": provider_message_id,
+                    "market": "BR",
+                    "quantity": 1,
+                },
+            )
+        if response.status_code >= 400:
+            logger.warning(
+                "Usage delivered report failed status=%s body=%s",
+                response.status_code,
+                response.text[:300],
+            )
+    except Exception as exc:  # noqa: BLE001 — billing must not break webhook
+        logger.warning("Usage delivered report error: %s", exc)
+
+
 async def forward_to_backend(message: NormalizedMessage, account_context: dict | None):
     try:
         async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
@@ -309,6 +333,17 @@ async def receive_webhook(
                 if field != "messages":
                     continue
 
+                metadata = value.get("metadata") or {}
+                phone_number_id = metadata.get("phone_number_id")
+                account_context = None
+                if phone_number_id:
+                    account_context = await _resolve_account_context(phone_number_id=phone_number_id)
+                status_tenant = (
+                    (account_context or {}).get("tenant_id")
+                    or tenant_id
+                    or settings.DEFAULT_TENANT_ID
+                )
+
                 for status_item in value.get("statuses") or []:
                     if not isinstance(status_item, dict):
                         continue
@@ -318,24 +353,28 @@ async def receive_webhook(
                         error_summary = (
                             f"#{errors[0].get('code')} {errors[0].get('title') or errors[0].get('message')}"
                         )
+                    status_value = str(status_item.get("status") or "").lower()
                     logger.info(
                         "Webhook delivery status recipient=%s message_id=%s status=%s error=%s",
                         status_item.get("recipient_id"),
                         status_item.get("id"),
-                        status_item.get("status"),
+                        status_value,
                         error_summary,
                     )
+                    if status_value == "delivered" and status_item.get("id"):
+                        background_tasks.add_task(
+                            _report_delivered_usage,
+                            tenant_id=status_tenant,
+                            provider_message_id=str(status_item.get("id")),
+                        )
 
                 messages = value.get("messages") or []
                 if not messages:
                     continue
 
-                metadata = value.get("metadata") or {}
-                phone_number_id = metadata.get("phone_number_id")
                 if not phone_number_id:
                     continue
 
-                account_context = await _resolve_account_context(phone_number_id=phone_number_id)
                 logger.info(
                     "Webhook message metadata phone_number_id=%s display_phone_number=%s resolved_tenant=%s resolved_account=%s",
                     phone_number_id,
@@ -343,11 +382,8 @@ async def receive_webhook(
                     (account_context or {}).get("tenant_id"),
                     (account_context or {}).get("account_key"),
                 )
-                current_tenant = (
-                    (account_context or {}).get("tenant_id")
-                    or tenant_id
-                    or settings.DEFAULT_TENANT_ID
-                )
+                current_tenant = status_tenant
+
                 if account_context is None:
                     account_context = _fallback_account_context(
                         tenant_id=current_tenant,

@@ -30,6 +30,7 @@ _PLAN_PRICES_CENTS = {
     "growth": 24900,
     "pro": 59900,
     "enterprise": 149900,
+    "on_demand": 0,  # usage-based; billed via Stripe meters
 }
 
 
@@ -54,7 +55,7 @@ class BillingService:
         )
 
     def available_plans(self) -> list[str]:
-        return [plan for plan in ("starter", "growth", "pro", "enterprise")]
+        return [plan for plan in ("starter", "growth", "pro", "enterprise", "on_demand")]
 
     def estimate_plan_mrr_cents(self, plan: str) -> int:
         return _PLAN_PRICES_CENTS.get(plan.strip().lower(), 0)
@@ -365,6 +366,7 @@ class BillingService:
             "growth": self.settings.STRIPE_PRICE_GROWTH,
             "pro": self.settings.STRIPE_PRICE_PRO,
             "enterprise": self.settings.STRIPE_PRICE_ENTERPRISE,
+            "on_demand": getattr(self.settings, "STRIPE_ON_DEMAND_PRICE_ID", "") or "",
         }
         price_id = str(mapping.get(plan.strip().lower()) or "").strip()
         if not price_id:
@@ -372,13 +374,105 @@ class BillingService:
         return price_id
 
     def _plan_for_price_id(self, price_id: str) -> str | None:
+        if not price_id:
+            return None
         mapping = {
             self.settings.STRIPE_PRICE_STARTER: "starter",
             self.settings.STRIPE_PRICE_GROWTH: "growth",
             self.settings.STRIPE_PRICE_PRO: "pro",
             self.settings.STRIPE_PRICE_ENTERPRISE: "enterprise",
         }
+        on_demand_price = str(getattr(self.settings, "STRIPE_ON_DEMAND_PRICE_ID", "") or "").strip()
+        if on_demand_price:
+            mapping[on_demand_price] = "on_demand"
         return mapping.get(price_id)
+
+    async def report_meter_event(
+        self,
+        tenant_id: str,
+        provider_message_id: str,
+        quantity: int = 1,
+    ) -> dict[str, Any]:
+        """Report a Stripe meter event for usage-based billing.
+
+        NEVER raises to the WhatsApp path — failures are logged and marked pending.
+        """
+        try:
+            meter_name = str(getattr(self.settings, "STRIPE_METER_EVENT_NAME", "") or "").strip()
+            if not self.provider_ready or not meter_name:
+                await self._mark_usage_stripe(
+                    tenant_id,
+                    provider_message_id,
+                    status="pending",
+                )
+                return {"reported": False, "status": "pending", "reason": "meter_not_configured"}
+
+            snapshot = await self.get_customer_snapshot(tenant_id)
+            customer_id = snapshot.provider_customer_id if snapshot else ""
+            if not customer_id:
+                await self._mark_usage_stripe(
+                    tenant_id,
+                    provider_message_id,
+                    status="pending",
+                )
+                return {"reported": False, "status": "pending", "reason": "no_customer"}
+
+            payload = {
+                "event_name": meter_name,
+                "payload[stripe_customer_id]": customer_id,
+                "payload[value]": str(max(int(quantity), 1)),
+                "identifier": f"{tenant_id}:{provider_message_id}",
+            }
+            data = await self._stripe_post("/billing/meter_events", payload)
+            meter_event_id = str(data.get("identifier") or data.get("id") or "")
+            await self._mark_usage_stripe(
+                tenant_id,
+                provider_message_id,
+                status="reported",
+                meter_event_id=meter_event_id or None,
+            )
+            return {"reported": True, "status": "reported", "meter_event_id": meter_event_id}
+        except Exception as exc:
+            logger.warning(
+                "Stripe meter event failed tenant=%s msg=%s: %s",
+                tenant_id,
+                provider_message_id,
+                exc,
+            )
+            try:
+                await self._mark_usage_stripe(
+                    tenant_id,
+                    provider_message_id,
+                    status="pending",
+                )
+            except Exception:
+                pass
+            return {"reported": False, "status": "pending", "reason": "error"}
+
+    async def _mark_usage_stripe(
+        self,
+        tenant_id: str,
+        provider_message_id: str,
+        *,
+        status: str,
+        meter_event_id: str | None = None,
+    ) -> None:
+        tenant_pk = self.database.resolve_tenant_pk(tenant_id)
+
+        def _write() -> None:
+            self.database.execute(
+                """
+                UPDATE usage_events
+                SET stripe_status = %s,
+                    stripe_meter_event_id = COALESCE(%s, stripe_meter_event_id)
+                WHERE tenant_id = %s
+                  AND provider_message_id = %s
+                  AND event_type = 'delivered'
+                """,
+                (status, meter_event_id, tenant_pk, provider_message_id),
+            )
+
+        await asyncio.to_thread(_write)
 
     async def _find_or_create_customer(
         self,
@@ -500,6 +594,8 @@ class BillingService:
             return 20000
         if plan == "enterprise":
             return 100000
+        if plan == "on_demand":
+            return 0
         return 1000
 
     async def _upsert_customer_record(

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../models/conversation.dart';
+import '../models/conversation_group.dart';
 import '../services/auth_service.dart';
+import '../services/conversation_group_service.dart';
 import '../services/conversation_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
@@ -15,8 +17,11 @@ import '../widgets/ui_kit.dart';
 import 'actions_screen.dart';
 import 'backoffice_screen.dart';
 import 'billing_hub_screen.dart';
+import 'billing_plan_screen.dart';
 import 'conversation_detail_screen.dart';
+import 'groups_screen.dart';
 import 'overview_screen.dart';
+import 'quick_replies_screen.dart';
 import 'settings_screen.dart';
 import 'team_screen.dart';
 import 'template_dispatch_screen.dart';
@@ -38,13 +43,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navActions = 'actions';
   static const String _navClients = 'clients';
   static const String _navBilling = 'billing';
+  static const String _navBillingPlan = 'billing_plan';
   static const String _navTemplates = 'templates';
   static const String _navWhatsApp = 'whatsapp';
   static const String _navTeam = 'team';
+  static const String _navGroups = 'groups';
+  static const String _navQuickReplies = 'quick_replies';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
   List<Conversation> _filteredConversations = <Conversation>[];
+  List<ConversationGroup> _groups = <ConversationGroup>[];
   Conversation? _selectedConversation;
   String _selectedNav = _navHome;
   String _conversationFilter = 'all';
@@ -52,6 +61,50 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _sidebarCollapsed = false;
 
   List<AppSidebarItem> get _sidebarItems {
+    final caps = authService.capabilities;
+    final isSuper = authService.isSuperadmin;
+
+    if (isSuper) {
+      return <AppSidebarItem>[
+        const AppSidebarItem(
+          id: _navConversations,
+          label: 'Conversas',
+          icon: Icons.chat_bubble_rounded,
+          helper: 'Atendimento, histórico e fila de resposta',
+        ),
+        const AppSidebarItem(
+          id: _navClients,
+          label: 'Clientes',
+          icon: Icons.business_rounded,
+          helper: 'Empresas, usuários e números de WhatsApp',
+        ),
+        const AppSidebarItem(
+          id: _navBilling,
+          label: 'Cobrança',
+          icon: Icons.credit_card_rounded,
+          helper: 'Planos, uso mensal e assinatura',
+        ),
+      ];
+    }
+
+    if (caps.isAgentOnly) {
+      return <AppSidebarItem>[
+        const AppSidebarItem(
+          id: _navConversations,
+          label: 'Conversas',
+          icon: Icons.chat_bubble_rounded,
+          helper: 'Atendimento, histórico e fila de resposta',
+        ),
+        AppSidebarItem(
+          id: _navQuickReplies,
+          label: 'Respostas rápidas',
+          icon: Icons.flash_on_rounded,
+          helper: 'Atalhos pessoais para o compositor',
+          visible: caps.canManageQuickReplies,
+        ),
+      ];
+    }
+
     return <AppSidebarItem>[
       const AppSidebarItem(
         id: _navConversations,
@@ -59,51 +112,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.chat_bubble_rounded,
         helper: 'Atendimento, histórico e fila de resposta',
       ),
-      const AppSidebarItem(
+      AppSidebarItem(
         id: _navAutomations,
         label: 'Automações',
         icon: Icons.auto_awesome_motion_rounded,
+        section: 'Automação',
         helper: 'Monte etapas, respostas e simulações do chatbot',
+        visible: caps.canManageAutomations,
       ),
-      const AppSidebarItem(
+      AppSidebarItem(
         id: _navActions,
         label: 'Ações',
         icon: Icons.bolt_rounded,
+        section: 'Automação',
         helper: 'Gerencie ações reutilizáveis: imagens, links, requisições HTTP',
+        visible: caps.canManageActions,
       ),
-      const AppSidebarItem(
+      AppSidebarItem(
         id: _navTemplates,
         label: 'Templates',
         icon: Icons.campaign_rounded,
+        section: 'Automação',
         helper: 'Criar modelos Meta, ver status e disparar testes',
+        visible: caps.canManageTemplates,
+      ),
+      AppSidebarItem(
+        id: _navGroups,
+        label: 'Grupos',
+        icon: Icons.groups_rounded,
+        section: 'Atendimento',
+        helper: 'Filas e equipes de atendimento',
+        visible: caps.canManageGroups,
+      ),
+      AppSidebarItem(
+        id: _navQuickReplies,
+        label: 'Respostas rápidas',
+        icon: Icons.flash_on_rounded,
+        section: 'Atendimento',
+        helper: 'Atalhos para o compositor',
+        visible: caps.canManageQuickReplies,
       ),
       AppSidebarItem(
         id: _navWhatsApp,
         label: 'WhatsApp',
         icon: Icons.phonelink_setup_rounded,
+        section: 'Configuração',
         helper: 'Conectar número, coexistência e contas da empresa',
-        visible: !authService.isSuperadmin,
+        visible: caps.canManageWhatsApp,
       ),
       AppSidebarItem(
         id: _navTeam,
         label: 'Equipe',
         icon: Icons.group_rounded,
+        section: 'Configuração',
         helper: 'Convide atendentes e gerentes da empresa',
-        visible: !authService.isSuperadmin,
+        visible: caps.canManageTeam,
       ),
       AppSidebarItem(
-        id: _navClients,
-        label: 'Clientes',
-        icon: Icons.business_rounded,
-        helper: 'Empresas, usuários e números de WhatsApp',
-        visible: authService.isSuperadmin,
-      ),
-      AppSidebarItem(
-        id: _navBilling,
-        label: 'Cobrança',
+        id: _navBillingPlan,
+        label: 'Plano e cobrança',
         icon: Icons.credit_card_rounded,
-        helper: 'Planos, uso mensal e assinatura',
-        visible: authService.isSuperadmin,
+        section: 'Configuração',
+        helper: 'Plano atual, uso e portal de pagamento',
+        visible: caps.canManageBilling,
       ),
     ];
   }
@@ -112,12 +183,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _futureConversations = _loadConversations();
+    _loadGroups();
   }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadGroups() async {
+    if (authService.isSuperadmin) return;
+    try {
+      final groups = await conversationGroupService.listGroups();
+      if (!mounted) return;
+      setState(() => _groups = groups);
+    } catch (_) {}
   }
 
   Future<List<Conversation>> _loadConversations() async {
@@ -135,25 +216,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() {
       _futureConversations = future;
     });
+    _loadGroups();
   }
 
   void _applyFilter(String query) {
     final normalized = query.trim().toLowerCase();
+    final me = authService.currentUser?.userId;
     _filteredConversations = _allConversations.where((conversation) {
       final matchesQuery = normalized.isEmpty ||
           conversation.phoneNumber.toLowerCase().contains(normalized) ||
           conversation.lastMessage.toLowerCase().contains(normalized);
-      return matchesQuery && _matchesConversationFilter(conversation);
+      return matchesQuery && _matchesConversationFilter(conversation, me);
     }).toList();
   }
 
-  bool _matchesConversationFilter(Conversation conversation) {
-    return switch (_conversationFilter) {
-      'pending' => conversation.unreadCount > 0 ||
-          conversation.humanHandoffPending,
-      'ai' => conversation.aiEnabled,
-      'human' => !conversation.aiEnabled ||
-          conversation.humanHandoffPending,
+  bool _matchesConversationFilter(Conversation conversation, String? me) {
+    final filter = _conversationFilter;
+    if (filter == 'all') return true;
+    if (filter == 'mine') {
+      return me != null &&
+          me.isNotEmpty &&
+          conversation.assignedUserId == me;
+    }
+    if (filter == 'ai') {
+      return conversation.isAssignedToAi ||
+          conversation.assignmentMode.toLowerCase() == 'ai';
+    }
+    if (filter.startsWith('group:')) {
+      final groupId = filter.substring('group:'.length);
+      return conversation.groupId == groupId;
+    }
+    return switch (filter) {
+      'pending' =>
+        conversation.unreadCount > 0 || conversation.humanHandoffPending,
+      'human' =>
+        !conversation.isAssignedToAi || conversation.humanHandoffPending,
       _ => true,
     };
   }
@@ -182,18 +279,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  void _onConversationUpdated(Conversation updated) {
+    setState(() {
+      final idx = _allConversations.indexWhere((c) => c.id == updated.id);
+      if (idx >= 0) {
+        _allConversations[idx] = updated;
+      }
+      if (_selectedConversation?.id == updated.id) {
+        _selectedConversation = updated;
+      }
+      _applyFilter(_searchCtrl.text);
+    });
+  }
+
   Future<void> _openConversation(Conversation conversation) async {
     if (AppBreakpoints.useInboxSplit(context)) {
       setState(() {
         _selectedConversation = conversation;
-        // Auto: conversa aberta → sidebar 68px (prioridade UX).
         _sidebarCollapsed = true;
       });
       return;
     }
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ConversationDetailScreen(conversation: conversation),
+        builder: (_) => ConversationDetailScreen(
+          conversation: conversation,
+          onConversationUpdated: _onConversationUpdated,
+        ),
       ),
     );
     _refreshConversations();
@@ -202,13 +314,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _closeConversation() {
     setState(() {
       _selectedConversation = null;
-      // Auto: sem conversa → sidebar 216px.
       _sidebarCollapsed = false;
     });
   }
 
-  /// Manual expand/collapse é respeitado até o próximo select/deselect,
-  /// quando o auto volta a ter prioridade.
   void _onSidebarCollapsedChanged(bool collapsed) {
     setState(() => _sidebarCollapsed = collapsed);
   }
@@ -274,7 +383,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     color: AppColors.background,
                     child: Column(
                       children: [
-                        // Conversas wide: o chrome fica na inbox/chat — libera altura útil.
                         if (!(_selectedNav == _navConversations &&
                             persistentSidebar))
                           _ShellHeader(
@@ -290,7 +398,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         Expanded(
                           child: AppPageSwitcher(
-                            // Troca de página por nav; refresh por tenant fica nos KeyedSubtree internos.
                             pageKey: _selectedNav,
                             child: _buildCurrentPage(),
                           ),
@@ -333,10 +440,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'WhatsApp';
       case _navTeam:
         return 'Equipe';
+      case _navGroups:
+        return 'Grupos';
+      case _navQuickReplies:
+        return 'Respostas rápidas';
       case _navClients:
         return 'Clientes';
       case _navBilling:
         return 'Cobrança';
+      case _navBillingPlan:
+        return 'Plano e cobrança';
       default:
         return 'Início';
     }
@@ -356,10 +469,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Conecte o WhatsApp Business da sua empresa e configure a coexistência.';
       case _navTeam:
         return 'Convide atendentes e gerentes para operar o painel da sua empresa.';
+      case _navGroups:
+        return 'Organize filas de atendimento e associe membros da equipe.';
+      case _navQuickReplies:
+        return 'Crie atalhos pessoais para inserir texto no compositor (sem enviar).';
       case _navClients:
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
         return 'Gerencie plano, uso, cobrança e saúde financeira da operação.';
+      case _navBillingPlan:
+        return 'Veja o plano Atenda Ai, uso do mês e custos Meta separados.';
       default:
         return 'Seu resumo operacional do dia.';
     }
@@ -394,6 +513,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           key: ValueKey<String>('team-${authService.tenantId}'),
           child: const TeamScreen(),
         );
+      case _navGroups:
+        return KeyedSubtree(
+          key: ValueKey<String>('groups-${authService.tenantId}'),
+          child: const GroupsScreen(),
+        );
+      case _navQuickReplies:
+        return KeyedSubtree(
+          key: ValueKey<String>('quick-replies-${authService.tenantId}'),
+          child: const QuickRepliesScreen(),
+        );
       case _navClients:
         return KeyedSubtree(
           key: const ValueKey<String>('clients'),
@@ -411,6 +540,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
         );
+      case _navBillingPlan:
+        return KeyedSubtree(
+          key: ValueKey<String>('billing-plan-${authService.tenantId}'),
+          child: const BillingPlanScreen(),
+        );
       default:
         return KeyedSubtree(
           key: ValueKey<String>('home-${authService.tenantId}'),
@@ -419,12 +553,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onOpenAutomations: () => _selectNav(_navAutomations),
             onOpenWhatsApp: authService.isSuperadmin
                 ? () => _selectNav(_navClients)
-                : () => _selectNav(_navWhatsApp),
-            onOpenTeam: authService.isSuperadmin
-                ? null
-                : () => _selectNav(_navTeam),
-            onOpenBilling:
-                authService.isSuperadmin ? () => _selectNav(_navBilling) : null,
+                : (authService.capabilities.canManageWhatsApp
+                    ? () => _selectNav(_navWhatsApp)
+                    : null),
+            onOpenTeam: authService.capabilities.canManageTeam
+                ? () => _selectNav(_navTeam)
+                : null,
+            onOpenBilling: authService.isSuperadmin
+                ? () => _selectNav(_navBilling)
+                : (authService.capabilities.canManageBilling
+                    ? () => _selectNav(_navBillingPlan)
+                    : null),
             onOpenClients:
                 authService.isSuperadmin ? () => _selectNav(_navClients) : null,
           ),
@@ -439,28 +578,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
       runSpacing: 6,
       children: [
         PremiumFilterChip(
-          label: 'Todos',
+          label: 'Todas',
           selected: _conversationFilter == 'all',
           onTap: () => _setConversationFilter('all'),
         ),
         PremiumFilterChip(
-          label: 'Pendentes',
-          icon: Icons.priority_high_rounded,
-          selected: _conversationFilter == 'pending',
-          onTap: () => _setConversationFilter('pending'),
+          label: 'Minhas',
+          icon: Icons.person_outline_rounded,
+          selected: _conversationFilter == 'mine',
+          onTap: () => _setConversationFilter('mine'),
         ),
         PremiumFilterChip(
-          label: 'IA ativa',
+          label: 'IA',
           icon: Icons.auto_awesome_rounded,
           selected: _conversationFilter == 'ai',
           onTap: () => _setConversationFilter('ai'),
         ),
-        PremiumFilterChip(
-          label: 'Humano',
-          icon: Icons.support_agent_rounded,
-          selected: _conversationFilter == 'human',
-          onTap: () => _setConversationFilter('human'),
-        ),
+        for (final group in _groups)
+          PremiumFilterChip(
+            label: group.name,
+            icon: Icons.groups_rounded,
+            selected: _conversationFilter == 'group:${group.id}',
+            onTap: () => _setConversationFilter('group:${group.id}'),
+          ),
       ],
     );
 
@@ -571,6 +711,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   conversation: _selectedConversation!,
                   embedded: true,
                   onClose: _closeConversation,
+                  onConversationUpdated: _onConversationUpdated,
                 ),
         ),
       ],

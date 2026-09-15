@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
-import 'brand_mark.dart';
+import 'atenda_logo.dart';
 
 /// Gradiente de CTA das superfícies públicas (Landing/Auth).
 /// Cyan → violet, alinhado à Landing V2 — não altera o painel operacional.
@@ -12,6 +12,104 @@ const LinearGradient kPublicCtaGradient = LinearGradient(
   end: Alignment.centerRight,
   colors: [Color(0xFF00D1FF), Color(0xFF6D28D9)],
 );
+
+/// Rede animada sutil para login — respeita reduced motion.
+class LoginNetworkBackdrop extends StatefulWidget {
+  const LoginNetworkBackdrop({super.key});
+
+  @override
+  State<LoginNetworkBackdrop> createState() => _LoginNetworkBackdropState();
+}
+
+class _LoginNetworkBackdropState extends State<LoginNetworkBackdrop>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 18),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduce = AppMotion.reduce(context);
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const PublicAtmosphere(vivid: true),
+          if (reduce)
+            CustomPaint(painter: _NetworkPainter(t: 0))
+          else
+            AnimatedBuilder(
+              animation: _ctrl,
+              builder: (context, _) {
+                return CustomPaint(painter: _NetworkPainter(t: _ctrl.value));
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkPainter extends CustomPainter {
+  _NetworkPainter({required this.t});
+
+  final double t;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final nodes = <Offset>[
+      for (var i = 0; i < 14; i++)
+        Offset(
+          size.width * ((0.08 + (i * 0.17) % 0.84) + 0.02 * _wave(t + i * 0.07)),
+          size.height *
+              ((0.12 + (i * 0.23) % 0.76) + 0.025 * _wave(t * 1.3 + i * 0.11)),
+        ),
+    ];
+
+    final line = Paint()
+      ..color = AppColors.primary.withValues(alpha: 0.10)
+      ..strokeWidth = 1
+      ..isAntiAlias = true;
+    for (var i = 0; i < nodes.length; i++) {
+      for (var j = i + 1; j < nodes.length; j++) {
+        final a = nodes[i];
+        final b = nodes[j];
+        final d = (a - b).distance;
+        if (d < size.shortestSide * 0.28) {
+          canvas.drawLine(a, b, line);
+        }
+      }
+    }
+
+    final nodePaint = Paint()
+      ..color = AppColors.primary.withValues(alpha: 0.35)
+      ..isAntiAlias = true;
+    for (final n in nodes) {
+      canvas.drawCircle(n, 2.2, nodePaint);
+    }
+  }
+
+  double _wave(double x) => (x % 1.0) < 0.5
+      ? (x % 1.0) * 4 - 1
+      : 3 - (x % 1.0) * 4;
+
+  @override
+  bool shouldRepaint(covariant _NetworkPainter oldDelegate) =>
+      oldDelegate.t != t;
+}
 
 /// Atmosfera estática: grid discreto + glows radiais. Sem animação contínua.
 class PublicAtmosphere extends StatelessWidget {
@@ -94,21 +192,10 @@ class BrandLockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        BrandMark(size: markSize),
-        const SizedBox(width: 10),
-        Text(
-          'Atenda Ai',
-          style: GoogleFonts.manrope(
-            color: muted ? AppColors.textMuted : AppColors.text,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.4,
-          ),
-        ),
-      ],
+    final row = AtendaLogo(
+      height: markSize,
+      showWordmark: true,
+      wordmarkColor: muted ? AppColors.textMuted : AppColors.text,
     );
     if (onTap == null) return row;
     return MouseRegion(

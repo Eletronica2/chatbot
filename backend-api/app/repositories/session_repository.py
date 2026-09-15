@@ -106,6 +106,7 @@ class MySQLSessionRepository(SessionRepository):
                 SELECT session_id, phone_number, phone_number_id, display_phone_number,
                        active_flow, current_state, detected_intent,
                        conversation_history, session_state, context, last_flow,
+                       assignment_mode, assigned_user_id, group_id,
                        last_interaction, updated_at
                 FROM sessions
                 WHERE tenant_id = %s AND phone_number = %s
@@ -143,9 +144,12 @@ class MySQLSessionRepository(SessionRepository):
                     conversation_history,
                     session_state,
                     context,
+                    assignment_mode,
+                    assigned_user_id,
+                    group_id,
                     last_interaction,
                     updated_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     session_id = VALUES(session_id),
                     phone_number_id = VALUES(phone_number_id),
@@ -157,6 +161,9 @@ class MySQLSessionRepository(SessionRepository):
                     conversation_history = VALUES(conversation_history),
                     session_state = VALUES(session_state),
                     context = VALUES(context),
+                    assignment_mode = VALUES(assignment_mode),
+                    assigned_user_id = VALUES(assigned_user_id),
+                    group_id = VALUES(group_id),
                     last_interaction = VALUES(last_interaction),
                     updated_at = VALUES(updated_at)
                 """,
@@ -173,6 +180,9 @@ class MySQLSessionRepository(SessionRepository):
                     payload_history,
                     payload_state,
                     payload_context,
+                    (session.assignment_mode or "ai"),
+                    session.assigned_user_id,
+                    session.group_id,
                     session.last_interaction,
                     session.updated_at,
                 ),
@@ -196,6 +206,7 @@ class MySQLSessionRepository(SessionRepository):
                 SELECT s.session_id, s.phone_number, s.phone_number_id, s.display_phone_number,
                        s.active_flow, s.current_state, s.detected_intent,
                        s.conversation_history, s.session_state, s.context, s.last_flow,
+                       s.assignment_mode, s.assigned_user_id, s.group_id,
                        s.last_interaction, s.updated_at,
                        t.external_key AS tenant_id
                 FROM sessions s
@@ -230,6 +241,9 @@ class MySQLSessionRepository(SessionRepository):
             except json.JSONDecodeError:
                 raw_context = {}
 
+        assignment_mode = str(row.get("assignment_mode") or raw_context.get("assignment_mode") or "ai").strip().lower()
+        if assignment_mode not in {"ai", "human"}:
+            assignment_mode = "ai"
         return ConversationSession(
             session_id=str(row.get("session_id")),
             tenant_id=tenant_id,
@@ -244,6 +258,9 @@ class MySQLSessionRepository(SessionRepository):
             conversation_state=raw_state,
             context=raw_context,
             last_flow=row.get("last_flow"),
+            assignment_mode=assignment_mode,
+            assigned_user_id=row.get("assigned_user_id") or raw_context.get("assigned_user_id"),
+            group_id=row.get("group_id") or raw_context.get("group_id"),
             updated_at=row.get("updated_at") or datetime.utcnow(),
         )
 

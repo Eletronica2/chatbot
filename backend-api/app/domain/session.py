@@ -30,6 +30,9 @@ class ConversationSession(BaseModel):
     conversation_state: Dict[str, Any] = Field(default_factory=dict)
     context: Dict[str, Any] = Field(default_factory=dict)
     last_flow: Optional[str] = None
+    assignment_mode: str = "ai"  # ai | human
+    assigned_user_id: Optional[str] = None
+    group_id: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
     @property

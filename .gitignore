@@ -1,0 +1,39 @@
+# Secrets and local env
+.env
+.env.*
+!.env.example
+!.env.production.example
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Flutter / Dart
+admin-panel/.dart_tool/
+admin-panel/.flutter-plugins-dependencies
+admin-panel/.pub-cache/
+admin-panel/.pub/
+admin-panel/build/
+
+# Docker / runtime
+.run/
+*.log
+*.sql.gz
+backups/
+*.pem
+*.key
+*.crt
+
+# Dumps and local archives
+dumps.rar
+*.dump
+*.bak
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

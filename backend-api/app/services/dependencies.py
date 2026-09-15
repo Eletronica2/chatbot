@@ -28,6 +28,10 @@ from app.services.tenant_user_service import TenantUserService
 from app.services.flow_actions_service import FlowActionsService
 from app.services.lead_service import LeadService
 from app.services.proposal_service import ProposalService
+from app.services.conversation_group_service import ConversationGroupService
+from app.services.quick_reply_service import QuickReplyService
+from app.services.usage_ledger_service import UsageLedgerService
+from app.services.fiscal_provider import FiscalProvider
 from app.repositories.flow_snapshot_repository import FlowSnapshotRepository
 
 _conversation_service: Optional[ConversationService] = None
@@ -53,6 +57,10 @@ _dashboard_service: Optional[DashboardService] = None
 _lead_service: Optional[LeadService] = None
 _proposal_service: Optional[ProposalService] = None
 _flow_snapshot_repository: Optional[FlowSnapshotRepository] = None
+_conversation_group_service: Optional[ConversationGroupService] = None
+_quick_reply_service: Optional[QuickReplyService] = None
+_usage_ledger_service: Optional[UsageLedgerService] = None
+_fiscal_provider: Optional[FiscalProvider] = None
 
 
 def set_conversation_service(service: ConversationService) -> None:
@@ -455,4 +463,72 @@ def flow_snapshot_repository_dependency(
     repository: FlowSnapshotRepository = Depends(get_flow_snapshot_repository),
 ) -> FlowSnapshotRepository:
     return repository
+
+
+def set_conversation_group_service(service: ConversationGroupService) -> None:
+    global _conversation_group_service
+    _conversation_group_service = service
+
+
+def get_conversation_group_service() -> ConversationGroupService:
+    if _conversation_group_service is None:
+        raise RuntimeError("ConversationGroupService not configured")
+    return _conversation_group_service
+
+
+def conversation_group_service_dependency(
+    service: ConversationGroupService = Depends(get_conversation_group_service),
+) -> ConversationGroupService:
+    return service
+
+
+def set_quick_reply_service(service: QuickReplyService) -> None:
+    global _quick_reply_service
+    _quick_reply_service = service
+
+
+def get_quick_reply_service() -> QuickReplyService:
+    if _quick_reply_service is None:
+        raise RuntimeError("QuickReplyService not configured")
+    return _quick_reply_service
+
+
+def quick_reply_service_dependency(
+    service: QuickReplyService = Depends(get_quick_reply_service),
+) -> QuickReplyService:
+    return service
+
+
+def set_usage_ledger_service(service: UsageLedgerService) -> None:
+    global _usage_ledger_service
+    _usage_ledger_service = service
+
+
+def get_usage_ledger_service() -> UsageLedgerService:
+    if _usage_ledger_service is None:
+        raise RuntimeError("UsageLedgerService not configured")
+    return _usage_ledger_service
+
+
+def usage_ledger_service_dependency(
+    service: UsageLedgerService = Depends(get_usage_ledger_service),
+) -> UsageLedgerService:
+    return service
+
+
+def set_fiscal_provider(provider: FiscalProvider) -> None:
+    global _fiscal_provider
+    _fiscal_provider = provider
+
+
+def get_fiscal_provider() -> FiscalProvider:
+    if _fiscal_provider is None:
+        raise RuntimeError("FiscalProvider not configured")
+    return _fiscal_provider
+
+
+def fiscal_provider_dependency(
+    provider: FiscalProvider = Depends(get_fiscal_provider),
+) -> FiscalProvider:
+    return provider
 

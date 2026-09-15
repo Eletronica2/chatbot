@@ -20,18 +20,22 @@ from app.api.routes import (
     auth,
     billing,
     billing_webhooks,
+    conversation_groups,
     conversation_logs,
     conversations,
     dashboard,
+    fiscal,
     flows_admin,
     health,
     internal_whatsapp,
     leads,
     messages,
     proposals,
+    quick_replies,
     simulation,
     subscriptions,
     tenant_settings,
+    usage,
     whatsapp_accounts,
     whatsapp_templates,
     whatsapp_onboarding,
@@ -58,22 +62,26 @@ from app.services.dependencies import (
     set_admin_audit_service,
     set_auth_service,
     set_billing_service,
+    set_conversation_group_service,
     set_conversation_log_service,
     set_conversation_service,
     set_dashboard_service,
     set_email_service,
+    set_fiscal_provider,
     set_flow_catalog_service,
     set_flow_service,
     set_flow_snapshot_repository,
     set_lead_service,
     set_message_service,
     set_proposal_service,
+    set_quick_reply_service,
     set_session_service,
     set_subscription_service,
     set_tenant_admin_service,
     set_tenant_settings_service,
     set_tenant_user_service,
     set_actions_service,
+    set_usage_ledger_service,
     set_whatsapp_account_service,
     set_whatsapp_onboarding_service,
     set_whatsapp_template_service,
@@ -97,6 +105,10 @@ from app.services.whatsapp_account_service import WhatsAppAccountService
 from app.services.whatsapp_onboarding_service import WhatsAppOnboardingService
 from app.services.whatsapp_template_service import WhatsAppTemplateService
 from app.services.meta_graph_service import MetaGraphService
+from app.services.conversation_group_service import ConversationGroupService
+from app.services.quick_reply_service import QuickReplyService
+from app.services.usage_ledger_service import UsageLedgerService
+from app.services.fiscal_provider import build_fiscal_provider
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -225,6 +237,19 @@ async def lifespan(app: FastAPI):
     )
     set_proposal_service(proposal_service)
 
+    conversation_group_service = ConversationGroupService(database)
+    set_conversation_group_service(conversation_group_service)
+    quick_reply_service = QuickReplyService(database)
+    set_quick_reply_service(quick_reply_service)
+    usage_ledger_service = UsageLedgerService(database)
+    set_usage_ledger_service(usage_ledger_service)
+    set_fiscal_provider(
+        build_fiscal_provider(
+            provider=settings.FISCAL_PROVIDER,
+            ready=bool(settings.FISCAL_PROVIDER_READY),
+        )
+    )
+
     await _sync_default_flows(flow_service, flow_catalog_service)
     await tenant_admin_service.ensure_bootstrap_tenant(
         tenant_id=settings.BOOTSTRAP_COMPANY_TENANT_ID,
@@ -258,13 +283,23 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_cors_origins = [
+    origin.strip()
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+] or ["*"]
+_cors_wildcard = _cors_origins == ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=not _cors_wildcard,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+if settings.TRUST_PROXY:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 app.add_middleware(
     TenantMiddleware,
     default_tenant=settings.DEFAULT_TENANT_ID,
@@ -279,6 +314,10 @@ app.include_router(billing.router)
 app.include_router(billing_webhooks.router)
 app.include_router(messages.router)
 app.include_router(conversations.router)
+app.include_router(conversation_groups.router)
+app.include_router(quick_replies.router)
+app.include_router(usage.router)
+app.include_router(fiscal.router)
 app.include_router(dashboard.router)
 app.include_router(flows_admin.router)
 app.include_router(tenant_settings.router)
