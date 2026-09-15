@@ -7,7 +7,7 @@ param(
     [string]$AdminPassword = $(if ($env:BELLA_ADMIN_PASSWORD) { $env:BELLA_ADMIN_PASSWORD } else { "Bella@2026!" }),
     [string]$TemplateName = "demo_bella_massa",
     [string]$Language = "pt_BR",
-    [string]$BodyText = "Ola! Este e um disparo de teste da Bella Massa pelo Atenda Ai."
+    [string]$BodyText = "Ola! Este e um disparo de teste da Bella Massa pelo Atende Ai."
 )
 
 $ErrorActionPreference = "Stop"

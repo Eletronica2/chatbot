@@ -167,7 +167,7 @@ def _build_client(account_context: dict | None):
 
 
 async def _report_delivered_usage(*, tenant_id: str, provider_message_id: str) -> None:
-    """Best-effort usage ledger for Atenda Ai on-demand billing. Never raises to callers."""
+    """Best-effort usage ledger for Atende Ai on-demand billing. Never raises to callers."""
     try:
         async with httpx.AsyncClient(timeout=settings.BACKEND_API_TIMEOUT) as client:
             response = await client.post(

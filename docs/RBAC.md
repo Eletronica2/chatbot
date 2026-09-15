@@ -1,10 +1,10 @@
-# RBAC — Atenda Ai
+# RBAC — Atende Ai
 
 ## Roles
 
 | Role | Significado |
 |------|-------------|
-| `superadmin` (+ aliases) | Operador Atenda Ai / backoffice |
+| `superadmin` (+ aliases) | Operador Atende Ai / backoffice |
 | `owner` / `manager` / `admin` | Administrador da empresa (tenant admin) |
 | `agent` / `member` | Atendente |
 

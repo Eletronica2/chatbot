@@ -124,7 +124,7 @@ function Start-TunnelJob {
 }
 
 Write-Host ""
-Write-Host "=== Coexistence session (Atenda Ai) ===" -ForegroundColor Cyan
+Write-Host "=== Coexistence session (Atende Ai) ===" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "[1/5] Docker compose up..." -ForegroundColor Yellow

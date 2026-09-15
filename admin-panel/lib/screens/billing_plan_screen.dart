@@ -106,7 +106,7 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
     } catch (e) {
       if (mounted) {
         _snack(
-          'Checkout indisponível no momento. Contate o suporte Atenda Ai se precisar alterar o plano.',
+          'Checkout indisponível no momento. Contate o suporte Atende Ai se precisar alterar o plano.',
           error: true,
         );
       }
@@ -243,7 +243,7 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
                     ],
                     const SizedBox(height: 16),
                     const Text(
-                      'Uso do mês (Atenda Ai)',
+                      'Uso do mês (Atende Ai)',
                       style: TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 12,
@@ -343,7 +343,7 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Cobrança da Meta é separada da assinatura Atenda Ai. '
+                      'Cobrança da Meta é separada da assinatura Atende Ai. '
                       'Valores abaixo são estimativas por categoria (Brasil), quando disponíveis na API.',
                       style: TextStyle(
                         color: AppColors.textMuted,

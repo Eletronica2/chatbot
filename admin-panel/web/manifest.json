@@ -1,11 +1,11 @@
 {
-    "name": "Atenda Ai",
-    "short_name": "Atenda Ai",
+    "name": "Atende Ai",
+    "short_name": "Atende Ai",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0B0F19",
     "theme_color": "#0B0F19",
-    "description": "Painel operacional Atenda Ai — automação e atendimento no WhatsApp.",
+    "description": "Painel operacional Atende Ai — automação e atendimento no WhatsApp.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

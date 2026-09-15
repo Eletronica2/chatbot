@@ -200,7 +200,7 @@ async function openNav(page, label) {
       const ok = val === lab || val.endsWith(' ' + lab);
       if (!ok) continue;
       // Exclude brand / home chrome in sidebar
-      if (/Atenda Ai|Automação no|Início|Recolher/i.test(val)) continue;
+      if (/Atende Ai|Automação no|Início|Recolher/i.test(val)) continue;
       const r = n.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
       if (r.x > 280) continue; // sidebar only
@@ -385,7 +385,7 @@ async function tryClickFirstTemplate(page) {
   // Overview via logo / home
   const homeOk =
     (await clickSemantic(page, 'Início')) ||
-    (await clickSemantic(page, 'Atenda Ai')) ||
+    (await clickSemantic(page, 'Atende Ai')) ||
     (await clickSemantic(page, 'home'));
   if (!homeOk) {
     // Click brand area

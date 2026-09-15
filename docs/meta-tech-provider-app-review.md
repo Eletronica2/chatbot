@@ -1,6 +1,6 @@
 # Meta Tech Provider — App Review e Embedded Signup
 
-Guia operacional para o app **Atenda Ai / Chatbot Ops** como **Independent Tech Provider** na Meta.
+Guia operacional para o app **Atende Ai / Chatbot Ops** como **Independent Tech Provider** na Meta.
 
 ---
 
@@ -21,7 +21,7 @@ Guia operacional para o app **Atenda Ai / Chatbot Ops** como **Independent Tech 
 
 1. **developers.facebook.com** → seu app → **Configurações do app**
 2. Preencher:
-   - Ícone 1024×1024 (logo Atenda Ai)
+   - Ícone 1024×1024 (logo Atende Ai)
    - Categoria: **Business** ou **Productivity**
    - URL de Política de Privacidade (tabela acima)
 3. **Facebook Login / Domínios do app** (quando Embedded Signup estiver ativo):
@@ -81,7 +81,7 @@ Mostrar **criação de modelo WhatsApp** no painel (não confundir com fluxos YA
 
 Texto sugerido (App Review notes):
 
-> Atenda Ai is a B2B SaaS platform for WhatsApp customer service automation. Business admins connect their WhatsApp Business account via Embedded Signup (coexistence) or manual linking, configure automated flows, and reply to customers. We use whatsapp_business_messaging to send/receive customer messages and whatsapp_business_management to onboard business accounts and manage message templates on behalf of our customers.
+> Atende Ai is a B2B SaaS platform for WhatsApp customer service automation. Business admins connect their WhatsApp Business account via Embedded Signup (coexistence) or manual linking, configure automated flows, and reply to customers. We use whatsapp_business_messaging to send/receive customer messages and whatsapp_business_management to onboard business accounts and manage message templates on behalf of our customers.
 
 Permissões:
 

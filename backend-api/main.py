@@ -251,27 +251,28 @@ async def lifespan(app: FastAPI):
     )
 
     await _sync_default_flows(flow_service, flow_catalog_service)
-    await tenant_admin_service.ensure_bootstrap_tenant(
-        tenant_id=settings.BOOTSTRAP_COMPANY_TENANT_ID,
-        name=settings.BOOTSTRAP_COMPANY_NAME,
-        email=settings.BOOTSTRAP_COMPANY_EMAIL,
-        owner_name=settings.BOOTSTRAP_COMPANY_ADMIN_NAME,
-        owner_email=settings.BOOTSTRAP_COMPANY_ADMIN_EMAIL,
-        owner_password=settings.BOOTSTRAP_COMPANY_ADMIN_PASSWORD,
-        plan=settings.BOOTSTRAP_COMPANY_PLAN,
-        monthly_message_limit=settings.BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT,
-    )
-    await tenant_admin_service.ensure_bootstrap_tenant(
-        tenant_id=settings.BOOTSTRAP_PIZZARIA_TENANT_ID,
-        name=settings.BOOTSTRAP_PIZZARIA_NAME,
-        email=settings.BOOTSTRAP_PIZZARIA_EMAIL,
-        owner_name=settings.BOOTSTRAP_PIZZARIA_ADMIN_NAME,
-        owner_email=settings.BOOTSTRAP_PIZZARIA_ADMIN_EMAIL,
-        owner_password=settings.BOOTSTRAP_PIZZARIA_ADMIN_PASSWORD,
-        plan=settings.BOOTSTRAP_PIZZARIA_PLAN,
-        monthly_message_limit=settings.BOOTSTRAP_PIZZARIA_MONTHLY_MESSAGE_LIMIT,
-        copy_default_flows=False,
-    )
+    if settings.BOOTSTRAP_DEMO_DATA:
+        await tenant_admin_service.ensure_bootstrap_tenant(
+            tenant_id=settings.BOOTSTRAP_COMPANY_TENANT_ID,
+            name=settings.BOOTSTRAP_COMPANY_NAME,
+            email=settings.BOOTSTRAP_COMPANY_EMAIL,
+            owner_name=settings.BOOTSTRAP_COMPANY_ADMIN_NAME,
+            owner_email=settings.BOOTSTRAP_COMPANY_ADMIN_EMAIL,
+            owner_password=settings.BOOTSTRAP_COMPANY_ADMIN_PASSWORD,
+            plan=settings.BOOTSTRAP_COMPANY_PLAN,
+            monthly_message_limit=settings.BOOTSTRAP_COMPANY_MONTHLY_MESSAGE_LIMIT,
+        )
+        await tenant_admin_service.ensure_bootstrap_tenant(
+            tenant_id=settings.BOOTSTRAP_PIZZARIA_TENANT_ID,
+            name=settings.BOOTSTRAP_PIZZARIA_NAME,
+            email=settings.BOOTSTRAP_PIZZARIA_EMAIL,
+            owner_name=settings.BOOTSTRAP_PIZZARIA_ADMIN_NAME,
+            owner_email=settings.BOOTSTRAP_PIZZARIA_ADMIN_EMAIL,
+            owner_password=settings.BOOTSTRAP_PIZZARIA_ADMIN_PASSWORD,
+            plan=settings.BOOTSTRAP_PIZZARIA_PLAN,
+            monthly_message_limit=settings.BOOTSTRAP_PIZZARIA_MONTHLY_MESSAGE_LIMIT,
+            copy_default_flows=False,
+        )
     yield
     logger.info("Backend API shutdown complete")
 

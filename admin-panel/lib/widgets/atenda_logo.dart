@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_tokens.dart';
 
-/// Isotipo + wordmark Atenda Ai (vetor simples, sem só “A no quadrado”).
+/// Isotipo + wordmark Atende Ai (vetor simples, sem só “A no quadrado”).
 class AtendaLogo extends StatelessWidget {
   const AtendaLogo({
     super.key,
@@ -37,7 +37,7 @@ class AtendaLogo extends StatelessWidget {
             TextSpan(
               children: [
                 TextSpan(
-                  text: 'Atenda',
+                  text: 'Atende',
                   style: GoogleFonts.manrope(
                     color: wordmarkColor,
                     fontSize: height * 0.52,

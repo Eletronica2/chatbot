@@ -54,7 +54,7 @@ async function openNav(page, label) {
     for (const n of nodes) {
       const val = (n.getAttribute('aria-label') || n.innerText || '').trim();
       if (!(val === lab || val.endsWith(' ' + lab))) continue;
-      if (/Atenda Ai|Automação no|Navegação principal/i.test(val)) continue;
+      if (/Atende Ai|Automação no|Navegação principal/i.test(val)) continue;
       const r = n.getBoundingClientRect();
       if (r.x > 280 || r.height > 60 || r.width > 280) continue;
       candidates.push({

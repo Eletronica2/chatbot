@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     DEFAULT_ADMIN_PASSWORD: str = "adminpanel"
     DEFAULT_ADMIN_NAME: str = "Arthur Laranjo"
     DEFAULT_ADMIN_ROLE: str = "superadmin"
+    BOOTSTRAP_DEMO_DATA: bool = True
     BOOTSTRAP_COMPANY_TENANT_ID: str = "loja_centro_demo"
     BOOTSTRAP_COMPANY_NAME: str = "Loja Centro Demo"
     BOOTSTRAP_COMPANY_EMAIL: str = "contato@lojacentro.local"

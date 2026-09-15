@@ -2,7 +2,7 @@
 
 ## Status
 
-**PRODUCTION READINESS PARCIAL — NÃO PUBLICAR AINDA**
+**PRODUCTION READINESS PARCIAL — AGUARDANDO ACESSO AWS E SECRETS NOVOS**
 
 A stack de produção foi preparada (Compose, Nginx, backup, env de exemplo, guia EC2). Ainda não declarar pronto para EC2 até:
 
@@ -23,7 +23,7 @@ Nenhuma publicação AWS/DNS/Meta/Stripe foi feita nesta passagem.
 | Serviço | Porta interna | Público em produção |
 | --- | --- | --- |
 | Admin Flutter | estático | 80/443 via Nginx |
-| Backend API | 8000 | via `api.APP_DOMAIN` |
+| Backend API | 8000 | via `api.meuatendeai.com.br` |
 | Flow Engine | 8002 | interno |
 | AI Engine | 8003 | interno |
 | WhatsApp Gateway | 40000 | só `/webhook` via Nginx |
@@ -34,9 +34,10 @@ Nenhuma publicação AWS/DNS/Meta/Stripe foi feita nesta passagem.
 ```text
 Internet
   └── Nginx (80/443)
-        ├── app.APP_DOMAIN  → Flutter Web (SPA hash)
-        ├── api.APP_DOMAIN  → backend-api:8000
-        └── api.APP_DOMAIN/webhook → whatsapp-gateway:40000
+        ├── meuatendeai.com.br         → Landing Flutter
+        ├── painel.meuatendeai.com.br  → Painel Flutter (SPA hash)
+        ├── api.meuatendeai.com.br     → backend-api:8000
+        └── api.meuatendeai.com.br/webhook → whatsapp-gateway:40000
               └── backend-api → flow-engine:8002
                             └── ai-engine:8003
                             └── mysql:3306
@@ -126,7 +127,7 @@ stdout/stderr + `json-file` 10m × 3. Não há ELK.
 
 Antes: `allow_origins=["*"]` + credentials (inválido no browser).
 
-Agora: `CORS_ORIGINS` (default `*` sem credentials). Produção deve listar `https://app.APP_DOMAIN`.
+Agora: `CORS_ORIGINS` (default `*` sem credentials). Produção lista somente `https://painel.meuatendeai.com.br,https://meuatendeai.com.br`.
 
 ## Nginx
 
@@ -143,7 +144,7 @@ Não emitir certificado agora. Guia em `docs/DEPLOY_AWS_EC2.md` (Certbot).
 
 ## Meta
 
-- Webhook: `https://api.APP_DOMAIN/webhook` → gateway
+- Webhook: `https://api.meuatendeai.com.br/webhook` → gateway
 - Verify token: `META_VERIFY_TOKEN`
 - Embedded Signup: painel precisa HTTPS público (não localhost)
 - Data deletion: `POST /api/v1/meta/data-deletion`
@@ -171,8 +172,8 @@ Descoberta Docker: `http://flow-engine:8002`, `http://ai-engine:8003`, `http://b
 Medição `docker stats` desta passagem: ver evidências. Baseline conservadora para WhatsApp + MySQL + 3 APIs + Nginx:
 
 - **t3.micro: não recomendado** (1 GB; MySQL + 4 Python estoura)
-- **t3.small: não recomendado** para produção (2 GB, sem headroom)
-- **t3.medium: recomendado** (4 GB) para homologação/produção inicial
+- **t3.small: capacidade mínima desta primeira produção** (2 GB, exige 2 GB de swap e medição pós-deploy)
+- **t3.medium: upgrade recomendado** se RAM idle superar 80% ou houver swap constante/OOM
 - Disco EBS inicial: 40 GB gp3
 - Swap: documentar 1–2 GB se a instância for menor que medium
 

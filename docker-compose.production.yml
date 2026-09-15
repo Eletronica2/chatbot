@@ -73,7 +73,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash-latest}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      MOCK_AI: ${MOCK_AI:-true}
+      MOCK_AI: "false"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 20s
@@ -120,6 +120,7 @@ services:
       DEFAULT_ADMIN_EMAIL: ${DEFAULT_ADMIN_EMAIL}
       DEFAULT_ADMIN_PASSWORD: ${DEFAULT_ADMIN_PASSWORD}
       DEFAULT_ADMIN_NAME: ${DEFAULT_ADMIN_NAME:-Superadmin}
+      BOOTSTRAP_DEMO_DATA: "false"
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -178,7 +179,7 @@ services:
       whatsapp-gateway:
         condition: service_healthy
     ports:
-      - "8080:80"
+      - "127.0.0.1:8080:80"
     volumes:
       - ./infra/nginx/atenda-ai.local.conf:/etc/nginx/conf.d/default.conf:ro
       - ./admin-panel/build/web:/usr/share/nginx/html:ro

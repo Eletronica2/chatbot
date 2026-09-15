@@ -60,7 +60,7 @@ class _LandingScreenState extends State<LandingScreen> {
       return;
     }
     final uri = commercialWhatsAppUri(
-      prefilledMessage: 'Olá! Quero saber mais sobre o Atenda Ai.',
+      prefilledMessage: 'Olá! Quero saber mais sobre o Atende Ai.',
     );
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
@@ -1159,7 +1159,7 @@ class _Footer extends StatelessWidget {
                 const BrandMark(size: 22),
                 const SizedBox(width: 8),
                 Text(
-                  '© 2026 Atenda Ai',
+                  '© 2026 Atende Ai',
                   style: GoogleFonts.manrope(
                     color: AppColors.textMuted,
                     fontSize: 12,

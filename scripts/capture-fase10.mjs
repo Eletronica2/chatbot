@@ -84,7 +84,7 @@ async function openNav(page, label) {
     for (const n of nodes) {
       const val = (n.getAttribute('aria-label') || n.innerText || '').trim();
       if (!(val === lab || val.endsWith(' ' + lab))) continue;
-      if (/Atenda Ai|Automação no|Início|Recolher/i.test(val)) continue;
+      if (/Atende Ai|Automação no|Início|Recolher/i.test(val)) continue;
       const r = n.getBoundingClientRect();
       if (r.width < 1 || r.height < 1 || r.x > 280) continue;
       candidates.push({

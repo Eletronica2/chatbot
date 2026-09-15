@@ -1,0 +1,4 @@
+LOCAL=BLOCKED (Docker Desktop daemon unavailable)
+REMOTE=NOT_EXECUTED
+Flutter web release build=PASS
+API_BASE_URL=https://api.meuatendeai.com.br

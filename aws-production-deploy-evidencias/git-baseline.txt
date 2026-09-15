@@ -1,0 +1,6 @@
+PWD=C:\Users\eletr\Desktop\chatbot
+INITIAL_BRANCH=main
+INITIAL_COMMIT=ba89655 Add production configuration files and enhance admin panel models
+INITIAL_WORKTREE=clean
+REMOTE=origin https://github.com/Eletronica2/chatbot.git
+DEPLOYED_COMMIT=NOT_DEPLOYED

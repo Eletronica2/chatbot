@@ -1,6 +1,6 @@
 # Guia: gravar os 2 vídeos da App Review Meta
 
-Roteiro prático para gravar os 2 vídeos exigidos pela Meta App Review: envio de mensagem pela plataforma Atenda Ai até o seu WhatsApp pessoal (número de teste) e criação de template no backoffice.
+Roteiro prático para gravar os 2 vídeos exigidos pela Meta App Review: envio de mensagem pela plataforma Atende Ai até o seu WhatsApp pessoal (número de teste) e criação de template no backoffice.
 
 Documento complementar: [meta-tech-provider-app-review.md](./meta-tech-provider-app-review.md).
 
@@ -92,7 +92,7 @@ sequenceDiagram
 | 0:15 | Login no painel |
 | 0:30 | Menu **Conversas** (sidebar do dashboard) |
 | 0:45 | Abrir a conversa com **seu número** |
-| 1:00 | Digitar texto ex.: *"Olá! Esta mensagem foi enviada pela plataforma Atenda Ai."* |
+| 1:00 | Digitar texto ex.: *"Olá! Esta mensagem foi enviada pela plataforma Atende Ai."* |
 | 1:10 | Clicar **Enviar** |
 | 1:20 | **Mostrar o celular** recebendo a mesma mensagem no WhatsApp |
 | 1:40 | (Opcional) Terminal Docker com log do gateway enviando para Graph API |
@@ -161,7 +161,7 @@ Se der erro de token/permissão, renove o **Access Token** temporário na Meta e
 - **OBS Studio** ou gravador de tela do Windows
 - Grave **tela do painel + celular** (câmera secundária ou espelhamento do WhatsApp Web no mesmo vídeo)
 - Formato MP4, ~1–3 min cada, sem editar demais
-- Áudio opcional; narração curta ajuda: *“Admin da pizzaria envia resposta pelo painel Atenda Ai”*
+- Áudio opcional; narração curta ajuda: *“Admin da pizzaria envia resposta pelo painel Atende Ai”*
 
 ---
 

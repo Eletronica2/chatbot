@@ -1,15 +1,15 @@
-# Billing e uso — Atenda Ai vs Meta
+# Billing e uso — Atende Ai vs Meta
 
 ```
 CLIENTE
  ├── Método de pagamento Meta → Meta
 │     └── Uso WhatsApp (templates / mensagens cobráveis Meta)
 │
- └── Método de pagamento Stripe → Atenda Ai
+ └── Método de pagamento Stripe → Atende Ai
        └── Assinatura (Starter/Growth/…) ou On-demand (meter)
 ```
 
-## Planos Atenda Ai
+## Planos Atende Ai
 
 - `starter`, `growth`, `pro`, `enterprise` — limites mensais de mensagens inbound (gate operacional).
 - `on_demand` — allowance ilimitado no gate; cobrança via ledger `usage_events` + Stripe Meter Events (TEST mode).
@@ -31,7 +31,7 @@ Tabela `usage_events`. Evento ideal: status Meta **`delivered`**.
 
 ## Estimativa Meta
 
-`meta_rate_cards` (vigência). UI mostra “Estimativa Meta — Brasil”. **Não** é fatura Atenda Ai.
+`meta_rate_cards` (vigência). UI mostra “Estimativa Meta — Brasil”. **Não** é fatura Atende Ai.
 Consulta docs oficiais Meta: 2026-09-03 (`developers.facebook.com/docs/whatsapp/pricing`).
 
 ## Fiscal / NFS-e

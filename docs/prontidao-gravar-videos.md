@@ -8,8 +8,8 @@
 
 | Item | Status |
 |------|--------|
-| Stack Atenda Ai (Docker) | **OK** — smoke test passou |
-| Envio pelo painel Atenda Ai | **OK** — `Message sent successfully` para `553492665547` |
+| Stack Atende Ai (Docker) | **OK** — smoke test passou |
+| Envio pelo painel Atende Ai | **OK** — `Message sent successfully` para `553492665547` |
 | Cloudflare tunnel | **Ativo** — ver URL abaixo |
 | Health API — WABA billing | **Ainda BLOCKED** (erro 141006) — pagamento pode não ter propagado |
 | Gravar Vídeo 1 agora? | **Só se a mensagem chegar no seu celular** |

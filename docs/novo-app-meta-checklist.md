@@ -1,4 +1,4 @@
-# Checklist: app Meta novo do zero (Atenda Ai)
+# Checklist: app Meta novo do zero (Atende Ai)
 
 Use este guia na ordem. Marque cada item ao concluir.  
 Tempo estimado: **1–2 dias** para gravar os vídeos; **1–3 semanas** para App Review aprovado (após submissão).
@@ -43,7 +43,7 @@ Tempo estimado: **1–2 dias** para gravar os vídeos; **1–3 semanas** para Ap
 - [ ] Abrir: https://developers.facebook.com/apps/  
 - [ ] Clicar **Criar aplicativo**  
 - [ ] Tipo: **Outro** → **Business** (ou fluxo que ofereça WhatsApp)  
-- [ ] Nome do app: **Atenda Ai** (ou **Atenda Ai 2** se o nome antigo conflitar)  
+- [ ] Nome do app: **Atende Ai** (ou **Atende Ai 2** se o nome antigo conflitar)
 - [ ] E-mail de contato: **labeltink02@gmail.com**  
 - [ ] Vincular ao portfólio **Atende Ai** se a Meta pedir  
 
@@ -101,7 +101,7 @@ Abra (substitua o ID):
 
 ## Fase 3 — Pagamento na WABA certa (20 min)
 
-**Erro comum:** cartão só na “Atenda Ai”, WABA de teste sem pagamento.
+**Erro comum:** cartão só na “Atende Ai”, WABA de teste sem pagamento.
 
 - [ ] Abrir: https://business.facebook.com/billing_hub/accounts  
 - [ ] Aba **Contas do WhatsApp Business**  
@@ -166,7 +166,7 @@ curl.exe "http://localhost:40000/webhook?hub.mode=subscribe&hub.verify_token=sup
 
 ---
 
-## Fase 5 — Atualizar Atenda Ai (backoffice + env) (30 min)
+## Fase 5 — Atualizar Atende Ai (backoffice + env) (30 min)
 
 ### 5.1 Backoffice (painel Flutter)
 

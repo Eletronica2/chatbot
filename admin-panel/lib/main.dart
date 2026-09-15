@@ -27,8 +27,11 @@ class AdminPanelApp extends StatefulWidget {
 
 class _AdminPanelAppState extends State<AdminPanelApp> {
   bool _isAuthenticated = authService.isAuthenticated;
-  bool _showLogin = false;
+  bool _showLogin = kIsWeb && Uri.base.host.toLowerCase().startsWith('painel.');
   String? _routeOverride;
+
+  bool get _isPanelHost =>
+      kIsWeb && Uri.base.host.toLowerCase().startsWith('painel.');
 
   void _handleLogin() =>
       setState(() => _isAuthenticated = authService.isAuthenticated);
@@ -84,7 +87,7 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
     final baseTheme = AdminAppTheme.build();
 
     return MaterialApp(
-      title: 'Atenda Ai',
+      title: 'Atende Ai',
       theme: baseTheme,
       darkTheme: baseTheme,
       themeMode: ThemeMode.dark,
@@ -94,7 +97,9 @@ class _AdminPanelAppState extends State<AdminPanelApp> {
               : (_showLogin
                   ? LoginScreen(
                       onLogin: _handleLogin,
-                      onBackToLanding: () => setState(() => _showLogin = false),
+                      onBackToLanding: _isPanelHost
+                          ? null
+                          : () => setState(() => _showLogin = false),
                     )
                   : LandingScreen(
                       onLoginTap: () => setState(() => _showLogin = true),

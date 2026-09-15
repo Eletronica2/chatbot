@@ -33,7 +33,7 @@ Integration type: **Independent Tech Provider**.
 ## App Review notes (English — paste in submission)
 
 ```
-Atenda Ai is a B2B SaaS platform for WhatsApp customer service automation.
+Atende Ai is a B2B SaaS platform for WhatsApp customer service automation.
 
 Business admins connect their WhatsApp Business account via Embedded Signup (coexistence) or manual linking, configure automated conversation flows, and reply to customers from the admin panel.
 

@@ -1,0 +1,10 @@
+EXPECTED_IPV4=3.218.194.130
+CHECKED_AT=2026-09-15 America/Sao_Paulo
+meuatendeai.com.br=NO_A_RECORD
+painel.meuatendeai.com.br=UNRESOLVED
+api.meuatendeai.com.br=UNRESOLVED
+
+PENDING_REGISTRO_BR:
+A @      3.218.194.130
+A painel 3.218.194.130
+A api    3.218.194.130

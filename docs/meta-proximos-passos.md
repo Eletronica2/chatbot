@@ -1,6 +1,6 @@
 # Meta — o que fazer agora (Access Verification + App Review)
 
-App: **Atenda Ai** (`873826165763092`)  
+App: **Atende Ai** (`873826165763092`)
 Empresa: **34.144.027 ARTHUR GABRIEL MARTINS LARANJO** · CNPJ **34.144.027/0001-70**  
 Tipo: **Independent Tech Provider**
 
@@ -34,13 +34,13 @@ Ignore o aviso cosmético `fb:app_id` no depurador. Não bloqueia nada.
 **Primary category / How will your app use business assets?**
 
 ```
-We are an Independent Tech Provider (SaaS). Atenda Ai lets restaurants and local businesses connect their own WhatsApp Business accounts to our platform so they can automate customer service and reply from our admin panel.
+We are an Independent Tech Provider (SaaS). Atende Ai lets restaurants and local businesses connect their own WhatsApp Business accounts to our platform so they can automate customer service and reply from our admin panel.
 ```
 
 **What is your business use case?**
 
 ```
-Atenda Ai is a B2B WhatsApp customer-service automation platform operated by 34.144.027 ARTHUR GABRIEL MARTINS LARANJO (CNPJ 34.144.027/0001-70, Uberaba-MG, Brazil).
+Atende Ai is a B2B WhatsApp customer-service automation platform operated by 34.144.027 ARTHUR GABRIEL MARTINS LARANJO (CNPJ 34.144.027/0001-70, Uberaba-MG, Brazil).
 
 Our customers (other businesses) connect their WhatsApp Business Account (WABA) via Embedded Signup / coexistence. We process messages, templates, and account metadata on their behalf so they can run automated flows and human agent replies inside our product.
 
@@ -50,7 +50,7 @@ We only access another business's WhatsApp assets after that business explicitly
 **How do you obtain consent / onboard customers?**
 
 ```
-Business owners sign up on Atenda Ai, then complete Meta Embedded Signup (including coexistence when applicable) from our admin panel. They grant WhatsApp permissions to our Meta app (ID 873826165763092) for their own WABA and phone number. We store tokens and IDs only for that tenant and use them to send/receive messages and manage templates.
+Business owners sign up on Atende Ai, then complete Meta Embedded Signup (including coexistence when applicable) from our admin panel. They grant WhatsApp permissions to our Meta app (ID 873826165763092) for their own WABA and phone number. We store tokens and IDs only for that tenant and use them to send/receive messages and manage templates.
 ```
 
 **Privacy / company identity**
@@ -117,7 +117,7 @@ Abrir: [App Review → Permissions](https://developers.facebook.com/apps/8738261
 ### Notas da submissão (colar)
 
 ```
-Atenda Ai is a B2B SaaS platform for WhatsApp customer service automation.
+Atende Ai is a B2B SaaS platform for WhatsApp customer service automation.
 
 Business admins connect their WhatsApp Business account via Embedded Signup (coexistence) or manual linking, configure automated conversation flows, and reply to customers from the admin panel.
 

@@ -19,7 +19,7 @@ function Write-Check([string]$Label, [bool]$Ok, [string]$Detail = "") {
 }
 
 Write-Host ""
-Write-Host "=== Smoke test App Review (Atenda Ai) ===" -ForegroundColor Cyan
+Write-Host "=== Smoke test App Review (Atende Ai) ===" -ForegroundColor Cyan
 Write-Host ""
 
 $allOk = $true

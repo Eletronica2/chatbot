@@ -1,6 +1,6 @@
 # Operational Inbox (PABX WhatsApp)
 
-Central de atendimento do Atenda Ai sobre conversas WhatsApp.
+Central de atendimento do Atende Ai sobre conversas WhatsApp.
 
 ## Ownership
 

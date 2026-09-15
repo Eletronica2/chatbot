@@ -1,0 +1,4 @@
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  8.0G  4.3G  3.7G  54% /
+
+P1: root EBS capacity is tight for Docker images, MySQL growth, backups and logs.

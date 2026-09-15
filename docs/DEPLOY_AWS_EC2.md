@@ -1,16 +1,14 @@
-# Deploy AWS EC2 (futuro)
+# Deploy AWS EC2 — Atende Ai
 
-Não executar enquanto a conta AWS não estiver liberada.
-
-Placeholders: `APP_DOMAIN`, `API_DOMAIN` (`app.` / `api.`).
+Domínios oficiais: `meuatendeai.com.br`, `painel.meuatendeai.com.br` e `api.meuatendeai.com.br`.
 
 ## 1. Criar EC2
 
 - Ubuntu Server 24.04 LTS
-- Instance: **t3.medium** (ver `docs/PRODUCTION_READINESS.md`)
+- Instance atual: **t3.small** (2 GiB; criar 2 GiB de swap e medir memória após subir)
 - Storage: 40 GB gp3
 - Key pair (ED25519)
-- Sem Elastic IP até o DNS existir, depois associar
+- Associar Elastic IP antes de configurar o DNS oficial
 
 ## 2. Security Group
 
@@ -62,7 +60,7 @@ Preencher secrets **novos**. Não reutilizar tokens que estiveram no Git.
 ## 7. Build do admin
 
 ```bash
-API_BASE_URL=https://api.APP_DOMAIN ./scripts/build_admin_web.sh
+API_BASE_URL=https://api.meuatendeai.com.br ./scripts/build_admin_web.sh
 ```
 
 ## 8. Subir Compose
@@ -84,8 +82,8 @@ Não usar senhas de `CREDENCIAIS_TESTE.md` em produção.
 
 ## 10. Nginx + DNS
 
-1. Apontar `app.APP_DOMAIN` e `api.APP_DOMAIN` para o Elastic IP
-2. Trocar o conf local pelo `infra/nginx/atenda-ai.conf` (substituir `APP_DOMAIN`)
+1. Apontar raiz, `painel` e `api` para o Elastic IP
+2. Instalar `infra/nginx/atende-ai-edge.conf` no Nginx do host
 3. Recarregar Nginx
 
 Em produção real, TLS na borda:
@@ -105,35 +103,36 @@ Esta stack usa Nginx em container. Opções:
 Com Nginx no host na frente do container:
 
 ```bash
-sudo certbot --nginx -d app.APP_DOMAIN -d api.APP_DOMAIN
+sudo certbot --nginx -d meuatendeai.com.br -d painel.meuatendeai.com.br -d api.meuatendeai.com.br
 ```
 
 ## 12. Meta
 
 Configurar no App Dashboard:
 
-- Callback webhook: `https://api.APP_DOMAIN/webhook`
+- Callback webhook: `https://api.meuatendeai.com.br/webhook`
 - Verify token = `META_VERIFY_TOKEN`
-- Embedded Signup / OAuth redirect: origem HTTPS do `app.APP_DOMAIN`
-- Data deletion: `https://api.APP_DOMAIN/api/v1/meta/data-deletion`
+- Embedded Signup / OAuth redirect: origem `https://painel.meuatendeai.com.br`
+- Data deletion: `https://api.meuatendeai.com.br/api/v1/meta/data-deletion`
 
 Não apontar para localhost.
 
 ## 13. Stripe
 
-- Webhook: `https://api.APP_DOMAIN/api/v1/billing/webhooks/stripe`
-- Success/cancel/portal = URLs `BILLING_*` em `https://app.APP_DOMAIN/#/billing/...`
+- Webhook: `https://api.meuatendeai.com.br/api/v1/billing/webhooks/stripe`
+- Success/cancel/portal = URLs `BILLING_*` em `https://painel.meuatendeai.com.br/#/billing/...`
 
 Não ativar cobrança até as keys de live e o webhook estiverem testados em modo test.
 
 ## 14. Smoke
 
-- `https://app.APP_DOMAIN` carrega o admin
+- `https://meuatendeai.com.br` carrega a landing
+- `https://painel.meuatendeai.com.br` carrega o login do admin
 - Login
 - Overview, Conversas, Automações, Ações, Templates, WhatsApp, Equipe
 - Superadmin: Clientes, Cobrança
-- `GET https://api.APP_DOMAIN/health`
-- `GET https://api.APP_DOMAIN/webhook` (Meta verify)
+- `GET https://api.meuatendeai.com.br/health`
+- `GET https://api.meuatendeai.com.br/webhook` (Meta verify)
 
 ## 15. Backup
 
@@ -152,7 +151,7 @@ Política inicial: dump diário, retenção 7 dias.
 
 ```bash
 git checkout <tag-anterior>
-API_BASE_URL=https://api.APP_DOMAIN ./scripts/build_admin_web.sh
+API_BASE_URL=https://api.meuatendeai.com.br ./scripts/build_admin_web.sh
 docker compose -f docker-compose.production.yml --env-file .env.production up -d --build
 ```
 

@@ -97,7 +97,7 @@ Suporte: https://developers.facebook.com/support/
 
 ---
 
-## Depois do desbloqueio — alinhar Atenda Ai
+## Depois do desbloqueio — alinhar Atende Ai
 
 IDs corretos da conta atual:
 

@@ -1,4 +1,4 @@
-# Inventário funcional da UI Super Admin — Atenda Ai
+# Inventário funcional da UI Super Admin — Atende Ai
 
 Documento de auditoria. Fonte de verdade para redesign (Stitch).
 
@@ -62,7 +62,7 @@ Fluxo existente: Landing cria **Lead** → Super Admin gera **Proposta** (opcion
 
 | Item | `id` | Visível Super Admin | Visível tenant comum |
 | --- | --- | --- | --- |
-| Marca “Atenda Ai” (home) | `home` | sim (tap no brand) | sim |
+| Marca “Atende Ai” (home) | `home` | sim (tap no brand) | sim |
 | Conversas | `conversations` | sim | sim |
 | Automações | `automations` | sim | sim |
 | Ações | `actions` | sim | sim |
@@ -87,7 +87,7 @@ Logout: implementado.
 - Nome exibido: `overview.tenantName` da API, ou “Visão geral”. No contexto sistema a API devolve `tenant_name`: **"Operacao SaaS"**.
 - Arquivo: `admin-panel/lib/screens/overview_screen.dart` + `operation_hub_panel.dart`
 - Estado: `_selectedNav == 'home'` (brand)
-- Menu: marca Atenda Ai
+- Menu: marca Atende Ai
 - Role: qualquer autenticado; layout Super Admin no tenant home é o ramo `_isSystemHomeContext`
 
 ### Conteúdo realmente pintado
@@ -391,7 +391,7 @@ Menu Equipe e menu WhatsApp **não existem** para Super Admin; gestão equivalen
 
 | Menu | Tela | Existe hoje? | Dados reais | Ações reais | Arquivo Flutter | API |
 | --- | --- | --- | --- | --- | --- | --- |
-| Marca Atenda Ai | Visão geral | sim | Parcial: conversas + audit + top tenants; KPIs da faixa misturam API global, conversas e **subscription hardcoded** no home | Nav + refresh | `overview_screen.dart` | `GET /api/v1/dashboard/overview`, `GET /api/v1/conversations` |
+| Marca Atende Ai | Visão geral | sim | Parcial: conversas + audit + top tenants; KPIs da faixa misturam API global, conversas e **subscription hardcoded** no home | Nav + refresh | `overview_screen.dart` | `GET /api/v1/dashboard/overview`, `GET /api/v1/conversations` |
 | Conversas | Inbox | sim | Sessões do `x-tenant-id` | Abrir, filtrar, responder | `dashboard_screen.dart` | `/api/v1/conversations*` |
 | Automações | Builder de fluxos | sim | Fluxos do tenant; vazio no home | CRUD/simulação se tenant comercial | `settings_screen.dart` | `/api/v1/flows*`, tenant settings |
 | Ações | Ações reutilizáveis | sim | Do tenant ativo | CRUD | `actions_screen.dart` | actions do tenant |

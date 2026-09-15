@@ -478,7 +478,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _navBilling:
         return 'Gerencie plano, uso, cobrança e saúde financeira da operação.';
       case _navBillingPlan:
-        return 'Veja o plano Atenda Ai, uso do mês e custos Meta separados.';
+        return 'Veja o plano Atende Ai, uso do mês e custos Meta separados.';
       default:
         return 'Seu resumo operacional do dia.';
     }

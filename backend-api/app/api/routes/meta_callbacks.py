@@ -64,11 +64,11 @@ async def meta_data_deletion_status(
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
-  <title>Solicitação de exclusão de dados | Atenda Ai</title>
+  <title>Solicitação de exclusão de dados | Atende Ai</title>
 </head>
 <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.6;">
   <h1>Solicitação registrada</h1>
-  <p>Sua solicitação de exclusão de dados foi recebida pela Atenda Ai.</p>
+  <p>Sua solicitação de exclusão de dados foi recebida pela Atende Ai.</p>
   <p><strong>Código de confirmação:</strong> {id}</p>
   <p>Se precisar de suporte, envie este código para
     <a href="mailto:atendaai@gmail.com">atendaai@gmail.com</a>.</p>

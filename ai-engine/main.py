@@ -6,7 +6,7 @@ import sys
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.ai import router as ai_router
@@ -66,11 +66,18 @@ async def root() -> dict:
 
 
 @app.get("/health")
-async def health() -> dict:
+async def health(response: Response) -> dict:
+    provider = settings.AI_PROVIDER.strip().lower()
+    provider_ready = (
+        (provider == "gemini" and bool(settings.GEMINI_API_KEY))
+        or (provider == "openai" and bool(settings.OPENAI_API_KEY))
+    )
+    ready = bool(settings.MOCK_AI or provider_ready)
+    if not ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return {
-        "status": "healthy",
+        "status": "healthy" if ready else "unhealthy",
         "service": settings.APP_NAME,
-        "version": settings.APP_VERSION,
     }
 
 

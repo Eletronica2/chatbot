@@ -62,7 +62,7 @@ async function openNav(page, label) {
     for (const n of nodes) {
       const val = (n.getAttribute('aria-label') || n.innerText || '').trim();
       if (!(val === lab || val.endsWith(' ' + lab) || val.includes(lab))) continue;
-      if (/Atenda Ai|Automação no|Navegação principal|tooltip|Planos,/i.test(val)) continue;
+      if (/Atende Ai|Automação no|Navegação principal|tooltip|Planos,/i.test(val)) continue;
       const r = n.getBoundingClientRect();
       if (r.x > 260 || r.height > 64 || r.width < 1 || r.y < 40) continue;
       c.push({
@@ -126,7 +126,7 @@ async function openNav(page, label) {
     const nodes = Array.from(document.querySelectorAll('flt-semantics'));
     for (const n of nodes) {
       const val = (n.getAttribute('aria-label') || n.innerText || '').trim();
-      if (val !== 'Início' && !/^Atenda Ai$/i.test(val)) continue;
+      if (val !== 'Início' && !/^Atende Ai$/i.test(val)) continue;
       const r = n.getBoundingClientRect();
       if (r.x > 280 || r.y > 120 || r.width < 1) continue;
       return { x: r.x + r.width / 2, y: r.y + r.height / 2, val };

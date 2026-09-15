@@ -1,0 +1,3 @@
+PASS: docker compose -p atende-prod -f docker-compose.production.yml config --quiet
+Validation used ephemeral non-production values in process environment.
+No expanded secrets were printed or stored.

@@ -132,7 +132,7 @@ async def list_plans(
         "plans": billing_service.available_plans(),
         "provider_ready": billing_service.provider_ready,
         "note": (
-            "Atenda Ai cobra via Stripe (assinatura ou on-demand). "
+            "Atende Ai cobra via Stripe (assinatura ou on-demand). "
             "Tarifas WhatsApp/Meta são cobradas diretamente pela Meta."
         ),
     }

@@ -95,11 +95,11 @@ def test_resolve_signup_display_fields_prefers_graph_phone():
         display_name='WhatsApp 1155710810954749',
         phone_status={
             'display_phone_number': '+55 34 3195-3594',
-            'verified_name': 'Atenda Ai',
+            'verified_name': 'Atende Ai',
         },
     )
     assert phone == '+55 34 3195-3594'
-    assert name == 'Atenda Ai'
+    assert name == 'Atende Ai'
 
 
 def test_superadmin_can_patch_ai_models():
