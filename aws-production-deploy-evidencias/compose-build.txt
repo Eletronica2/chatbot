@@ -1,4 +1,8 @@
-LOCAL=BLOCKED (Docker Desktop daemon unavailable)
-REMOTE=NOT_EXECUTED
-Flutter web release build=PASS
+CHECKED_AT=2026-09-17
+REMOTE_BUILD=PASS
+NOTE=Required Docker Buildx plugin (>=0.17); installed buildx 0.19.3 on host
+OOM_DURING_BUILD=no
+FLUTTER_RELEASE=PASS
 API_BASE_URL=https://api.meuatendeai.com.br
+BUNDLE_CONTAINS_API_HOST=yes
+BUNDLE_LOCALHOST_RUNTIME_URL=no (only instructional string mentioning localhost)

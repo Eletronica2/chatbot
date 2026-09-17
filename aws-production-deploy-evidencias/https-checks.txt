@@ -1,1 +1,11 @@
-NOT_EXECUTED: DNS must resolve to the Elastic IP before Certbot.
+CHECKED_AT=2026-09-17T02:13:52Z
+https://meuatendeai.com.br -> 200 OK (TLS valid, no -k)
+https://painel.meuatendeai.com.br -> 200 OK (TLS valid, no -k)
+https://api.meuatendeai.com.br/health -> 200 OK healthy Backend API
+http://meuatendeai.com.br -> 301 https://meuatendeai.com.br/
+http://painel.meuatendeai.com.br -> 301 https://painel.meuatendeai.com.br/
+http://api.meuatendeai.com.br/health -> 301 https://api.meuatendeai.com.br/health
+main.dart.js -> 200 (3.8MB)
+favicon.png -> 200
+manifest.json -> 200
+RESULT=PASS

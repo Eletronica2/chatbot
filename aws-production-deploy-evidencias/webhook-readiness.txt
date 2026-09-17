@@ -1,0 +1,8 @@
+CHECKED_AT=2026-09-17T02:13:52Z
+REAL_PATH=/webhook
+PUBLIC_URL=https://api.meuatendeai.com.br/webhook
+WITHOUT_META_PARAMS=HTTP 403 {"detail":"Verification failed"}
+ACCEPTABLE=yes (not 404/502/timeout)
+META_WEBHOOK_URL=https://api.meuatendeai.com.br/webhook
+REGISTERED_IN_META=NO (intentional — stop before Meta)
+RESULT=PASS readiness

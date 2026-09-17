@@ -1,3 +1,10 @@
-PASS: docker compose -p atende-prod -f docker-compose.production.yml config --quiet
-Validation used ephemeral non-production values in process environment.
-No expanded secrets were printed or stored.
+CHECKED_AT=2026-09-17
+COMMAND=docker compose -p atende-prod --env-file .env.production -f docker-compose.production.yml config
+RESULT=PASS
+PUBLISHED_PORTS=127.0.0.1:8080->80/tcp (nginx only)
+INTERNAL_ONLY=mysql:3306 backend:8000 flow:8002 ai:8003 gateway:40000
+LOGGING=json-file max-size=10m max-file=3
+TRUST_PROXY=true (backend)
+NETWORK=bridge atenda
+VOLUME=atende-prod_mysql_data
+SECRETS_REDACTED_FROM_EVIDENCE=yes

@@ -1,5 +1,10 @@
-LOCAL_STATIC_CHECKS=PASS
-PYTHON_TESTS=35 passed
-PYTHON_COMPILE=PASS
-FLUTTER_RELEASE_BUILD=PASS
-REMOTE_HEALTH=NOT_EXECUTED
+CHECKED_AT=2026-09-17T02:13:52Z
+PUBLIC_API_HEALTH=https://api.meuatendeai.com.br/health -> 200 {"status":"healthy","service":"Backend API","version":"1.0.0"}
+INTERNAL_backend-api=/health healthy
+INTERNAL_ai-engine=/health healthy
+INTERNAL_flow-engine=/health healthy
+INTERNAL_whatsapp-gateway=/health healthy
+EDGE_127.0.0.1:8080/=200
+EDGE_127.0.0.1:8080/health=200 Backend API
+EDGE_127.0.0.1:8080/conversations=200 (SPA index, no structural 404)
+RESULT=PASS

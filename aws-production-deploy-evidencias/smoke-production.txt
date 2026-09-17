@@ -1,2 +1,22 @@
-LOCAL BUNDLE SMOKE=PASS
-PUBLIC PRODUCTION SMOKE=NOT_EXECUTED
+CHECKED_AT=2026-09-17
+LANDING https://meuatendeai.com.br:
+  title=Atende Ai
+  flutter SPA=yes
+  hostname routing shows landing (non-painel host)
+PAINEL https://painel.meuatendeai.com.br:
+  title=Atende Ai
+  flutter assets=main.dart.js 200
+  API_BASE=https://api.meuatendeai.com.br
+  no runtime localhost API
+SUPERADMIN_LOGIN_API:
+  POST /api/v1/auth/login -> 200
+  role=superadmin
+  token=present (redacted)
+TENANT_ADMIN_UI_SMOKE=limited (only superadmin user present; no second tenant-admin user)
+AGENT_SMOKE=N/A (no agent user)
+DRY_RUN_AUTOMATION=not executed in browser; no outbound Meta; messages=0 leads=0
+BILLING=Stripe keys EMPTY / TEST-not-configured acceptable
+META=not configured (intentional)
+CORS_PREFLIGHT:
+  Origin https://painel.meuatendeai.com.br -> allow-origin exact + credentials=true (no *)
+RESULT=PASS (core) / PARTIAL (tenant-admin & agent UI paths lack dedicated users)

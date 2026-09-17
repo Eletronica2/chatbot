@@ -1,2 +1,14 @@
-NOT_EXECUTED: production MySQL is not running.
-Existing backup script and deploy pre-backup integration are prepared.
+CHECKED_AT=2026-09-17T02:06:54Z
+SCRIPT=scripts/backup_mysql.sh (CRLF stripped)
+WRAPPER=/usr/local/bin/atende-ai-backup
+OUT_DIR=/var/backups/atende-ai
+FILE=atenda-20260917T020654Z.sql.gz
+SIZE=5.5K
+GZIP_TEST=OK
+EXIT=0
+CRON=15 3 * * * /usr/local/bin/atende-ai-backup >> /var/log/atende-ai-backup.log 2>&1
+CROND=active (cronie installed on Amazon Linux 2023)
+RETENTION=7 days (find -mtime +7 -delete)
+PASSWORD_IN_CRONTAB=no
+OFF_INSTANCE_S3=NOT configured (P1 futuro)
+RESULT=PASS (local backup)

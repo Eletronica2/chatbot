@@ -1,0 +1,11 @@
+CHECKED_AT=2026-09-17T02:19:10Z
+CERTIFICATE_NAME=meuatendeai.com.br
+DOMAINS=meuatendeai.com.br api.meuatendeai.com.br painel.meuatendeai.com.br
+EXPIRY=2026-12-16 (VALID ~89 days)
+KEY_TYPE=ECDSA
+certbot renew --dry-run=PASS (Congratulations, all simulated renewals succeeded)
+RENEWAL_MECHANISM=certbot-renew.timer (systemd)
+TIMER_ENABLED=yes
+TIMER_ACTIVE=yes
+WWW_INCLUDED=no (no DNS www)
+RESULT=PASS

@@ -1,4 +1,7 @@
-PASS: source search has no active exact occurrence of old branding "Atenda Ai" or "Atenda AI".
-PASS: Flutter release title/manifest show "Atende Ai".
-PASS: visual smoke shows "Atende Ai" on landing and panel login.
-PASS: painel.localhost opens login directly; localhost opens landing.
+CHECKED_AT=2026-09-17
+OFFICIAL_NAME=Atende Ai
+LANDING_TITLE=Atende Ai
+PAINEL_TITLE=Atende Ai
+USER_FACING_OLD_BRAND=not observed on public HTML titles
+INTERNAL_IDENTIFIERS=atenda / atende-prod preserved (OK)
+RESULT=PASS

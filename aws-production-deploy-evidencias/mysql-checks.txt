@@ -1,0 +1,18 @@
+CHECKED_AT=2026-09-17T02:13:51Z (post-reboot)
+ENGINE=mysql:8.4 container
+HEALTH=healthy
+VOLUME=atende-prod_mysql_data -> /var/lib/mysql (persistent)
+PUBLIC_PORT_3306=NOT exposed
+HOST_BIND=none
+DATABASE=atenda (name present; value not shown)
+CHARSET=utf8mb4 (schema init)
+COUNTS_POST_REBOOT=
+  users=1 (role=superadmin)
+  tenants=1
+  subscriptions=1
+  conversation_groups=1
+  meta_rate_cards=4
+  messages=0
+  leads=0
+DEMO_DATA=disabled (BOOTSTRAP_DEMO_DATA=false; migrations 002/004 skipped)
+RESULT=PASS

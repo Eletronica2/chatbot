@@ -1,7 +1,15 @@
-PRE_STACK
-               total        used        free      shared  buff/cache   available
-Mem:           1.9Gi       281Mi       518Mi        42Mi       1.1Gi       1.4Gi
-Swap:          2.0Gi          0B       2.0Gi
-
-SWAPPINESS=10
-SWAP_PERSISTENT=PASS
+CHECKED_AT=2026-09-17T02:15:19Z
+Mem:
+  total 1.9Gi
+  used 937Mi
+  free 309Mi
+  shared 1.0Mi
+  buff/cache 662Mi
+  available 828Mi
+Swap:
+  total 2.0Gi
+  used 0B
+  free 2.0Gi
+swapon:
+  /swapfile file 2G 0B
+RESULT=PASS

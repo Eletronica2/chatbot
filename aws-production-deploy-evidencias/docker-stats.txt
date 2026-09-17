@@ -1,1 +1,15 @@
-NOT_EXECUTED: production containers are not running.
+CHECKED_AT=2026-09-17T02:15:19Z (post-reboot idle)
+nginx=8.2MiB (0.43%)
+whatsapp-gateway=49.6MiB (2.60%)
+backend-api=68.8MiB (3.60%)
+flow-engine=54.1MiB (2.83%)
+ai-engine=48.3MiB (2.53%)
+mysql=466.7MiB (24.44%)
+buildx_buildkit=10.4MiB (0.54%)
+HOST_MEM_USED≈937MiB / 1.9GiB (~49%)
+HOST_MEM_AVAILABLE≈828MiB
+SWAP_USED=0B
+IDLE_RAM_GT_85PCT=no
+CONSTANT_SWAP_IDLE=no
+OOM=no
+RESULT=PASS (watch MySQL ~467MiB on t3.small)

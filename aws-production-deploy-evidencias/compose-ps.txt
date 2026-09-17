@@ -1,1 +1,10 @@
-NOT_EXECUTED: production stack has not been started.
+CHECKED_AT=2026-09-17T02:13:51Z (post-reboot)
+PROJECT=atende-prod
+atende-prod-mysql-1=Up (healthy) 3306/tcp internal
+atende-prod-backend-api-1=Up (healthy) 8000/tcp internal
+atende-prod-flow-engine-1=Up (healthy) 8002/tcp internal
+atende-prod-ai-engine-1=Up (healthy) 8003/tcp internal
+atende-prod-whatsapp-gateway-1=Up (healthy) 40000/tcp internal
+atende-prod-nginx-1=Up 127.0.0.1:8080->80/tcp
+RESTART_LOOPS=none
+RESULT=PASS

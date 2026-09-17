@@ -1,4 +1,9 @@
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1  8.0G  4.3G  3.7G  54% /
-
-P1: root EBS capacity is tight for Docker images, MySQL growth, backups and logs.
+CHECKED_AT=2026-09-17T02:15:19Z
+/dev/nvme0n1p1 xfs 20G 6.2G 14G 31% /
+docker system df:
+  Images 1.479GB (reclaimable ~147MB)
+  Containers 8B
+  Local Volumes 222.9MB
+  Build Cache 717.6kB
+/var/lib/docker=3.5G
+RESULT=PASS (capacity OK)

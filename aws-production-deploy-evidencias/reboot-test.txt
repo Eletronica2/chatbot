@@ -1,1 +1,15 @@
-NOT_EXECUTED: remote host access is pending.
+CHECKED_AT=2026-09-17T02:13:51Z
+REBOOT_ISSUED=2026-09-17T02:10:07Z
+POST_REBOOT_UPTIME=~3 min at first full check; ~8 min at final stats
+SWAP=/swapfile 2G present, USED=0B
+FREE_MEM=available ~828MiB / total 1.9GiB
+DF_/=20G 6.2G used 31%
+DOCKER=active enabled; containers auto-restarted
+COMPOSE_PS=all healthy (mysql backend flow ai gateway); nginx Up
+NGINX_HOST=active enabled; nginx -t PASS
+HTTPS_AFTER_REBOOT=PASS (landing/painel/api)
+MYSQL_VOLUME=atende-prod_mysql_data persisted
+SUPERADMIN=persisted (users=1 role=superadmin)
+SCHEMA_MIGRATIONS=7 rows persisted
+BACKUP_FILE=still present after reboot
+RESULT=PASS

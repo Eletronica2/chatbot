@@ -1,0 +1,11 @@
+CHECKED_AT=2026-09-17
+HOST_CONF=/etc/nginx/conf.d/atende-ai.conf
+nginx -t=PASS
+systemctl nginx=active enabled
+VHOSTS=
+  meuatendeai.com.br -> 127.0.0.1:8080
+  painel.meuatendeai.com.br -> 127.0.0.1:8080
+  api.meuatendeai.com.br -> 127.0.0.1:8080
+CONTAINER_NGINX=Flutter SPA + /api /health /webhook proxy
+HTTP_TO_HTTPS=301 for all three hosts
+RESULT=PASS

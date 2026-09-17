@@ -1,111 +1,238 @@
 # AWS Production Deploy Report — Atende Ai
 
-## 1. Status
+**Status final:** ATENDE AI PRODUÇÃO ONLINE — PRONTO PARA CONFIGURAR META
 
-Preparação local e bootstrap da EC2 concluídos. Produção ainda não está online: faltam DNS, credenciais novas de produção, build/start da stack, HTTPS, backup, reboot e smoke público.
+Checked at: 2026-09-17 (America/Sao_Paulo / UTC)
 
-## 2. Snapshot implantado
+---
 
-Baseline inicial: `main` / `ba89655`, árvore limpa. Foi enviada uma cópia sanitizada da árvore de trabalho com as correções desta etapa; como as mudanças ainda não têm commit, o snapshot implantável é identificado como `source-copy`.
+## 1. Status geral
 
-## 3. Branding Atende Ai
+Produção real no ar em `3.218.194.130` com HTTPS válido nos três hosts, stack Docker healthy pós-reboot, MySQL persistente, backup diário local, webhook público respondendo de forma controlada. Meta/Facebook e Stripe LIVE **não** foram configurados (conforme escopo).
 
-PASS local. Textos visíveis, título, manifest, landing e login foram atualizados. Nomes internos históricos foram preservados.
+## 2. Snapshot/commit implantado
 
-## 4. EC2
+- Repo local HEAD de referência: `e65b9e9` (`prod`)
+- Código em `/opt/atende-ai` (cópia sanitizada implantada; sem `.git`/`.pem` no servidor)
+- Compose project: `atende-prod` / `docker-compose.production.yml`
 
-- Nome: `Atende Ai`
-- Instance ID: `i-0f8a52f8c7982590c`
-- Região/AZ: `us-east-1` / `us-east-1f`
-- Tipo: `t3.small`, 2 vCPU, 2 GiB RAM, x86_64
-- Sistema real: Amazon Linux 2023 (a AMI não é Ubuntu, apesar da expectativa inicial)
-- IPv4 privado: `172.31.77.86`
-- Security Group: `sg-0eaa966854eb4344e`
+## 3. EC2
 
-## 5. Elastic IP
+| Campo | Valor |
+| --- | --- |
+| Nome | Atende Ai |
+| Instance ID | `i-0f8a52f8c7982590c` |
+| Tipo | `t3.small` (2 vCPU, ~1.9 GiB RAM) |
+| Região/AZ | `us-east-1` / `us-east-1f` |
+| Usuário SSH | `ec2-user` |
+| Key Pair | `atendeai` |
 
-PASS. `3.218.194.130` associado à instância correta.
+## 4. Elastic IP
 
-- Allocation ID: `eipalloc-0e3cdd25ebc86a778`
-- Association ID: `eipassoc-061e7fba7f4f72ae5`
+PASS — `3.218.194.130` associado à instância.
 
-## 6. Security Group
+## 5. Amazon Linux
 
-PASS. Regras de entrada verificadas: SSH 22 apenas de `186.248.169.131/32`; HTTP 80 e HTTPS 443 de `0.0.0.0/0`. Não há exposição de 3306, 8000, 8002, 8003, 40000 ou 8080.
+PASS — Amazon Linux 2023.12.20260914, kernel `6.18.48-107.148.amzn2023.x86_64`.
 
-## 7–10. SSH, sistema, swap e Docker
+## 6. EBS 20 GiB
 
-- SSH por chave: PASS; host key verificada por TOFU, sem desabilitar `StrictHostKeyChecking`.
-- Usuário correto da AMI: `ec2-user`.
-- Atualizações do sistema: PASS, nada pendente no momento da execução.
-- UTC/NTP: PASS.
-- Swap: 2 GiB persistente, `vm.swappiness=10`, sem duplicação.
-- Docker: 25.0.16 server / 25.0.14 client; hello-world PASS.
-- Docker Compose oficial: v5.5.1, binário validado por SHA-256.
-- `ec2-user` no grupo Docker; `docker ps` sem sudo PASS. O grupo Docker equivale a privilégio root.
+PASS — `vol-0d86385575366db14` gp3 20 GiB. Sem nova ampliação / sem mudança de IOPS/throughput.
 
-## 11–19. Código, ambiente, domínios, DNS, Landing, Painel, API, Flutter e CORS
+## 7. Filesystem
 
-- Código sanitizado enviado para `/opt/atende-ai`; pacote sem `.pem`, `.env` real, `.git` ou caches.
-- `.env.production` real ainda não foi criado: depende de credencial do provider de IA e definição segura do primeiro superadmin.
-- Flutter release: PASS com `API_BASE_URL=https://api.meuatendeai.com.br`.
-- Landing e painel: smoke local PASS; painel abre diretamente no login pelo hostname.
-- Compose local: PASS; somente `127.0.0.1:8080` é publicado.
-- CORS: landing e painel oficiais, sem wildcard.
-- DNS em 2026-09-15: os três registros A ainda não resolvem para o EIP.
+PASS — partição XFS `/dev/nvme0n1p1` expandida (`growpart` + `xfs_growfs`). `df -h /` ≈ **20G** (6.2G usados, 14G livres, 31%).
 
-## 20–29. MySQL, migrations, persistência, serviços, Nginx e HTTPS
+## 8. Swap
 
-- MySQL permanece em Docker e sem porta publicada.
-- Demo bootstrap foi desativado explicitamente na produção.
-- Migrations existentes: `001` a `009`; `002` e `004` contêm dados demo e não serão aplicadas cegamente.
-- Nginx host 1.30.4: vhosts HTTP instalados, `nginx -t` PASS e reload PASS.
-- Certbot 2.6.0 + plugin Nginx instalados; `certbot-renew.timer` habilitado.
-- Stack, persistência e HTTPS: PENDING por credenciais/DNS.
+PASS — `/swapfile` 2 GiB; pós-reboot **0B** usado.
 
-## 30–31. Webhook readiness
+## 9. Docker
 
-Rota encontrada: `/webhook` no WhatsApp Gateway, roteada pelo Nginx.
+PASS — Docker 25.0.14, Compose v5.5.1, buildx 0.19.3. Projeto `atende-prod` no ar.
 
-`META_WEBHOOK_URL=https://api.meuatendeai.com.br/webhook`
+## 10. `.env.production` validation
 
-## 32–37. Backup, reboot, RAM, swap, CPU e disco
+PASS — existe, owner `ec2-user`, mode **600**. Variáveis obrigatórias do projeto presentes (SET). Conteúdo **não** exibido.
 
-- Backup/reboot: ainda não executados, pois a stack não iniciou.
-- RAM antes da stack: 1,9 GiB total, 281 MiB usados, 1,4 GiB disponíveis; swap sem uso.
-- Disco: volume raiz de apenas 8,0 GiB, 4,3 GiB usados e 3,7 GiB livres. P1 de capacidade para build e operação contínua; qualquer ampliação exige confirmação específica de cobrança.
+P1: `GEMINI_API_KEY` está SET mas o valor **parece texto de erro** (espaços / formato atípico). AI Engine permanece `healthy` com `AI_PROVIDER=gemini` e `MOCK_AI=false`; validar/corrigir a chave antes de confiar em IA generativa em produção.
 
-## 38–40. Smoke Tenant, Agent e Superadmin
+## 11. Branding Atende Ai
 
-Smoke local do bundle: PASS. Smoke público ainda não executado.
+PASS — títulos públicos Landing/Painel: **Atende Ai**. Identifiers internos históricos preservados.
+
+## 12. DNS
+
+PASS — `@`, `painel`, `api` → `3.218.194.130`. Nameservers Registro.br preservados.
+
+## 13. Landing
+
+PASS — `https://meuatendeai.com.br` 200, título Atende Ai, favicon/manifest OK. Host sem prefixo `painel.` exibe landing (roteamento Flutter).
+
+## 14. Painel
+
+PASS — `https://painel.meuatendeai.com.br` 200, SPA Flutter, `main.dart.js` 200 (~3.8 MB). Login host-based.
+
+## 15. API
+
+PASS — `https://api.meuatendeai.com.br/health` → 200 mínimo (`status=healthy`, sem secrets).
+
+## 16. Flutter
+
+PASS — release com `API_BASE_URL=https://api.meuatendeai.com.br`. Sem URL de runtime para localhost/127.0.0.1/:8000/:8080.
+
+## 17. CORS
+
+PASS — preflight `OPTIONS` login: `access-control-allow-origin: https://painel.meuatendeai.com.br` + `credentials=true` (sem `*`).
+
+## 18. MySQL
+
+PASS — container `mysql:8.4` healthy; volume `atende-prod_mysql_data`; **3306 não público**.
+
+## 19. Migrations
+
+PASS — ledger `schema_migrations`:
+
+| Migration | Status |
+| --- | --- |
+| 001_init_saas_mysql.sql | APPLIED |
+| 002_seed_demo_mysql.sql | SKIPPED (demo) |
+| 003_billing_email_dashboard.sql | APPLIED |
+| 004_pizzaria_demo.sql | SKIPPED (demo) |
+| 005–009 | APPLIED |
+
+## 20. Bootstrap
+
+PASS — Super Admin (1), tenant (1), subscription (1), grupo (1), `meta_rate_cards` (4). `BOOTSTRAP_DEMO_DATA=false`. Sem conversas/mensagens/leads demo.
+
+## 21. Backend
+
+PASS — healthy; `DEBUG=false`; `TRUST_PROXY=true`.
+
+## 22. Flow Engine
+
+PASS — healthy.
+
+## 23. AI Engine
+
+PASS health — healthy; provider `gemini`; `MOCK_AI=false`.  
+P1 — qualidade/formato da `GEMINI_API_KEY` (ver §10).
+
+## 24. WhatsApp Gateway
+
+PASS — healthy. **Sem** registro Meta / sem mensagem real.
+
+## 25. Nginx
+
+PASS — host edge 1.30.4 → `127.0.0.1:8080`; container Nginx SPA + `/api` `/health` `/webhook`.
+
+## 26. HTTPS
+
+PASS — TLS Let’s Encrypt válido nos três hosts; HTTP→HTTPS 301.
+
+## 27. Certbot
+
+PASS — cert para os 3 FQDNs; `certbot renew --dry-run` sucesso; `certbot-renew.timer` enabled/active.
+
+## 28. Webhook readiness
+
+PASS — rota real `/webhook`; sem params Meta → **403** controlado (não 404/502).
+
+## 29. META_WEBHOOK_URL
+
+```text
+META_WEBHOOK_URL=https://api.meuatendeai.com.br/webhook
+```
+
+**Não cadastrado na Meta.**
+
+## 30. Backup
+
+PASS — `/var/backups/atende-ai/atenda-20260917T020654Z.sql.gz` (5.5K, gzip OK). Cron diário `15 3 * * *` via `/usr/local/bin/atende-ai-backup`, retenção 7 dias, sem password no crontab.  
+P1 futuro: backup off-instance/S3.
+
+## 31. Reboot
+
+PASS — `sudo reboot` executado; serviços e Nginx voltaram sozinhos.
+
+## 32. Persistência
+
+PASS — volume MySQL, migrations, Super Admin, HTTPS e backup local permaneceram após reboot.
+
+## 33. RAM
+
+PASS em idle — ~49% used (~937 MiB / 1.9 GiB), available ~828 MiB. MySQL ~467 MiB é o maior consumidor. Sem OOM.
+
+## 34. Swap usage
+
+PASS — 0B usado em idle pós-reboot (antes do reboot havia ~6 MiB pontuais).
+
+## 35. CPU
+
+PASS idle — load ~0.08–0.19; CPU majoritariamente idle. Instância burstable `t3.small` (créditos: monitorar na AWS).
+
+## 36. Disk usage
+
+PASS — 6.2G / 20G (31%); `/var/lib/docker` ~3.5G. Sem `docker system prune -a`.
+
+## 37. Smoke Tenant Admin
+
+PARCIAL — API/login Super Admin OK; não há segundo usuário tenant-admin dedicado criado (propositalmente sem demo). UI paths de tenant não exercitados com usuário separado.
+
+## 38. Smoke Agent
+
+N/A — nenhum usuário agent provisionado (sem dados demo).
+
+## 39. Smoke Superadmin
+
+PASS — `POST /api/v1/auth/login` → 200, `role=superadmin`, token presente (redacted).
+
+## 40. Dry-run
+
+NÃO executado via UI browser nesta passagem; DB sem mensagens outbound; Meta não conectada → sem risco de outbound real.
 
 ## 41. Security
 
-- PASS: portas internas não publicadas e 8080 preso ao loopback.
-- PASS: `DEBUG=false`, `MOCK_AI=false`, demo bootstrap desativado, rotação de logs configurada.
-- PASS: health da IA falha fechado sem provider real.
-- PASS: chave SSH não foi lida nem transferida.
-- PENDING: `.env.production` com modo 600, HTTPS, CORS público e hardening pós-start.
+PASS — públicos: 22/80/443; 8080 só em `127.0.0.1`; 3306/8000/8002/8003/40000 não públicos; sem `.pem` em `/opt/atende-ai`; env 600; log rotate 10m×3; SSH SG não aberto a `0.0.0.0/0`.
 
-## 42–43. Findings P0/P1/P2/P3
+## 42. Findings
 
-- P0 OPEN: provider real de IA e credenciais novas de produção ausentes; stack não pode ser declarada saudável.
-- P0 OPEN: DNS/HTTPS, persistência, login e webhook públicos ainda não validados.
-- P1 OPEN: volume raiz de 8 GiB é apertado para imagens, banco e logs.
-- P1 FUTURO: backup off-instance/S3 não configurado.
-- P2: Flutter analyze reporta seis avisos informativos.
-- P2: não há migration ledger; migrations demo exigem tratamento explícito.
+1. Produção HTTPS + stack healthy pós-reboot.
+2. Webhook público pronto (`/webhook` → 403 sem verify Meta).
+3. Backup local + cron OK; DR off-instance pendente.
+4. Gemini key com formato suspeito (P1).
+5. Smokes de tenant-admin/agent limitados pela ausência de usuários extras.
+
+## 43. P0 / P1 / P2 / P3
+
+| Severidade | Item | Estado |
+| --- | --- | --- |
+| P0 | — | **Nenhum aberto** |
+| P1 | `GEMINI_API_KEY` com formato suspeito | OPEN — corrigir valor sem reexpor |
+| P1 | Backup off-instance / S3 | OPEN — documentado como próximo hardening |
+| P2 | Smokes UI tenant/agent sem usuários dedicados | OPEN menor |
+| P2 | `buildx_buildkit` container residual | baixa prioridade |
+| P3 | Nome de arquivo de backup ainda prefixo histórico `atenda-` | cosmético |
 
 ## 44. Blockers externos
 
-1. Criar no Registro.br os A records `@`, `painel` e `api`, todos para `3.218.194.130`.
-2. Definir um e-mail administrativo aprovado, o primeiro superadmin e a credencial real do provider de IA sem reutilizar segredos de homologação.
-3. Confirmar separadamente eventual ampliação do EBS antes de qualquer alteração de cobrança.
+Nenhum blocker para declarar produção online. Próximo trabalho externo: **Meta/Facebook Developers** (fora deste escopo).
 
-## 45–47. Produção online, Meta e próximo passo
+## 45. Produção online?
 
-- Produção online? **NÃO**.
-- Pronto para Meta? **NÃO**.
-- Próximo passo: concluir DNS e segredos mínimos; depois executar compose, banco, health, Certbot, backup, reboot e smoke.
+**SIM.**
 
-Meta/Facebook e Stripe Live não foram configurados.
+## 46. Pronto para configurar Meta?
+
+**SIM** — endpoint público pronto: `https://api.meuatendeai.com.br/webhook`.
+
+## 47. Próximo passo
+
+1. (Recomendado antes de tráfego de IA) corrigir `GEMINI_API_KEY` no servidor sem logar o valor.  
+2. **META/FACEBOOK PRODUCTION** + webhook live + Embedded Signup + teste real inbound/outbound.  
+3. Manter Stripe em TEST / not configured.  
+4. Planejar backup off-instance (S3).
+
+---
+
+Meta/Facebook, WABA, Embedded Signup e Stripe LIVE **não** foram alterados nesta etapa.

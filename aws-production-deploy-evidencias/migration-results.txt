@@ -1,0 +1,15 @@
+CHECKED_AT=2026-09-17T01:59:46Z
+LEDGER=schema_migrations (id, applied_at)
+APPLIED=
+  001_init_saas_mysql.sql = APPLIED
+  003_billing_email_dashboard.sql = APPLIED
+  005_flow_actions.sql = APPLIED
+  006_leads.sql = APPLIED
+  007_flow_base_snapshots.sql = APPLIED
+  008_proposals.sql = APPLIED
+  009_product_hardening.sql = APPLIED
+SKIPPED_DEMO=
+  002_seed_demo_mysql.sql = SKIPPED (demo)
+  004_pizzaria_demo.sql = SKIPPED (demo)
+TOTAL_APPLIED=7
+RESULT=PASS
