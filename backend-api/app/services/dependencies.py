@@ -532,3 +532,39 @@ def fiscal_provider_dependency(
 ) -> FiscalProvider:
     return provider
 
+
+_billing_v2: dict[str, object] = {}
+
+
+def set_billing_v2(*, gate, rate_engine, catalog, ai_usage, topup) -> None:
+    _billing_v2.update(
+        {"gate": gate, "rate_engine": rate_engine, "catalog": catalog, "ai_usage": ai_usage, "topup": topup}
+    )
+
+
+def get_billing_topup_service():
+    return _billing_v2_component("topup")
+
+
+def _billing_v2_component(name: str):
+    component = _billing_v2.get(name)
+    if component is None:
+        raise RuntimeError(f"Billing V2 {name} not configured")
+    return component
+
+
+def get_billing_gate():
+    return _billing_v2_component("gate")
+
+
+def get_meta_rate_engine():
+    return _billing_v2_component("rate_engine")
+
+
+def get_billing_catalog_service():
+    return _billing_v2_component("catalog")
+
+
+def get_ai_usage_service():
+    return _billing_v2_component("ai_usage")
+

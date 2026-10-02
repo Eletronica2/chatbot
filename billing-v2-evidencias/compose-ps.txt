@@ -1,0 +1,14 @@
+# compose ps (2026-10-02T03:30:55Z)
+SERVICE            STATUS                        PORTS
+ai-engine          Up 9 minutes (healthy)        8003/tcp
+backend-api        Up About a minute (healthy)   8000/tcp
+flow-engine        Up 9 minutes (healthy)        8002/tcp
+mysql              Up 9 minutes (healthy)        3306/tcp, 33060/tcp
+nginx              Up 9 minutes                  127.0.0.1:8080->80/tcp
+whatsapp-gateway   Up 9 minutes (healthy)        40000/tcp
+
+               total        used        free      shared  buff/cache   available
+Mem:            1909        1020          77           2         811         703
+Swap:           2047           0        2047
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1   20G  6.9G   14G  35% /

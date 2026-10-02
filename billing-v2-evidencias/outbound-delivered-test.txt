@@ -1,0 +1,5 @@
+# §134 Outbound delivered — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §134 RESERVE: disponível -1 temporariamente — available 1000→999 reserved 0→1
+[PASS] §134 DELIVERED: commit exatamente uma vez — used 0→1 action=commit
+[PASS] §134 delivered duplicado + read: sem mudança — dup_action=None read_action=noop

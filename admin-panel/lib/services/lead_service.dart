@@ -10,6 +10,8 @@ class Lead {
     required this.objective,
     this.segment,
     this.monthlyVolume,
+    this.operationalVolume,
+    this.marketingVolume,
     this.teamSize,
     this.currentTools,
     this.bestContactTime,
@@ -30,6 +32,8 @@ class Lead {
   final String whatsapp;
   final String objective;
   final String? monthlyVolume;
+  final String? operationalVolume;
+  final String? marketingVolume;
   final String? teamSize;
   final String? currentTools;
   final String? bestContactTime;
@@ -57,6 +61,8 @@ class Lead {
       whatsapp: (json['whatsapp'] ?? '').toString(),
       objective: (json['objective'] ?? '').toString(),
       monthlyVolume: json['monthly_volume'] as String?,
+      operationalVolume: json['operational_volume'] as String?,
+      marketingVolume: json['marketing_volume'] as String?,
       teamSize: json['team_size'] as String?,
       currentTools: json['current_tools'] as String?,
       bestContactTime: json['best_contact_time'] as String?,
@@ -108,6 +114,8 @@ class LeadService {
     required String whatsapp,
     required String objective,
     String? monthlyVolume,
+    String? operationalVolume,
+    String? marketingVolume,
     String? teamSize,
     String? currentTools,
     String? bestContactTime,
@@ -122,6 +130,9 @@ class LeadService {
       'whatsapp': whatsapp.trim(),
       'objective': objective.trim(),
       'monthly_volume': (monthlyVolume ?? '').trim().isEmpty ? null : monthlyVolume!.trim(),
+      'operational_volume':
+          (operationalVolume ?? '').trim().isEmpty ? null : operationalVolume!.trim(),
+      'marketing_volume': (marketingVolume ?? '').trim().isEmpty ? null : marketingVolume!.trim(),
       'team_size': (teamSize ?? '').trim().isEmpty ? null : teamSize!.trim(),
       'current_tools': (currentTools ?? '').trim().isEmpty ? null : currentTools!.trim(),
       'best_contact_time':

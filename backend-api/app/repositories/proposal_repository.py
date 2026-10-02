@@ -11,6 +11,15 @@ from app.db.mysql import MySQLDatabase
 
 _ALLOWED_STATUSES = {"draft", "sent", "accepted", "rejected"}
 
+_SELECT_COLUMNS = """
+    p.id, p.lead_id, p.tenant_id, p.company_name, p.contact_name, p.contact_email,
+    p.contact_whatsapp, p.plan, p.catalog_version, p.plan_code, p.billing_mode,
+    p.monthly_value, p.setup_fee, p.monthly_message_limit, p.operational_volume,
+    p.marketing_volume, p.marketing_estimate, p.included_items, p.pricing_snapshot,
+    p.margin_snapshot, p.margin_override_reason, p.margin_override_by,
+    p.validity_days, p.status, p.notes, p.created_by_user_id, p.created_at, p.updated_at
+"""
+
 
 def _normalize_items(items: list[str] | None) -> str | None:
     if not items:
@@ -19,6 +28,12 @@ def _normalize_items(items: list[str] | None) -> str | None:
     if not clean:
         return None
     return json.dumps(clean, ensure_ascii=False)
+
+
+def _json_or_none(value: dict[str, Any] | None) -> str | None:
+    if value is None:
+        return None
+    return json.dumps(value, ensure_ascii=False, default=str)
 
 
 def _to_decimal(value: Any) -> Decimal:
@@ -51,6 +66,16 @@ class ProposalRepository:
         status: str,
         notes: str | None,
         created_by_user_id: int | None,
+        catalog_version: str | None = None,
+        plan_code: str | None = None,
+        billing_mode: str | None = None,
+        operational_volume: int | None = None,
+        marketing_volume: int | None = None,
+        marketing_estimate: Decimal | None = None,
+        pricing_snapshot: dict[str, Any] | None = None,
+        margin_snapshot: dict[str, Any] | None = None,
+        margin_override_reason: str | None = None,
+        margin_override_by: str | None = None,
     ) -> dict[str, Any] | None:
         items_json = _normalize_items(included_items)
 
@@ -58,23 +83,13 @@ class ProposalRepository:
             proposal_id = self.database.insert(
                 """
                 INSERT INTO proposals (
-                    lead_id,
-                    tenant_id,
-                    company_name,
-                    contact_name,
-                    contact_email,
-                    contact_whatsapp,
-                    plan,
-                    monthly_value,
-                    setup_fee,
-                    monthly_message_limit,
-                    included_items,
-                    validity_days,
-                    status,
-                    notes,
-                    created_by_user_id
+                    lead_id, tenant_id, company_name, contact_name, contact_email, contact_whatsapp,
+                    plan, catalog_version, plan_code, billing_mode, monthly_value, setup_fee,
+                    monthly_message_limit, operational_volume, marketing_volume, marketing_estimate,
+                    included_items, pricing_snapshot, margin_snapshot, margin_override_reason,
+                    margin_override_by, validity_days, status, notes, created_by_user_id
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     lead_id,
@@ -84,10 +99,20 @@ class ProposalRepository:
                     contact_email,
                     contact_whatsapp,
                     plan,
+                    catalog_version,
+                    plan_code,
+                    billing_mode,
                     str(monthly_value),
                     str(setup_fee),
                     int(monthly_message_limit),
+                    operational_volume,
+                    marketing_volume,
+                    str(marketing_estimate) if marketing_estimate is not None else None,
                     items_json,
+                    _json_or_none(pricing_snapshot),
+                    _json_or_none(margin_snapshot),
+                    margin_override_reason,
+                    margin_override_by,
                     int(validity_days),
                     status,
                     notes,
@@ -120,25 +145,7 @@ class ProposalRepository:
         def _query() -> list[dict[str, Any]]:
             return self.database.fetch_all(
                 f"""
-                SELECT
-                    p.id,
-                    p.lead_id,
-                    p.tenant_id,
-                    p.company_name,
-                    p.contact_name,
-                    p.contact_email,
-                    p.contact_whatsapp,
-                    p.plan,
-                    p.monthly_value,
-                    p.setup_fee,
-                    p.monthly_message_limit,
-                    p.included_items,
-                    p.validity_days,
-                    p.status,
-                    p.notes,
-                    p.created_by_user_id,
-                    p.created_at,
-                    p.updated_at
+                SELECT {_SELECT_COLUMNS}
                 FROM proposals p
                 {where}
                 ORDER BY p.created_at DESC, p.id DESC
@@ -164,6 +171,9 @@ class ProposalRepository:
         included_items: list[str] | None = None,
         validity_days: int | None = None,
         plan: str | None = None,
+        margin_snapshot: dict[str, Any] | None = None,
+        margin_override_reason: str | None = None,
+        margin_override_by: str | None = None,
     ) -> dict[str, Any] | None:
         def _update() -> dict[str, Any] | None:
             clauses: list[str] = []
@@ -194,6 +204,14 @@ class ProposalRepository:
             if plan is not None:
                 clauses.append("plan = %s")
                 params.append(plan)
+            if margin_snapshot is not None:
+                clauses.append("margin_snapshot = %s")
+                params.append(_json_or_none(margin_snapshot))
+            if margin_override_reason is not None:
+                clauses.append("margin_override_reason = %s")
+                params.append(margin_override_reason)
+                clauses.append("margin_override_by = %s")
+                params.append(margin_override_by)
             if not clauses:
                 return self._get_by_id(proposal_id)
             params.append(int(proposal_id))
@@ -207,26 +225,8 @@ class ProposalRepository:
 
     def _get_by_id(self, proposal_id: int) -> dict[str, Any] | None:
         return self.database.fetch_one(
-            """
-            SELECT
-                p.id,
-                p.lead_id,
-                p.tenant_id,
-                p.company_name,
-                p.contact_name,
-                p.contact_email,
-                p.contact_whatsapp,
-                p.plan,
-                p.monthly_value,
-                p.setup_fee,
-                p.monthly_message_limit,
-                p.included_items,
-                p.validity_days,
-                p.status,
-                p.notes,
-                p.created_by_user_id,
-                p.created_at,
-                p.updated_at
+            f"""
+            SELECT {_SELECT_COLUMNS}
             FROM proposals p
             WHERE p.id = %s
             LIMIT 1

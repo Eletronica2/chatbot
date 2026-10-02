@@ -1,0 +1,3 @@
+# §133 Inbound — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §133 inbound não consome (used antes == depois, 0 commits) — http=200 used 0→0 available 1000→1000 auto_reply_reservations=1 (liberadas: resposta não enviada no smoke)

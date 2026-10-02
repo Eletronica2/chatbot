@@ -1,0 +1,86 @@
+# Migration 010 / bootstrap Billing V2 — verificação em produção (2026-10-02T03:30:48Z)
+Backup antes do deploy: ~/db-backups/pre-billing-v2-20261002-031105.sql.gz (gzip -t OK, 28 tabelas) e pre-billing-v2-r2-*.sql.gz
+Migration SQL 010 validada 2x (idempotente) no MySQL de homologação; em produção o schema é aplicado pelo bootstrap Python (billing_v2_schema.apply) no start do backend.
+
++-----------+----+
+| chk       | n  |
++-----------+----+
+| v2_tables | 11 |
++-----------+----+
++-----------------------------+------------+
+| TABLE_NAME                  | TABLE_ROWS |
++-----------------------------+------------+
+| admin_audit_logs            |         15 |
+| ai_rate_cards               |          0 |
+| ai_usage_events             |          0 |
+| billing_catalog_items       |         13 |
+| billing_cost_config         |          6 |
+| billing_customers           |          0 |
+| billing_entitlement_buckets |          4 |
+| billing_invoices            |          0 |
+| billing_ledger              |         28 |
+| billing_message_status      |         12 |
+| billing_reservations        |         12 |
+| billing_topup_purchases     |          0 |
+| conversation_group_members  |          0 |
+| conversation_groups         |          1 |
+| conversation_logs           |          3 |
+| email_deliveries            |          0 |
+| fiscal_documents            |          0 |
+| flow_actions                |          0 |
+| flow_base_snapshots         |          0 |
+| flow_documents              |          0 |
+| flow_states                 |          0 |
+| flow_transitions            |          0 |
+| flows                       |          0 |
+| leads                       |          1 |
+| messages                    |          6 |
+| meta_rate_cards             |          8 |
+| proposals                   |          2 |
+| quick_replies               |          0 |
+| schema_migrations           |          7 |
+| sessions                    |          3 |
+| subscriptions               |          3 |
+| tenant_billing_config       |          2 |
+| tenant_settings             |          3 |
+| tenants                     |          4 |
+| usage_events                |          7 |
+| user_access_tokens          |          0 |
+| users                       |          1 |
+| whatsapp_accounts           |          0 |
++-----------------------------+------------+
++----------------------+
+| INDEX_NAME           |
++----------------------+
+| idx_meta_rate_lookup |
+| PRIMARY              |
+| uq_meta_rate_v2      |
++----------------------+
++------------------------------------+----------+
+| config_key                         | value    |
++------------------------------------+----------+
+| ai_cost_per_operational_message    |     NULL |
+| allocated_platform_cost_per_tenant |     NULL |
+| payment_fee_fixed                  |     NULL |
+| payment_fee_percent                |     NULL |
+| target_margin                      | 0.300000 |
+| tax_rate                           |     NULL |
++------------------------------------+----------+
++------------------------+---+
+| chk                    | n |
++------------------------+---+
+| tenants_with_v2_config | 0 |
++------------------------+---+
++--------------------------------------------+---+
+| chk                                        | n |
++--------------------------------------------+---+
+| legacy_proposals_preserved(plan_code NULL) | 1 |
++--------------------------------------------+---+
++--------------------------+----------+
+| external_key             | status   |
++--------------------------+----------+
+| default                  | active   |
+| teste_empresa            | active   |
+| smoke-bv2-20261002032044 | inactive |
+| smoke-bv2-20261002033025 | inactive |
++--------------------------+----------+

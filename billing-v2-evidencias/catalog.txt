@@ -1,0 +1,30 @@
+# Catálogo V2 + rate cards em produção (2026-10-02T03:30:51Z)
++--------------------------------+-----------------+-------------------+---------------------------------------------+-------------+-------------------+-----------+--------+
+| code                           | catalog_version | kind              | label                                       | price       | operational_units | is_custom | status |
++--------------------------------+-----------------+-------------------+---------------------------------------------+-------------+-------------------+-----------+--------+
+| MARKETING_CREDIT_2026_10       | 2026-10         | marketing_unit    | Credito de campanha (por mensagem entregue) |    0.550000 |              NULL |         0 | active |
+| PLAN_INICIAL_2026_10           | 2026-10         | plan              | Inicial                                     |  197.000000 |              1000 |         0 | active |
+| PLAN_ESSENCIAL_2026_10         | 2026-10         | plan              | Essencial                                   |  297.000000 |              3000 |         0 | active |
+| PLAN_CRESCIMENTO_2026_10       | 2026-10         | plan              | Crescimento                                 |  497.000000 |              6000 |         0 | active |
+| PLAN_PROFISSIONAL_2026_10      | 2026-10         | plan              | Profissional                                |  897.000000 |             12000 |         0 | active |
+| PLAN_EMPRESARIAL_2026_10       | 2026-10         | plan              | Empresarial (sob consulta)                  |        NULL |              NULL |         1 | active |
+| PLAN_LEGACY_ON_DEMAND          | legacy-v1       | plan              | On demand (legado)                          |    0.000000 |              NULL |         0 | legacy |
+| PLAN_LEGACY_STARTER            | legacy-v1       | plan              | Starter (legado)                            |   99.000000 |              1000 |         0 | legacy |
+| PLAN_LEGACY_GROWTH             | legacy-v1       | plan              | Growth (legado)                             |  249.000000 |              5000 |         0 | legacy |
+| PLAN_LEGACY_PRO                | legacy-v1       | plan              | Pro (legado)                                |  599.000000 |             20000 |         0 | legacy |
+| PLAN_LEGACY_ENTERPRISE         | legacy-v1       | plan              | Enterprise (legado)                         | 1499.000000 |            100000 |         0 | legacy |
+| TOPUP_OPERATIONAL_500_2026_10  | 2026-10         | topup_operational | +500 mensagens operacionais                 |   49.900000 |               500 |         0 | active |
+| TOPUP_OPERATIONAL_1000_2026_10 | 2026-10         | topup_operational | +1.000 mensagens operacionais               |   89.900000 |              1000 |         0 | active |
++--------------------------------+-----------------+-------------------+---------------------------------------------+-------------+-------------------+-----------+--------+
++----+--------------------+----------------+------------+-----------------------+----------------+----------------+--------------+--------------+--------+
+| id | version_code       | category       | unit_price | billing_basis         | free_allowance | effective_from | effective_to | needs_review | active |
++----+--------------------+----------------+------------+-----------------------+----------------+----------------+--------------+--------------+--------+
+|  3 | RATE_BR_2026_07_01 | AUTHENTICATION |   0.035000 | per_delivered_message |              0 | 2026-07-01     | NULL         |            1 |      1 |
+|  1 | RATE_BR_2026_07_01 | MARKETING      |   0.321700 | per_delivered_message |              0 | 2026-07-01     | NULL         |            1 |      1 |
+|  4 | RATE_BR_2026_07_01 | SERVICE        |   0.000000 | per_delivered_message |              0 | 2026-07-01     | 2026-09-30   |            1 |      1 |
+|  2 | RATE_BR_2026_07_01 | UTILITY        |   0.035000 | per_delivered_message |              0 | 2026-07-01     | NULL         |            1 |      1 |
+|  7 | RATE_BR_2026_10_01 | AUTHENTICATION |   0.035000 | per_delivered_message |              0 | 2026-10-01     | NULL         |            1 |      1 |
+|  5 | RATE_BR_2026_10_01 | MARKETING      |   0.321700 | per_delivered_message |              0 | 2026-10-01     | NULL         |            1 |      1 |
+|  8 | RATE_BR_2026_10_01 | SERVICE        |   0.000000 | per_delivered_message |              0 | 2026-10-01     | NULL         |            1 |      1 |
+|  6 | RATE_BR_2026_10_01 | UTILITY        |   0.035000 | per_delivered_message |              0 | 2026-10-01     | NULL         |            1 |      1 |
++----+--------------------+----------------+------------+-----------------------+----------------+----------------+--------------+--------------+--------+

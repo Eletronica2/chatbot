@@ -1,0 +1,9 @@
+## python -m py_compile (gateway, ai-engine, backend)
+COMPILE_OK
+
+## dart analyze lib
+
+6 issues found.
+
+## flutter build web --release
+4081348 admin-panel/build/web/main.dart.js

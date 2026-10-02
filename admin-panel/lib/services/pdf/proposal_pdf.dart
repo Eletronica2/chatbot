@@ -28,6 +28,8 @@ class ProposalPdfData {
     this.timelineText,
     this.closingText,
     this.approveLabel,
+    this.billingModeNotice,
+    this.marketingLine,
   });
 
   final String companyName;
@@ -54,6 +56,12 @@ class ProposalPdfData {
   final String? timelineText;
   final String? closingText;
   final String? approveLabel;
+
+  /// Texto de tarifas Meta conforme o modo de cobrança (customer_direct / solution partner).
+  final String? billingModeNotice;
+
+  /// Estimativa de campanhas (créditos pré-pagos), quando houver.
+  final String? marketingLine;
 }
 
 const _kDefaultDocumentTitle = 'Proposta Comercial — Atendimento Inteligente com IA';
@@ -279,7 +287,11 @@ Future<Uint8List> buildProposalPdf(ProposalPdfData data) async {
         ),
         pw.SizedBox(height: 8),
         _bodyParagraph(subExpl),
-        _kvSimple('Limite de mensagens (referência mensal)', '${data.monthlyMessageLimit}'),
+        _kvSimple('Mensagens operacionais entregues/mês (franquia)', '${data.monthlyMessageLimit}'),
+        if (data.marketingLine != null && data.marketingLine!.trim().isNotEmpty)
+          _bodyParagraph(data.marketingLine!.trim()),
+        if (data.billingModeNotice != null && data.billingModeNotice!.trim().isNotEmpty)
+          _bodyParagraph(data.billingModeNotice!.trim()),
         _kvSimple('Validade desta proposta', '${data.validityDays} dias'),
         pw.SizedBox(height: 8),
         _sectionTitle('Benefícios'),

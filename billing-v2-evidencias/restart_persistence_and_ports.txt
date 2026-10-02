@@ -1,0 +1,35 @@
+== ANTES do restart
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+| catalog | ledger | rate_cards | tenant_config | v2_plans | reservations | buckets | proposals | tenants |
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+|      13 |     14 |          8 |             1 |        1 |            6 |       2 |         2 |       3 |
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+ Container atende-prod-nginx-1 Started 
+ Container atende-prod-flow-engine-1 Started 
+ Container atende-prod-backend-api-1 Started 
+ Container atende-prod-ai-engine-1 Started 
+ Container atende-prod-whatsapp-gateway-1 Started 
+ Container atende-prod-mysql-1 Started 
+healthy after ~21s
+SERVICE            STATUS
+ai-engine          Up 23 seconds (healthy)
+backend-api        Up 23 seconds (healthy)
+flow-engine        Up 24 seconds (healthy)
+mysql              Up 22 seconds (healthy)
+nginx              Up 22 seconds
+whatsapp-gateway   Up 23 seconds (healthy)
+== DEPOIS do restart
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+| catalog | ledger | rate_cards | tenant_config | v2_plans | reservations | buckets | proposals | tenants |
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+|      13 |     14 |          8 |             1 |        1 |            6 |       2 |         2 |       3 |
++---------+--------+------------+---------------+----------+--------------+---------+-----------+---------+
+== ss -lntp
+Local Peer
+127.0.0.1:8080 docker-proxy
+0.0.0.0:22 sshd
+0.0.0.0:80 nginx
+127.0.0.1:46145 containerd
+0.0.0.0:443 nginx
+[::]:22 sshd
+[::]:80 nginx

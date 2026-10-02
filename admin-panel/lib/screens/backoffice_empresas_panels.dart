@@ -354,7 +354,17 @@ mixin _ClientesEmpresasUi on State<BackofficeScreen> {
   Widget _buildSelectedDetailSection(TenantAdminSummary tenant) {
     switch (_s._detailTab) {
       case 'assinatura':
-        return _buildAssinaturaSection(tenant);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildAssinaturaSection(tenant),
+            const SizedBox(height: 14),
+            AdminTenantBillingV2Panel(
+              key: ValueKey('billing-v2-${tenant.tenantId}'),
+              tenantId: tenant.tenantId,
+            ),
+          ],
+        );
       case 'whatsapp':
         return _buildWhatsAppDetailSection();
       case 'usuarios':

@@ -1,0 +1,102 @@
+# Baseline git (2026-10-02T03:09:40Z)
+HEAD: 9089d6cdf483f89e3e82a4e54d37e43ef4739f7b
+Branch: main
+
+## git status --short
+ M admin-panel/lib/screens/backoffice_empresas_panels.dart
+ M admin-panel/lib/screens/backoffice_lead_proposal_flow.dart
+ M admin-panel/lib/screens/backoffice_screen.dart
+ M admin-panel/lib/screens/billing_hub_screen.dart
+ M admin-panel/lib/screens/dashboard_screen.dart
+ M admin-panel/lib/screens/overview_screen.dart
+ M admin-panel/lib/screens/signup_dialog.dart
+ M admin-panel/lib/services/lead_service.dart
+ M admin-panel/lib/services/pdf/proposal_pdf.dart
+ M admin-panel/lib/services/proposal_service.dart
+ M admin-panel/lib/widgets/app_sidebar.dart
+ M ai-engine/app/services/ai_service.py
+ M backend-api/app/api/routes/conversations.py
+ M backend-api/app/api/routes/leads.py
+ M backend-api/app/api/routes/proposals.py
+ M backend-api/app/config/settings.py
+ M backend-api/app/db/mysql.py
+ M backend-api/app/domain/lead.py
+ M backend-api/app/domain/proposal.py
+ M backend-api/app/repositories/lead_repository.py
+ M backend-api/app/repositories/proposal_repository.py
+ M backend-api/app/services/billing_service.py
+ M backend-api/app/services/conversation_service.py
+ M backend-api/app/services/dependencies.py
+ M backend-api/app/services/lead_service.py
+ M backend-api/app/services/proposal_service.py
+ M backend-api/app/services/tenant_user_service.py
+ M backend-api/app/services/whatsapp_template_service.py
+ M backend-api/main.py
+ M docker-compose.production.yml
+ M whatsapp-gateway/main.py
+ M whatsapp-gateway/webhook.py
+?? admin-panel/lib/services/billing_v2_service.dart
+?? admin-panel/lib/widgets/billing_v2_panels.dart
+?? ai-engine/tests/test_ai_usage.py
+?? backend-api/app/api/routes/billing_v2.py
+?? backend-api/app/db/billing_v2_schema.py
+?? backend-api/app/domain/billing_v2.py
+?? backend-api/app/domain/outbound_coalescer.py
+?? backend-api/app/services/ai_usage_service.py
+?? backend-api/app/services/billing_catalog_service.py
+?? backend-api/app/services/billing_dashboard_service.py
+?? backend-api/app/services/billing_gate.py
+?? backend-api/app/services/billing_topup_service.py
+?? backend-api/app/services/meta_rate_engine.py
+?? backend-api/app/services/outbound_billing.py
+?? backend-api/tests/test_billing_v2_domain.py
+?? backend-api/tests/test_billing_v2_mysql.py
+?? billing-v2-evidencias/
+?? database/migrations/010_billing_v2_dual_mode.sql
+
+## git diff --stat
+ .../lib/screens/backoffice_empresas_panels.dart    |   12 +-
+ .../lib/screens/backoffice_lead_proposal_flow.dart | 1080 ++++++++++++++------
+ admin-panel/lib/screens/backoffice_screen.dart     |   19 +-
+ admin-panel/lib/screens/billing_hub_screen.dart    |    3 +
+ admin-panel/lib/screens/dashboard_screen.dart      |   13 +-
+ admin-panel/lib/screens/overview_screen.dart       |  683 +++++++++++--
+ admin-panel/lib/screens/signup_dialog.dart         |   35 +-
+ admin-panel/lib/services/lead_service.dart         |   11 +
+ admin-panel/lib/services/pdf/proposal_pdf.dart     |   14 +-
+ admin-panel/lib/services/proposal_service.dart     |  297 +++++-
+ admin-panel/lib/widgets/app_sidebar.dart           |   24 +-
+ ai-engine/app/services/ai_service.py               |   28 +
+ backend-api/app/api/routes/conversations.py        |   27 +-
+ backend-api/app/api/routes/leads.py                |    6 +
+ backend-api/app/api/routes/proposals.py            |  224 +++-
+ backend-api/app/config/settings.py                 |    7 +
+ backend-api/app/db/mysql.py                        |   11 +
+ backend-api/app/domain/lead.py                     |    2 +
+ backend-api/app/domain/proposal.py                 |   37 +-
+ backend-api/app/repositories/lead_repository.py    |   12 +-
+ .../app/repositories/proposal_repository.py        |  110 +-
+ backend-api/app/services/billing_service.py        |   75 +-
+ backend-api/app/services/conversation_service.py   |  138 ++-
+ backend-api/app/services/dependencies.py           |   36 +
+ backend-api/app/services/lead_service.py           |   11 +-
+ backend-api/app/services/proposal_service.py       |  479 ++++++---
+ backend-api/app/services/tenant_user_service.py    |   27 +
+ .../app/services/whatsapp_template_service.py      |   21 +
+ backend-api/main.py                                |   50 +
+ docker-compose.production.yml                      |    5 +
+ whatsapp-gateway/main.py                           |    3 +-
+ whatsapp-gateway/webhook.py                        |  102 +-
+ 32 files changed, 2866 insertions(+), 736 deletions(-)
+
+## Arquivos já modificados (não commitados) ANTES do início do Billing V2 — preservados, sem reset
+admin-panel/lib/screens/backoffice_lead_proposal_flow.dart
+admin-panel/lib/screens/backoffice_screen.dart
+admin-panel/lib/screens/dashboard_screen.dart
+admin-panel/lib/screens/overview_screen.dart
+admin-panel/lib/services/proposal_service.dart
+admin-panel/lib/widgets/app_sidebar.dart
+backend-api/app/api/routes/proposals.py
+backend-api/app/domain/proposal.py
+backend-api/app/services/proposal_service.py
+backend-api/app/services/tenant_user_service.py

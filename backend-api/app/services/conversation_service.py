@@ -1,6 +1,7 @@
 """Coordinates orchestration between flow, AI, session and SaaS controls."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 import time
@@ -8,6 +9,7 @@ from datetime import datetime
 from typing import Any, Dict
 
 from app.domain.conversation_log import ConversationLog
+from app.domain.outbound_coalescer import coalesce_text_parts
 from app.domain.execution_context import ExecutionContext
 from app.domain.message import ConversationAction, NormalizedMessage
 from app.domain.session import ConversationSession
@@ -34,6 +36,8 @@ class ConversationService:
         subscription_service: SubscriptionService,
         conversation_log_service: ConversationLogService,
         message_service: MessageService,
+        billing_gate: Any | None = None,
+        ai_usage_service: Any | None = None,
     ):
         self.session_service = session_service
         self.flow_service = flow_service
@@ -42,8 +46,138 @@ class ConversationService:
         self.subscription_service = subscription_service
         self.conversation_log_service = conversation_log_service
         self.message_service = message_service
+        self.billing_gate = billing_gate
+        self.ai_usage_service = ai_usage_service
+
+    def _billing_v2_active(self) -> bool:
+        return self.billing_gate is not None and bool(self.billing_gate.enabled)
 
     async def handle_incoming_message(
+        self,
+        message: NormalizedMessage,
+        *,
+        execution_context: ExecutionContext | None = None,
+    ) -> ConversationAction:
+        """Inbound never consumes. The single reply of the turn is reserved before send."""
+        ctx = execution_context or ExecutionContext.production()
+        if not self._billing_v2_active():
+            return await self._handle_incoming_core(message, execution_context=ctx)
+
+        enforce = ctx.allow_billing and ctx.persist and not ctx.is_test
+        if enforce:
+            try:
+                decision = await asyncio.to_thread(
+                    self.billing_gate.preflight, message.tenant_id, category="SERVICE"
+                )
+            except Exception:
+                logger.exception("billing_preflight_failed tenant=%s", message.tenant_id)
+                decision = None
+            if decision is None or not decision.allowed:
+                if await self.message_service.was_processed(
+                    tenant_id=message.tenant_id,
+                    external_message_id=message.message_id,
+                    direction="incoming",
+                ):
+                    return ConversationAction(
+                        source="duplicate",
+                        reply_text="",
+                        tenant_id=message.tenant_id,
+                        phone_number=message.phone_number,
+                        metadata={"duplicate": True},
+                        session_state={},
+                    )
+                return await self._billing_blocked(message, ctx, decision)
+
+        action = await self._handle_incoming_core(message, execution_context=ctx)
+        metadata = dict(action.metadata or {})
+        if not action.reply_text:
+            return action
+        if not enforce:
+            metadata["billing"] = {"enforced": False, "dry_run": True}
+            return action.model_copy(update={"metadata": metadata})
+
+        parts = coalesce_text_parts([action.reply_text])
+        try:
+            reservation = await asyncio.to_thread(
+                self.billing_gate.reserve,
+                message.tenant_id,
+                category="SERVICE",
+                category_source="freeform_service_reply",
+                source_path=self._billing_source_path(action.source),
+                idempotency_key=f"reply:{message.message_id}",
+                phone_number_id=message.phone_number_id,
+            )
+        except Exception:
+            logger.exception("billing_reserve_failed tenant=%s message=%s", message.tenant_id, message.message_id)
+            reservation = None
+        if reservation is None or not reservation.allowed:
+            metadata["billing"] = {
+                "enforced": True,
+                "blocked": True,
+                "code": reservation.code if reservation else "billing_error",
+            }
+            return action.model_copy(update={"reply_text": "", "metadata": metadata, "requires_handoff": True})
+        metadata["billing"] = {
+            "enforced": True,
+            "reservation_id": reservation.reservation_id,
+            "billing_mode": reservation.billing_mode,
+            "level": reservation.level,
+            "parts_before": parts.parts_before,
+            "parts_after": parts.parts_after,
+        }
+        return action.model_copy(update={"metadata": metadata})
+
+    @staticmethod
+    def _billing_source_path(source: str) -> str:
+        if source.startswith("ai"):
+            return "ai"
+        if source == "flow":
+            return "flow"
+        return "system"
+
+    async def _billing_blocked(self, message: NormalizedMessage, ctx: ExecutionContext, decision: Any) -> ConversationAction:
+        code = getattr(decision, "code", None) or "billing_error"
+        session = await self._resolve_session(message, ctx)
+        self._append_message(session, role="user", content=message.content)
+        await self._persist_message(
+            ctx,
+            tenant_id=message.tenant_id,
+            session_id=session.session_id,
+            direction="incoming",
+            role="user",
+            content=message.content,
+            source="gateway",
+            metadata={**(message.metadata or {}), "billing_blocked": code},
+            external_message_id=message.message_id,
+            phone_number_id=message.phone_number_id,
+        )
+        context = dict(session.context or {})
+        context["human_handoff_pending"] = True
+        context["human_handoff_reason"] = code
+        context["human_handoff_at"] = datetime.utcnow().isoformat()
+        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+        session = await self._persist_session_update(ctx, session, context_updates=context)
+        return ConversationAction(
+            source="billing_blocked",
+            reply_text="",
+            tenant_id=message.tenant_id,
+            phone_number=message.phone_number,
+            metadata={"billing": {"enforced": True, "blocked": True, "code": code}, "human_handoff_pending": True},
+            session_state=session.conversation_state,
+            requires_handoff=True,
+        )
+
+    async def _record_ai_usage(self, message: NormalizedMessage, session: ConversationSession, metadata: Dict[str, Any] | None, ctx: ExecutionContext) -> None:
+        if self.ai_usage_service is None or not ctx.persist:
+            return
+        await self.ai_usage_service.record(
+            message.tenant_id,
+            metadata,
+            session_id=getattr(session, "session_id", None),
+            inbound_message_id=message.message_id,
+        )
+
+    async def _handle_incoming_core(
         self,
         message: NormalizedMessage,
         *,
@@ -73,7 +207,7 @@ class ConversationService:
                 session_state={},
             )
 
-        if ctx.allow_billing:
+        if ctx.allow_billing and not self._billing_v2_active():
             allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
             if not allowance.allowed:
                 handoff_reply = (
@@ -226,6 +360,7 @@ class ConversationService:
                     session,
                     metadata_overrides=tenant_settings.as_ai_metadata(),
                 )
+                await self._record_ai_usage(message, session, ai_response.metadata, ctx)
                 if ai_response.handled and ai_response.reply_text:
                     if await self._should_suppress_auto_reply(message, ctx):
                         return self._suppressed_late_reply(message, session, source="ai_fallback")
@@ -430,6 +565,7 @@ class ConversationService:
             session,
             metadata_overrides=tenant_settings.as_ai_metadata(),
         )
+        await self._record_ai_usage(message, session, ai_response.metadata, ctx)
         if await self._should_suppress_auto_reply(message, ctx):
             return self._suppressed_late_reply(message, session, source="ai")
         detected_intent = ai_response.detected_intent or intent_result.intent

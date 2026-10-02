@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+from uuid import uuid4
 
 import httpx
 
@@ -138,6 +139,22 @@ class WhatsAppTemplateService:
                 }
             ]
 
+        from app.services.outbound_billing import (
+            finalize_outbound,
+            gateway_billing_fields,
+            reserve_outbound,
+        )
+
+        billing = await reserve_outbound(
+            tenant_id,
+            category=str(template.category or "UTILITY"),
+            category_source="template_approved_category",
+            source_path="template",
+            idempotency_key=f"template:{uuid4()}",
+            phone_number_id=selected.phone_number_id,
+            template_name=payload.template_name,
+        )
+        provider_message_id: str | None = None
         try:
             async with httpx.AsyncClient(timeout=settings.GATEWAY_API_TIMEOUT) as client:
                 gw_resp = await client.post(
@@ -150,6 +167,7 @@ class WhatsAppTemplateService:
                         "language_code": payload.language,
                         "phone_number_id": selected.phone_number_id,
                         "components": components,
+                        **gateway_billing_fields(billing),
                     },
                 )
             if gw_resp.status_code != 200:
@@ -160,8 +178,11 @@ class WhatsAppTemplateService:
                     pass
                 raise ValueError(str(detail))
             data = gw_resp.json()
+            provider_message_id = data.get("message_id")
         except httpx.RequestError as exc:
             raise ValueError(f"Gateway indisponivel: {exc}") from exc
+        finally:
+            await finalize_outbound(tenant_id, billing, provider_message_id=provider_message_id)
 
         return WhatsAppTemplateSendResult(
             message_id=data.get("message_id"),

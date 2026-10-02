@@ -1,0 +1,21 @@
+== §128 public health (2026-10-02T03:21:56Z)
+https://meuatendeai.com.br -> 200 0.700685s
+https://painel.meuatendeai.com.br -> 200 0.634643s
+https://api.meuatendeai.com.br/health -> 200 0.546013s
+api /health body: {"status":"healthy","service":"Backend API","version":"1.0.0","timestamp":"2026-10-02T03:21:58.836839"}
+
+== painel serve o build novo (strings do Billing V2 no main.dart.js)
+'Cobrança V2' presente: NAO
+'Créditos e consumo' presente: NAO
+'Tarifas Meta (rate cards)' presente: sim
+'Mensagens operacionais entregues' presente: sim
+
+== §129 login: credencial inválida rejeitada (senha não exibida)
+POST /api/v1/auth/login inválido -> 401
+GET /api/v1/admin/billing/overview sem token -> 401
+GET /api/v1/billing/v2/summary sem token -> 401
+POST /api/v1/internal/billing/status sem chave -> 403
+
+== verificação do bundle
+main.dart.js local == produção (md5 95d1e8ca595fc3cb06efd0238f3293d2 (build final))
+Strings acentuadas estão no bundle com escape dart2js: "Cobran\xe7a V2", "Cr\xe9ditos e consumo" (grep literal UTF-8 não as encontra).

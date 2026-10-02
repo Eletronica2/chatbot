@@ -83,6 +83,13 @@ class Settings(BaseSettings):
     STRIPE_METER_EVENT_NAME: str = ""
     STRIPE_DEFAULT_CURRENCY: str = "brl"
 
+    # Billing V2 (franquia operacional por outbound delivered + Meta dual mode).
+    BILLING_V2_ENABLED: bool = False
+    META_BILLING_DEFAULT: str = "customer_direct"
+    BILLING_MARKET: str = "BR"
+    BILLING_RESERVATION_STALE_MINUTES: int = 1440
+    BILLING_HOUSEKEEPING_INTERVAL_SECONDS: int = 600
+
     # Fiscal / NFS-e — leave unset until a real provider is wired.
     FISCAL_PROVIDER: str = "none"
     FISCAL_PROVIDER_READY: bool = False

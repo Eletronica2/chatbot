@@ -50,11 +50,21 @@ class _SignupDialogState extends State<SignupDialog> {
   ];
 
   static const List<String> _volumeOptions = [
-    'Até 500 mensagens / mês',
-    '500 a 2.000',
-    '2.000 a 5.000',
-    '5.000 a 20.000',
-    'Mais de 20.000',
+    'Até 1.000',
+    '1.001 a 3.000',
+    '3.001 a 6.000',
+    '6.001 a 12.000',
+    'Mais de 12.000',
+    'Ainda não sei',
+  ];
+
+  static const List<String> _marketingOptions = [
+    'Não',
+    'Sim, até 100/mês',
+    'Até 500/mês',
+    'Até 1.000/mês',
+    'Até 5.000/mês',
+    'Mais de 5.000/mês',
     'Ainda não sei',
   ];
 
@@ -67,6 +77,7 @@ class _SignupDialogState extends State<SignupDialog> {
 
   String? _selectedSegment;
   String? _selectedVolume;
+  String? _selectedMarketing;
   String? _selectedBestTime;
 
   @override
@@ -350,6 +361,8 @@ class _SignupDialogState extends State<SignupDialog> {
         whatsapp: _whatsapp.text,
         objective: _objective.text,
         monthlyVolume: _selectedVolume,
+        operationalVolume: _selectedVolume,
+        marketingVolume: _selectedMarketing,
         currentTools: _currentTools.text,
         bestContactTime: _selectedBestTime,
         source: 'landing',
@@ -448,11 +461,19 @@ class _SignupDialogState extends State<SignupDialog> {
         ),
         const SizedBox(height: 14),
         _DialogDropdown(
-          label: 'Volume mensal estimado de mensagens',
-          hint: 'Selecione uma faixa aproximada',
+          label: 'Quantas mensagens de atendimento sua empresa estima enviar por mês?',
+          hint: 'Respostas, confirmações e avisos aos clientes',
           value: _selectedVolume,
           options: _volumeOptions,
           onChanged: (value) => setState(() => _selectedVolume = value),
+        ),
+        const SizedBox(height: 14),
+        _DialogDropdown(
+          label: 'Você pretende realizar campanhas promocionais pelo WhatsApp?',
+          hint: 'Ofertas e divulgações enviadas por mês',
+          value: _selectedMarketing,
+          options: _marketingOptions,
+          onChanged: (value) => setState(() => _selectedMarketing = value),
         ),
         const SizedBox(height: 14),
         _DialogField(

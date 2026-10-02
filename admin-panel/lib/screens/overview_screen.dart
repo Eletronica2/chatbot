@@ -9,6 +9,7 @@ import '../models/whatsapp_account.dart';
 import '../services/auth_service.dart';
 import '../services/conversation_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/lead_service.dart';
 import '../services/subscription_service.dart';
 import '../services/whatsapp_account_service.dart';
 import '../theme/app_motion.dart';
@@ -16,6 +17,8 @@ import '../theme/app_tokens.dart';
 import '../widgets/operation_hub_panel.dart';
 import '../widgets/premium_ui.dart';
 import '../widgets/ui_kit.dart';
+
+const Set<String> _pendingLeadStatuses = {'new', 'contacted', 'qualified'};
 
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({
@@ -25,6 +28,7 @@ class OverviewScreen extends StatefulWidget {
     this.onOpenWhatsApp,
     this.onOpenBilling,
     this.onOpenClients,
+    this.onOpenLeads,
     this.onOpenTeam,
   });
 
@@ -33,6 +37,7 @@ class OverviewScreen extends StatefulWidget {
   final VoidCallback? onOpenWhatsApp;
   final VoidCallback? onOpenBilling;
   final VoidCallback? onOpenClients;
+  final VoidCallback? onOpenLeads;
   final VoidCallback? onOpenTeam;
 
   @override
@@ -56,8 +61,23 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   Future<_OverviewData> _load() async {
     if (_isSystemHomeContext) {
-      final overview = await dashboardService.fetchOverview();
-      return _OverviewData.saas(overview: overview);
+      final results = await Future.wait<dynamic>([
+        dashboardService.fetchOverview(),
+        leadService.summary().then<LeadSummary?>((v) => v).catchError((_) => null),
+        leadService
+            .listLeads(limit: 50)
+            .then<List<Lead>?>((v) => v)
+            .catchError((_) => null),
+      ]);
+      final leads = results[2] as List<Lead>?;
+      return _OverviewData.saas(
+        overview: results[0] as DashboardOverviewModel,
+        leadSummary: results[1] as LeadSummary?,
+        pendingLeads: leads
+            ?.where((l) => _pendingLeadStatuses.contains(l.status))
+            .take(5)
+            .toList(),
+      );
     }
 
     final results = await Future.wait<dynamic>([
@@ -132,6 +152,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
                               maxWidth: constraints.maxWidth,
                               onOpenClients: widget.onOpenClients,
                               onOpenBilling: widget.onOpenBilling,
+                              onOpenLeads: widget.onOpenLeads,
+                              onRefresh: _refresh,
                             )
                           : _TenantOverview(
                               data: data,
@@ -160,14 +182,22 @@ class _OverviewData {
     required this.whatsappAccounts,
     required this.isSaasHome,
     this.subscription,
+    this.leadSummary,
+    this.pendingLeads,
   });
 
-  factory _OverviewData.saas({required DashboardOverviewModel overview}) {
+  factory _OverviewData.saas({
+    required DashboardOverviewModel overview,
+    LeadSummary? leadSummary,
+    List<Lead>? pendingLeads,
+  }) {
     return _OverviewData._(
       overview: overview,
       conversations: const [],
       whatsappAccounts: const [],
       isSaasHome: true,
+      leadSummary: leadSummary,
+      pendingLeads: pendingLeads,
     );
   }
 
@@ -191,6 +221,15 @@ class _OverviewData {
   final SubscriptionInfo? subscription;
   final List<WhatsAppAccountModel> whatsappAccounts;
   final bool isSaasHome;
+  final LeadSummary? leadSummary;
+  final List<Lead>? pendingLeads;
+
+  int leadCount(String status) => leadSummary?.byStatus[status] ?? 0;
+
+  int? get pendingLeadCount {
+    if (leadSummary == null) return null;
+    return _pendingLeadStatuses.fold<int>(0, (sum, s) => sum + leadCount(s));
+  }
 
   int get waitingConversations =>
       conversations.where((c) => c.unreadCount > 0).length;
@@ -217,12 +256,16 @@ class _SaasOverview extends StatelessWidget {
     required this.maxWidth,
     this.onOpenClients,
     this.onOpenBilling,
+    this.onOpenLeads,
+    this.onRefresh,
   });
 
   final _OverviewData data;
   final double maxWidth;
   final VoidCallback? onOpenClients;
   final VoidCallback? onOpenBilling;
+  final VoidCallback? onOpenLeads;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -231,95 +274,594 @@ class _SaasOverview extends StatelessWidget {
     final mrr = data.kpiContaining('mrr');
     final messages = data.kpiContaining('mensag');
     final twoCol = maxWidth >= 900;
+    final pastDueZero = _isZero(pastDue?.value);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _SectionHeader(
-          eyebrow: 'Operação SaaS',
-          title: _saasTitle(data.overview.tenantName),
-          subtitle: 'Indicadores da plataforma com os dados já calculados.',
+        _SaasHeader(
+          compact: maxWidth < 720,
+          onOpenLeads: onOpenLeads,
+          onOpenClients: onOpenClients,
+          onRefresh: onRefresh,
+        ),
+        const SizedBox(height: 20),
+        _LeadsPanel(
+          data: data,
+          wide: maxWidth >= 980,
+          onOpenLeads: onOpenLeads,
         ),
         const SizedBox(height: 16),
         _KpiGrid(
           maxWidth: maxWidth,
           items: [
             _KpiSpec(
-              label: 'Tenants ativos',
+              label: 'Empresas ativas',
               value: tenants?.value ?? '—',
               hint: tenants?.helper,
               accent: AppColors.primary,
+              icon: Icons.apartment_rounded,
               onTap: onOpenClients,
-            ),
-            _KpiSpec(
-              label: 'Planos em atraso',
-              value: pastDue?.value ?? '—',
-              hint: pastDue?.helper,
-              accent: _isZero(pastDue?.value)
-                  ? AppColors.textMuted
-                  : AppColors.danger,
-              onTap: onOpenBilling ?? onOpenClients,
             ),
             _KpiSpec(
               label: 'MRR estimado',
               value: mrr?.value ?? '—',
               hint: mrr?.helper,
-              accent: AppColors.primarySoft,
+              accent: AppColors.success,
+              icon: Icons.trending_up_rounded,
               onTap: onOpenBilling,
+            ),
+            _KpiSpec(
+              label: 'Planos em atraso',
+              value: pastDue?.value ?? '—',
+              hint: pastDue?.helper ?? (pastDueZero ? 'Tudo em dia' : null),
+              accent: pastDueZero ? AppColors.textMuted : AppColors.danger,
+              icon: pastDueZero
+                  ? Icons.verified_outlined
+                  : Icons.error_outline_rounded,
+              onTap: onOpenBilling ?? onOpenClients,
             ),
             _KpiSpec(
               label: 'Mensagens no mês',
               value: messages?.value ?? '—',
               hint: messages?.helper,
-              accent: AppColors.textMuted,
+              accent: AppColors.accentBlue,
+              icon: Icons.chat_bubble_outline_rounded,
             ),
           ],
         ),
         const SizedBox(height: 16),
         if (twoCol)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _TopTenantsCard(items: data.overview.topTenants),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _RecentActivityCard(events: data.overview.recentEvents),
-              ),
-            ],
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: _TopTenantsCard(
+                    items: data.overview.topTenants,
+                    onOpenClients: onOpenClients,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child:
+                      _RecentActivityCard(events: data.overview.recentEvents),
+                ),
+              ],
+            ),
           )
         else ...[
-          _TopTenantsCard(items: data.overview.topTenants),
+          _TopTenantsCard(
+            items: data.overview.topTenants,
+            onOpenClients: onOpenClients,
+          ),
           const SizedBox(height: 12),
           _RecentActivityCard(events: data.overview.recentEvents),
-        ],
-        if (onOpenClients != null) ...[
-          const SizedBox(height: 16),
-          _NextStepCard(
-            title: 'Conta interna do sistema',
-            body:
-                'Selecione uma empresa em Clientes para configurar WhatsApp, automações e cobrança.',
-            actionLabel: 'Gerenciar empresas',
-            icon: Icons.apartment_rounded,
-            onTap: onOpenClients!,
-          ),
         ],
       ],
     );
   }
 
-  static String _saasTitle(String? name) {
-    final raw = (name ?? '').trim();
-    if (raw.isEmpty || raw.toLowerCase().contains('operacao')) {
-      return 'Operação SaaS';
-    }
-    return raw;
-  }
-
   static bool _isZero(String? value) {
     final n = int.tryParse((value ?? '').replaceAll(RegExp(r'[^\d]'), ''));
     return n == null || n == 0;
+  }
+}
+
+class _SaasHeader extends StatelessWidget {
+  const _SaasHeader({
+    required this.compact,
+    this.onOpenLeads,
+    this.onOpenClients,
+    this.onRefresh,
+  });
+
+  final bool compact;
+  final VoidCallback? onOpenLeads;
+  final VoidCallback? onOpenClients;
+  final VoidCallback? onRefresh;
+
+  static const _weekdays = [
+    'Segunda-feira',
+    'Terça-feira',
+    'Quarta-feira',
+    'Quinta-feira',
+    'Sexta-feira',
+    'Sábado',
+    'Domingo',
+  ];
+  static const _months = [
+    'janeiro',
+    'fevereiro',
+    'março',
+    'abril',
+    'maio',
+    'junho',
+    'julho',
+    'agosto',
+    'setembro',
+    'outubro',
+    'novembro',
+    'dezembro',
+  ];
+
+  static String _greeting(DateTime now) {
+    if (now.hour < 12) return 'Bom dia';
+    if (now.hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final date =
+        '${_weekdays[now.weekday - 1]}, ${now.day} de ${_months[now.month - 1]}';
+
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          date.toUpperCase(),
+          style: GoogleFonts.manrope(
+            color: AppColors.primarySoft,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${_greeting(now)}. Aqui está a operação da plataforma.',
+          style: GoogleFonts.manrope(
+            color: AppColors.text,
+            fontSize: compact ? 20 : 24,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Novos interessados, empresas ativas, receita e uso em um só lugar.',
+          style: GoogleFonts.manrope(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+
+    final actions = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        if (onRefresh != null)
+          IconButton(
+            tooltip: 'Atualizar',
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            color: AppColors.textMuted,
+          ),
+        if (onOpenClients != null)
+          OutlinedButton.icon(
+            onPressed: onOpenClients,
+            icon: const Icon(Icons.apartment_rounded, size: 16),
+            label: const Text('Empresas'),
+          ),
+        if (onOpenLeads != null)
+          FilledButton.icon(
+            onPressed: onOpenLeads,
+            icon: const Icon(Icons.person_search_rounded, size: 16),
+            label: const Text('Ver leads'),
+          ),
+      ],
+    );
+
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [titleBlock, const SizedBox(height: 12), actions],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(child: titleBlock),
+        const SizedBox(width: 16),
+        actions,
+      ],
+    );
+  }
+}
+
+class _LeadsPanel extends StatelessWidget {
+  const _LeadsPanel({
+    required this.data,
+    required this.wide,
+    this.onOpenLeads,
+  });
+
+  final _OverviewData data;
+  final bool wide;
+  final VoidCallback? onOpenLeads;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = data.pendingLeadCount;
+    final hasPending = (pending ?? 0) > 0;
+    final accent = hasPending ? AppColors.warning : AppColors.primary;
+
+    final summary = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                borderRadius: AppRadius.md,
+              ),
+              child: Icon(
+                hasPending
+                    ? Icons.notifications_active_outlined
+                    : Icons.inbox_outlined,
+                color: accent,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Leads aguardando atendimento',
+                style: GoogleFonts.manrope(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Text(
+          pending == null ? '—' : '$pending',
+          style: GoogleFonts.manrope(
+            color: AppColors.text,
+            fontSize: 44,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -1.5,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          pending == null
+              ? 'Não foi possível carregar os leads agora.'
+              : hasPending
+                  ? 'Interessados vindos do site esperando contato ou proposta.'
+                  : 'Nenhum interessado pendente. Tudo em dia.',
+          style: GoogleFonts.manrope(
+            color: AppColors.textMuted,
+            fontSize: 12.5,
+            height: 1.45,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _LeadStatPill(
+              label: 'Novos',
+              value: data.leadCount('new'),
+              color: AppColors.warning,
+            ),
+            _LeadStatPill(
+              label: 'Em contato',
+              value: data.leadCount('contacted'),
+              color: AppColors.accentBlue,
+            ),
+            _LeadStatPill(
+              label: 'Qualificados',
+              value: data.leadCount('qualified'),
+              color: AppColors.accentPurple,
+            ),
+            _LeadStatPill(
+              label: 'Convertidos',
+              value: data.leadCount('won'),
+              color: AppColors.success,
+            ),
+          ],
+        ),
+        if (onOpenLeads != null) ...[
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onOpenLeads,
+            icon: const Icon(Icons.arrow_forward_rounded, size: 16),
+            label: Text(hasPending ? 'Atender leads' : 'Abrir leads'),
+          ),
+        ],
+      ],
+    );
+
+    final leads = data.pendingLeads ?? const <Lead>[];
+    final list = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Mais recentes',
+                style: GoogleFonts.manrope(
+                  color: AppColors.text,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            if (onOpenLeads != null && leads.isNotEmpty)
+              TextButton(
+                onPressed: onOpenLeads,
+                child: const Text('Ver todos'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        if (leads.isEmpty)
+          const _QuietEmpty(
+            text: 'Quando alguém preencher o formulário do site, aparece aqui.',
+          )
+        else
+          for (final lead in leads)
+            _LeadRow(lead: lead, onTap: onOpenLeads),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: AppRadius.xl,
+        border: Border.all(
+          color: hasPending
+              ? AppColors.warning.withValues(alpha: 0.35)
+              : AppColors.border,
+        ),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.07),
+            AppColors.surface,
+          ],
+          stops: const [0, 0.55],
+        ),
+      ),
+      child: wide
+          ? IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(width: 320, child: summary),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: VerticalDivider(
+                      width: 1,
+                      color: AppColors.borderSubtle,
+                    ),
+                  ),
+                  Expanded(child: list),
+                ],
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                summary,
+                const SizedBox(height: 16),
+                const Divider(height: 1, color: AppColors.borderSubtle),
+                const SizedBox(height: 12),
+                list,
+              ],
+            ),
+    );
+  }
+}
+
+class _LeadStatPill extends StatelessWidget {
+  const _LeadStatPill({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final int value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceAlt,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.borderSubtle),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$label $value',
+            style: GoogleFonts.manrope(
+              color: AppColors.text,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LeadRow extends StatelessWidget {
+  const _LeadRow({required this.lead, this.onTap});
+
+  final Lead lead;
+  final VoidCallback? onTap;
+
+  static String _initials(String name) {
+    final parts =
+        name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return (parts.first[0] + parts.last[0]).toUpperCase();
+  }
+
+  static String _ago(DateTime? at) {
+    if (at == null) return '';
+    final diff = DateTime.now().difference(at.toLocal());
+    if (diff.inMinutes < 1) return 'agora';
+    if (diff.inMinutes < 60) return 'há ${diff.inMinutes} min';
+    if (diff.inHours < 24) return 'há ${diff.inHours} h';
+    if (diff.inDays < 7) {
+      return 'há ${diff.inDays} dia${diff.inDays == 1 ? '' : 's'}';
+    }
+    return DateFormat('dd/MM').format(at.toLocal());
+  }
+
+  static (String, Color) _status(String status) {
+    switch (status) {
+      case 'contacted':
+        return ('Em contato', AppColors.accentBlue);
+      case 'qualified':
+        return ('Qualificado', AppColors.accentPurple);
+      default:
+        return ('Novo', AppColors.warning);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final (statusLabel, statusColor) = _status(lead.status);
+    final subtitle = [
+      if (lead.company.trim().isNotEmpty) lead.company.trim(),
+      if (lead.segment != null && lead.segment!.trim().isNotEmpty)
+        lead.segment!.trim(),
+    ].join(' · ');
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.md,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: AppColors.surfaceSoft,
+              child: Text(
+                _initials(lead.name),
+                style: GoogleFonts.manrope(
+                  color: AppColors.text,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    lead.name.trim().isEmpty ? lead.email : lead.name.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.manrope(
+                      color: AppColors.text,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                        color: AppColors.textSoft,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                statusLabel,
+                style: GoogleFonts.manrope(
+                  color: statusColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 64,
+              child: Text(
+                _ago(lead.createdAt),
+                textAlign: TextAlign.right,
+                style: GoogleFonts.manrope(
+                  color: AppColors.textSoft,
+                  fontSize: 11,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -547,6 +1089,7 @@ class _KpiSpec {
     required this.value,
     this.hint,
     required this.accent,
+    this.icon,
     this.onTap,
   });
 
@@ -554,6 +1097,7 @@ class _KpiSpec {
   final String value;
   final String? hint;
   final Color accent;
+  final IconData? icon;
   final VoidCallback? onTap;
 }
 
@@ -576,7 +1120,7 @@ class _KpiGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        mainAxisExtent: 92,
+        mainAxisExtent: items.any((i) => i.icon != null) ? 112 : 92,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
       ),
@@ -620,15 +1164,31 @@ class _KpiCardState extends State<_KpiCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                spec.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.manrope(
-                  color: AppColors.textMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      spec.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.manrope(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (spec.icon != null)
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: spec.accent.withValues(alpha: 0.12),
+                        borderRadius: AppRadius.md,
+                      ),
+                      child: Icon(spec.icon, size: 15, color: spec.accent),
+                    ),
+                ],
               ),
               const Spacer(),
               Text(
@@ -883,14 +1443,21 @@ class _RecentConversationsCard extends StatelessWidget {
 }
 
 class _TopTenantsCard extends StatelessWidget {
-  const _TopTenantsCard({required this.items});
+  const _TopTenantsCard({required this.items, this.onOpenClients});
 
   final List<DashboardTopTenantModel> items;
+  final VoidCallback? onOpenClients;
 
   @override
   Widget build(BuildContext context) {
     return _SurfaceCard(
       title: 'Empresas com maior uso',
+      trailing: onOpenClients == null
+          ? null
+          : TextButton(
+              onPressed: onOpenClients,
+              child: const Text('Ver empresas'),
+            ),
       child: items.isEmpty
           ? const _QuietEmpty(
               text: 'Nenhum uso de mensagens no período atual.',

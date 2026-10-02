@@ -50,6 +50,8 @@ def _row_to_lead(row: dict[str, Any]) -> Lead:
         whatsapp=str(row.get("whatsapp") or ""),
         objective=str(row.get("objective") or ""),
         monthly_volume=row.get("monthly_volume"),
+        operational_volume=row.get("operational_volume"),
+        marketing_volume=row.get("marketing_volume"),
         team_size=row.get("team_size"),
         current_tools=row.get("current_tools"),
         best_contact_time=row.get("best_contact_time"),
@@ -90,6 +92,8 @@ class LeadService:
         best_contact_time: str | None,
         source: str = "landing",
         metadata: dict[str, Any] | None = None,
+        operational_volume: str | None = None,
+        marketing_volume: str | None = None,
     ) -> Lead:
         name = (name or "").strip()
         company = (company or "").strip()
@@ -114,7 +118,9 @@ class LeadService:
             email=email_norm,
             whatsapp=whatsapp_norm,
             objective=objective,
-            monthly_volume=(monthly_volume or None),
+            monthly_volume=(monthly_volume or operational_volume or None),
+            operational_volume=(operational_volume or None),
+            marketing_volume=(marketing_volume or None),
             team_size=(team_size or None),
             current_tools=(current_tools or None),
             best_contact_time=(best_contact_time or None),
@@ -179,7 +185,8 @@ class LeadService:
             f"E-mail: {lead.email}\n"
             f"WhatsApp: {lead.whatsapp}\n"
             f"Objetivo: {lead.objective}\n"
-            f"Volume mensal: {lead.monthly_volume or '-'}\n"
+            f"Volume operacional: {lead.operational_volume or lead.monthly_volume or '-'}\n"
+            f"Campanhas: {lead.marketing_volume or '-'}\n"
             f"Ferramentas atuais: {lead.current_tools or '-'}\n"
             f"Melhor horario: {lead.best_contact_time or '-'}"
         )

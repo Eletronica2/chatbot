@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import uuid4
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -22,6 +23,7 @@ from app.services.dependencies import (
     tenant_user_service_dependency,
 )
 from app.services.message_service import MessageService
+from app.services.outbound_billing import finalize_outbound, gateway_billing_fields, reserve_outbound
 from app.services.session_service import SessionService
 from app.services.tenant_user_service import TenantUserService
 
@@ -248,6 +250,8 @@ async def get_conversation_flow(
 
 class ReplyRequest(BaseModel):
     text: str
+    source: Optional[str] = None
+    client_message_id: Optional[str] = Field(default=None, max_length=80)
 
 
 @router.post("/{conversation_id}/reply")
@@ -267,6 +271,16 @@ async def send_reply(
 
     session = await session_service.get_or_create_session(tenant_id, phone_number)
 
+    source_path = "quick_reply" if (body.source or "").strip().lower() == "quick_reply" else "manual"
+    billing = await reserve_outbound(
+        tenant_id,
+        category="SERVICE",
+        category_source="freeform_service_reply",
+        source_path=source_path,
+        idempotency_key=f"{source_path}:{body.client_message_id or uuid4()}",
+        phone_number_id=session.phone_number_id,
+    )
+    provider_message_id: str | None = None
     try:
         async with httpx.AsyncClient(timeout=settings.GATEWAY_API_TIMEOUT) as client:
             gw_resp = await client.post(
@@ -277,12 +291,16 @@ async def send_reply(
                     "to": phone_number,
                     "text": text,
                     "phone_number_id": session.phone_number_id,
+                    **gateway_billing_fields(billing),
                 },
             )
         if gw_resp.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Gateway error: {gw_resp.text}")
+        provider_message_id = (gw_resp.json() or {}).get("message_id")
     except httpx.RequestError as exc:
         raise HTTPException(status_code=502, detail=f"Gateway unreachable: {exc}")
+    finally:
+        await finalize_outbound(tenant_id, billing, provider_message_id=provider_message_id)
 
     context: Dict[str, Any] = dict(session.context or {})
     session.append_history(role="assistant", content=text, limit=10)
@@ -319,11 +337,16 @@ async def send_reply(
         role="assistant",
         content=text,
         source="human",
-        metadata={"source": "admin_panel", "actor_user_id": user.user_id},
+        metadata={
+            "source": "admin_panel",
+            "actor_user_id": user.user_id,
+            "provider_message_id": provider_message_id,
+            "billing_reservation_id": billing.get("billing_reservation_id"),
+        },
         phone_number_id=session.phone_number_id,
     )
 
-    return {"ok": True, "phone_number": phone_number}
+    return {"ok": True, "phone_number": phone_number, "billing_level": billing.get("billing_level")}
 
 
 @router.post("/{conversation_id}/assume")

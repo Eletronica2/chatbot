@@ -1,0 +1,35 @@
+[PASS] §0 BILLING_V2_ENABLED em produção — default_mode=customer_direct
+fixture tenant=smoke-bv2-20261002032044
+[PASS] §130 atribuir plano V2 (Inicial) via API superadmin — http=200
+[PASS] §130 config: modo + plano — mode=customer_direct plan=PLAN_INICIAL_2026_10
+[PASS] §130 usage: franquia 1000, usado 0 — allowance=1000 used=0 level=ok
+[PASS] §130 dashboard: margem/status — status=partial label=Estimativa parcial
+[PASS] §130 ledger com grant do ciclo — entries=1
+[PASS] §130 rate cards: 1 vigente por categoria — AUTHENTICATION=0.035000(RATE_BR_2026_10_01), MARKETING=0.321700(RATE_BR_2026_10_01), SERVICE=0.000000(RATE_BR_2026_10_01), UTILITY=0.035000(RATE_BR_2026_10_01)
+[PASS] §130 overview superadmin — tenants=3
+[PASS] §131 800 operacionais / marketing 'Sim, até 100/mês' — PLAN_INICIAL_2026_10 R$197.00 marketing_estimate=R$55.00
+[PASS] §131 2500 operacionais / marketing 'Até 500/mês' — PLAN_ESSENCIAL_2026_10 R$297.00 marketing_estimate=R$275.00
+[PASS] §131 5000 operacionais / marketing 'Não' — PLAN_CRESCIMENTO_2026_10 R$497.00 marketing_estimate=R$0.00
+[PASS] §131 10000 operacionais / marketing 'Não' — PLAN_PROFISSIONAL_2026_10 R$897.00 marketing_estimate=R$0.00
+[PASS] §131 20000 operacionais / marketing 'Não' — PLAN_EMPRESARIAL_2026_10 R$sob consulta marketing_estimate=R$0.00
+[PASS] §131 proposta controlada criada (Inicial R$197, SP) — http=201 id=2
+[PASS] §132 R$10 → VERMELHO e bloqueado (mesmo com motivo) — status=red margin=-250.00% min_safe=50.00
+[PASS] §132 criar proposta R$10 é rejeitado pelo backend — http=422
+[PASS] §132 15% → AMARELO, exige motivo — status=yellow margin=15.01%
+[PASS] §132 15% com motivo de superadmin → permitido
+[PASS] §132 ≥30% sem cost basis completo → 'Estimativa parcial' (nunca verde) — status=partial label=Estimativa parcial unknown=['ai', 'payment', 'tax']
+[PASS] §133 inbound não consome (used antes == depois, 0 commits) — http=200 used 0→0 available 1000→1000 auto_reply_reservations=1 (liberadas: resposta não enviada no smoke)
+[PASS] §134 RESERVE: disponível -1 temporariamente — available 1000→999 reserved 0→1
+[PASS] §134 DELIVERED: commit exatamente uma vez — used 0→1 action=commit
+[PASS] §134 delivered duplicado + read: sem mudança — dup_action=None read_action=noop
+[PASS] §135 RESERVE -1 → FAILED libera; saldo restaurado — available 999→998→999 action=release
+[PASS] §136 modo → solution_partner_credit_line (tenant smoke) — http=200
+[PASS] §136 saldo 100 créditos de campanha — available=100
+[PASS] §136 reserve: 99 disponíveis / 1 reservado — available=99 reserved=1
+[PASS] §136 delivered: 99 disponíveis / 0 reservado / 1 consumido — available=99 reserved=0 consumed=1
+[PASS] §136 failed: crédito liberado — available=99 reserved=0 consumed=1
+[PASS] §137 customer_direct: crédito pré-pago de marketing NÃO consumido — available=99 consumed=1
+[PASS] §137 registra custo Meta estimado + uso — entitlement=meta_direct_tracking status=committed meta_unit_cost=0.321700 rate=RATE_BR_2026_10_01
+[PASS] §138 simulação/dry-run: mesmos saldos, nenhuma reservation, nenhum ledger — simulation_http=200 source=ai reservations 6→6 ledger 14→14
+fixture tenant smoke-bv2-20261002032044 marcado inactive/canceled (sem exclusão).
+RESULT: 32/32 PASS

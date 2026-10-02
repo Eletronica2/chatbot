@@ -56,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<ConversationGroup> _groups = <ConversationGroup>[];
   Conversation? _selectedConversation;
   String _selectedNav = _navHome;
+  String _clientsView = 'tenants';
   String _conversationFilter = 'all';
   final TextEditingController _searchCtrl = TextEditingController();
   bool _sidebarCollapsed = false;
@@ -266,8 +267,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setState(() => _applyFilter(value));
   }
 
+  void _openClientsView(String view) {
+    _selectNav(_navClients);
+    setState(() => _clientsView = view);
+  }
+
   void _selectNav(String navId) {
     setState(() {
+      if (navId == _navClients) _clientsView = 'tenants';
       _selectedNav = navId;
       if (navId != _navConversations) {
         _selectedConversation = null;
@@ -525,9 +532,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       case _navClients:
         return KeyedSubtree(
-          key: const ValueKey<String>('clients'),
+          key: ValueKey<String>('clients-$_clientsView'),
           child: BackofficeScreen(
             embedded: true,
+            initialAdminView: _clientsView,
             onLogout: _logout,
             onOpenTenantFlows: () => _selectNav(_navAutomations),
           ),
@@ -566,6 +574,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     : null),
             onOpenClients:
                 authService.isSuperadmin ? () => _selectNav(_navClients) : null,
+            onOpenLeads: authService.isSuperadmin
+                ? () => _openClientsView('leads')
+                : null,
           ),
         );
     }

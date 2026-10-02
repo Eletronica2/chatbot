@@ -19,6 +19,7 @@ import '../services/whatsapp_account_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
 import '../widgets/app_sidebar.dart';
+import '../widgets/billing_v2_panels.dart';
 import '../widgets/premium_ui.dart';
 import '../widgets/whatsapp_meta_panels.dart';
 import '../widgets/coexistence_wizard.dart';
@@ -402,6 +403,7 @@ class _BackofficeScreenState extends State<BackofficeScreen>
       _adminView = 'tenants';
     }
     _loadTenants();
+    if (_adminView == 'leads') _loadLeads();
   }
 
   @override
@@ -1285,6 +1287,8 @@ class _BackofficeScreenState extends State<BackofficeScreen>
       mainBody = _buildLeadsView();
     } else if (_adminView == 'whatsapp') {
       mainBody = _buildWhatsAppView();
+    } else if (_adminView == 'billing_v2' && !widget.lockToCurrentTenant) {
+      mainBody = const AdminBillingV2Console();
     } else {
       mainBody = LayoutBuilder(
         builder: (context, constraints) {
@@ -1397,6 +1401,12 @@ class _BackofficeScreenState extends State<BackofficeScreen>
               selected: _adminView == 'leads',
               onTap: () => _switchAdminView('leads'),
               badge: _leadSummary?.byStatus['new'],
+            ),
+            _AdminViewChip(
+              label: 'Cobrança V2',
+              icon: Icons.receipt_long_rounded,
+              selected: _adminView == 'billing_v2',
+              onTap: () => _switchAdminView('billing_v2'),
             ),
           ],
           _AdminViewChip(
@@ -2477,9 +2487,14 @@ class _LeadCard extends StatelessWidget {
                             lead.segment!,
                             style: const TextStyle(color: _kMuted, fontSize: 12),
                           ),
-                        if (lead.monthlyVolume != null && lead.monthlyVolume!.isNotEmpty)
+                        if ((lead.operationalVolume ?? lead.monthlyVolume ?? '').isNotEmpty)
                           Text(
-                            '• ${lead.monthlyVolume}',
+                            '• Atendimento: ${lead.operationalVolume ?? lead.monthlyVolume}',
+                            style: const TextStyle(color: _kSubtle, fontSize: 12),
+                          ),
+                        if ((lead.marketingVolume ?? '').isNotEmpty)
+                          Text(
+                            '• Campanhas: ${lead.marketingVolume}',
                             style: const TextStyle(color: _kSubtle, fontSize: 12),
                           ),
                         Text(

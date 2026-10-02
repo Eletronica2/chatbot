@@ -522,6 +522,17 @@ class MySQLDatabase:
             ddl="ALTER TABLE conversation_logs ADD COLUMN detected_intent VARCHAR(120) NULL AFTER source",
         )
         self._ensure_product_hardening_schema(cursor)
+        self._ensure_billing_v2_schema(cursor)
+
+    def _ensure_billing_v2_schema(self, cursor) -> None:
+        from app.db import billing_v2_schema
+
+        billing_v2_schema.apply(
+            cursor,
+            ensure_column=self._ensure_column,
+            ensure_index=self._ensure_index,
+            fetchone=self._fetchone,
+        )
 
     def _ensure_product_hardening_schema(self, cursor) -> None:
         """Groups, assignment columns, quick replies, usage ledger, rate cards, fiscal stubs."""

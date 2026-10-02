@@ -26,6 +26,8 @@ class LeadRepository:
         objective: str,
         monthly_volume: str | None,
         team_size: str | None,
+        operational_volume: str | None = None,
+        marketing_volume: str | None = None,
         current_tools: str | None,
         best_contact_time: str | None,
         source: str,
@@ -44,13 +46,15 @@ class LeadRepository:
                     whatsapp,
                     objective,
                     monthly_volume,
+                    operational_volume,
+                    marketing_volume,
                     team_size,
                     current_tools,
                     best_contact_time,
                     source,
                     metadata
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     name,
@@ -60,6 +64,8 @@ class LeadRepository:
                     whatsapp,
                     objective,
                     monthly_volume,
+                    operational_volume,
+                    marketing_volume,
                     team_size,
                     current_tools,
                     best_contact_time,
@@ -106,6 +112,8 @@ class LeadRepository:
                     l.whatsapp,
                     l.objective,
                     l.monthly_volume,
+                l.operational_volume,
+                l.marketing_volume,
                     l.team_size,
                     l.current_tools,
                     l.best_contact_time,
@@ -188,6 +196,8 @@ class LeadRepository:
                 l.whatsapp,
                 l.objective,
                 l.monthly_volume,
+                l.operational_volume,
+                l.marketing_volume,
                 l.team_size,
                 l.current_tools,
                 l.best_contact_time,

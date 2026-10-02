@@ -7,6 +7,7 @@ import hmac
 import json
 import logging
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -46,6 +47,75 @@ class BillingService:
         self.settings = settings
         self.email_service = email_service
         self._base_url = "https://api.stripe.com/v1"
+        self.billing_gate = None
+        self.topup_service = None
+
+    @property
+    def stripe_test_mode(self) -> bool:
+        """Top-up checkout only ever runs against Stripe TEST keys."""
+        return self.settings.STRIPE_SECRET_KEY.strip().startswith("sk_test_")
+
+    async def create_topup_checkout(self, *, tenant_id: str, purchase: dict[str, Any]) -> dict[str, Any]:
+        if not self.stripe_test_mode:
+            return {"checkout_url": None, "status": "pending", "reason": "stripe_test_not_configured"}
+        cents = int((Decimal(purchase["total_amount"]) * 100).to_integral_value())
+        data = await self._stripe_post(
+            "/checkout/sessions",
+            {
+                "mode": "payment",
+                "client_reference_id": tenant_id,
+                "success_url": self.settings.BILLING_SUCCESS_URL,
+                "cancel_url": self.settings.BILLING_CANCEL_URL,
+                "line_items[0][price_data][currency]": "brl",
+                "line_items[0][price_data][unit_amount]": str(cents),
+                "line_items[0][price_data][product_data][name]": f"{purchase['catalog_item_code']} x{purchase['units']}",
+                "line_items[0][quantity]": "1",
+                "metadata[tenant_id]": tenant_id,
+                "metadata[purchase_id]": purchase["id"],
+                "metadata[kind]": "billing_v2_topup",
+            },
+        )
+        session_id = str(data.get("id") or "")
+        if session_id and self.topup_service is not None:
+            await asyncio.to_thread(self.topup_service.attach_session, purchase["id"], session_id)
+        return {"checkout_url": data.get("url"), "session_id": session_id, "status": "pending"}
+
+    async def _grant_topup_from_checkout(self, session: dict[str, Any], *, livemode: bool) -> None:
+        metadata = session.get("metadata") or {}
+        purchase_id = str(metadata.get("purchase_id") or "").strip()
+        if not purchase_id or self.topup_service is None:
+            return
+        if livemode:
+            logger.error("billing_v2_topup_livemode_rejected purchase=%s", purchase_id)
+            return
+        if str(session.get("payment_status") or "") != "paid":
+            logger.info("billing_v2_topup_not_paid purchase=%s status=%s", purchase_id, session.get("payment_status"))
+            return
+        tenant_key = str(metadata.get("tenant_id") or "").strip()
+        tenant_row = self.database.get_tenant_record(tenant_key) if tenant_key else None
+        if not tenant_row:
+            logger.error("billing_v2_topup_unknown_tenant purchase=%s", purchase_id)
+            return
+        amount_total = session.get("amount_total")
+        expected = (Decimal(int(amount_total)) / 100) if amount_total is not None else None
+        result = await asyncio.to_thread(
+            self.topup_service.mark_paid_and_grant,
+            purchase_id,
+            provider_payment_id=str(session.get("payment_intent") or "") or None,
+            actor_id=None,
+            reason="stripe_test_webhook",
+            expected_tenant_pk=int(tenant_row["id"]),
+            expected_total=expected,
+        )
+        logger.info("billing_v2_topup_granted purchase=%s created=%s", purchase_id, result.get("created"))
+
+    async def _ensure_v2_cycle_grant(self, tenant_id: str) -> None:
+        if self.billing_gate is None:
+            return
+        tenant_row = self.database.get_tenant_record(tenant_id)
+        if not tenant_row:
+            return
+        await asyncio.to_thread(self.billing_gate.ensure_cycle_grant, int(tenant_row["id"]), require_paid=False)
 
     @property
     def provider_ready(self) -> bool:
@@ -231,7 +301,9 @@ class BillingService:
         event_type = str(event.get("type") or "")
         data = ((event.get("data") or {}).get("object") or {})
 
-        if event_type == "checkout.session.completed":
+        if event_type == "checkout.session.completed" and (data.get("metadata") or {}).get("purchase_id"):
+            await self._grant_topup_from_checkout(data, livemode=bool(event.get("livemode")))
+        elif event_type == "checkout.session.completed":
             await self._handle_checkout_completed(data)
         elif event_type in {"customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"}:
             await self._handle_subscription_event(data)
@@ -336,6 +408,7 @@ class BillingService:
                 status="active",
                 renewal_date=next_renewal,
             )
+            await self._ensure_v2_cycle_grant(tenant_id)
 
     async def _notify_billing_failure(self, tenant_id: str) -> None:
         if self.email_service is None:

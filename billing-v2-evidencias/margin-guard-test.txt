@@ -1,0 +1,8 @@
+# §132 Margin guard — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §132 R$10 → VERMELHO e bloqueado (mesmo com motivo) — status=red margin=-250.00% min_safe=50.00
+[PASS] §132 criar proposta R$10 é rejeitado pelo backend — http=422
+[PASS] §132 15% → AMARELO, exige motivo — status=yellow margin=15.01%
+[PASS] §132 15% com motivo de superadmin → permitido
+[PASS] §132 ≥30% sem cost basis completo → 'Estimativa parcial' (nunca verde) — status=partial label=Estimativa parcial unknown=['ai', 'payment', 'tax']
+[PASS] §132 atribuir plano com prejuízo (R$10/12.000) é rejeitado; plano atual intacto — http=422

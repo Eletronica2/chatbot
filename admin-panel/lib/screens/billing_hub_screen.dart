@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/billing_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
+import '../widgets/billing_v2_panels.dart';
 import '../widgets/premium_ui.dart';
 
 /// Cobrança — assinatura / uso / catálogo / checkout+portal existentes.
@@ -204,6 +205,8 @@ class _BillingHubScreenState extends State<BillingHubScreen> {
                             ? _openPortal
                             : null,
                   ),
+                  const SizedBox(height: 14),
+                  const TenantBillingV2Card(),
                   const SizedBox(height: 14),
                   LayoutBuilder(
                     builder: (context, constraints) {

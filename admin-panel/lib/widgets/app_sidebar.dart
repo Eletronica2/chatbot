@@ -281,24 +281,12 @@ class _SidebarBrandState extends State<_SidebarBrand> {
                     ? AppColors.surface.withValues(alpha: 0.4)
                     : Colors.transparent,
               ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: widget.onTap,
-                    child: SizedBox(
-                      width: 32,
-                      height: 32,
-                      child: Center(child: mark),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: widget.onTap,
-                      child: const AtendaLogo(height: 28, showWordmark: true),
-                    ),
-                  ),
-                ],
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: const Align(
+                  alignment: Alignment.centerLeft,
+                  child: AtendaLogo(height: 28, showWordmark: true),
+                ),
               ),
             ),
           ),

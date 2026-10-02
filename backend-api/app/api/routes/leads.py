@@ -29,6 +29,8 @@ class LeadCreatePayload(BaseModel):
     whatsapp: str = Field(..., min_length=8, max_length=32)
     objective: str = Field(..., min_length=5)
     monthly_volume: str | None = Field(default=None, max_length=80)
+    operational_volume: str | None = Field(default=None, max_length=80)
+    marketing_volume: str | None = Field(default=None, max_length=80)
     team_size: str | None = Field(default=None, max_length=80)
     current_tools: str | None = Field(default=None)
     best_contact_time: str | None = Field(default=None, max_length=80)
@@ -51,6 +53,8 @@ class LeadResponse(BaseModel):
     whatsapp: str
     objective: str
     monthly_volume: str | None = None
+    operational_volume: str | None = None
+    marketing_volume: str | None = None
     team_size: str | None = None
     current_tools: str | None = None
     best_contact_time: str | None = None
@@ -91,6 +95,8 @@ async def submit_public_lead(
             best_contact_time=payload.best_contact_time,
             source=payload.source or "landing",
             metadata=payload.metadata,
+            operational_volume=payload.operational_volume,
+            marketing_volume=payload.marketing_volume,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

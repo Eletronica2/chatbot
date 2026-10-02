@@ -16,6 +16,8 @@ class Lead(BaseModel):
     whatsapp: str
     objective: str
     monthly_volume: str | None = None
+    operational_volume: str | None = None
+    marketing_volume: str | None = None
     team_size: str | None = None
     current_tools: str | None = None
     best_contact_time: str | None = None

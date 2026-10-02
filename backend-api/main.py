@@ -1,6 +1,7 @@
 """Backend API entrypoint."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -19,6 +20,7 @@ from app.api.routes import (
     admin_users,
     auth,
     billing,
+    billing_v2,
     billing_webhooks,
     conversation_groups,
     conversation_logs,
@@ -62,6 +64,7 @@ from app.services.dependencies import (
     set_admin_audit_service,
     set_auth_service,
     set_billing_service,
+    set_billing_v2,
     set_conversation_group_service,
     set_conversation_log_service,
     set_conversation_service,
@@ -109,6 +112,11 @@ from app.services.conversation_group_service import ConversationGroupService
 from app.services.quick_reply_service import QuickReplyService
 from app.services.usage_ledger_service import UsageLedgerService
 from app.services.fiscal_provider import build_fiscal_provider
+from app.services.ai_usage_service import AIUsageService
+from app.services.billing_catalog_service import BillingCatalogService
+from app.services.billing_gate import BillingGate
+from app.services.billing_topup_service import BillingTopupService
+from app.services.meta_rate_engine import MetaRateEngine
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -188,6 +196,20 @@ async def lifespan(app: FastAPI):
         settings=settings,
         flow_service=flow_service,
     )
+    meta_rate_engine = MetaRateEngine(database)
+    billing_catalog_service = BillingCatalogService(database)
+    billing_gate = BillingGate(database, meta_rate_engine, billing_catalog_service)
+    ai_usage_service = AIUsageService(database)
+    billing_topup_service = BillingTopupService(database, billing_catalog_service, billing_gate)
+    billing_service.billing_gate = billing_gate
+    billing_service.topup_service = billing_topup_service
+    set_billing_v2(
+        gate=billing_gate,
+        rate_engine=meta_rate_engine,
+        catalog=billing_catalog_service,
+        ai_usage=ai_usage_service,
+        topup=billing_topup_service,
+    )
     conversation_service = ConversationService(
         session_service=session_service,
         flow_service=flow_service,
@@ -196,6 +218,13 @@ async def lifespan(app: FastAPI):
         subscription_service=subscription_service,
         conversation_log_service=conversation_log_service,
         message_service=message_service,
+        billing_gate=billing_gate,
+        ai_usage_service=ai_usage_service,
+    )
+    logger.info(
+        "Billing V2 enabled=%s default_mode=%s",
+        settings.BILLING_V2_ENABLED,
+        billing_gate.default_mode(),
     )
 
     set_conversation_service(conversation_service)
@@ -234,6 +263,9 @@ async def lifespan(app: FastAPI):
         lead_service=lead_service,
         tenant_admin_service=tenant_admin_service,
         tenant_user_service=tenant_user_service,
+        billing_catalog=billing_catalog_service,
+        rate_engine=meta_rate_engine,
+        billing_gate=billing_gate,
     )
     set_proposal_service(proposal_service)
 
@@ -273,8 +305,25 @@ async def lifespan(app: FastAPI):
             monthly_message_limit=settings.BOOTSTRAP_PIZZARIA_MONTHLY_MESSAGE_LIMIT,
             copy_default_flows=False,
         )
+    housekeeping = asyncio.create_task(_billing_housekeeping(billing_gate))
     yield
+    housekeeping.cancel()
     logger.info("Backend API shutdown complete")
+
+
+async def _billing_housekeeping(gate: BillingGate) -> None:
+    """Expire plan buckets at cycle end and flag stale reservations (never auto-release)."""
+    while True:
+        await asyncio.sleep(max(60, int(settings.BILLING_HOUSEKEEPING_INTERVAL_SECONDS)))
+        try:
+            expired = await asyncio.to_thread(gate.expire_buckets)
+            stale = await asyncio.to_thread(gate.mark_stale_pending)
+            if expired or stale:
+                logger.info("billing_housekeeping expired_units=%s stale_reservations=%s", expired, stale)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("billing_housekeeping_failed")
 
 
 app = FastAPI(
@@ -334,6 +383,7 @@ app.include_router(flow_routes.router)
 app.include_router(actions.router)
 app.include_router(leads.router)
 app.include_router(proposals.router)
+app.include_router(billing_v2.router)
 
 
 @app.exception_handler(RequestValidationError)

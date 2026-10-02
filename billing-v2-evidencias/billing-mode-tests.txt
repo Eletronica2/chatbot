@@ -1,0 +1,38 @@
+# §136/§137 Billing modes (solution_partner x customer_direct) — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §0 BILLING_V2_ENABLED em produção — default_mode=customer_direct
+[PASS] §136 modo → solution_partner_credit_line (tenant smoke) — http=200
+[PASS] §136 saldo 100 créditos de campanha — available=100
+[PASS] §136 reserve: 99 disponíveis / 1 reservado — available=99 reserved=1
+[PASS] §136 delivered: 99 disponíveis / 0 reservado / 1 consumido — available=99 reserved=0 consumed=1
+[PASS] §136 failed: crédito liberado — available=99 reserved=0 consumed=1
+[PASS] §137 customer_direct: crédito pré-pago de marketing NÃO consumido — available=99 consumed=1
+[PASS] §137 registra custo Meta estimado + uso — entitlement=meta_direct_tracking status=committed meta_unit_cost=0.321700 rate=RATE_BR_2026_10_01
+
+Testes automatizados relacionados (tests-backend.txt):
+tests/test_billing_v2_domain.py::test_operational_and_marketing_unit_types PASSED [  3%]
+tests/test_billing_v2_domain.py::test_billing_mode_default_is_customer_direct PASSED [  4%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[N\xe3o-0-False] PASSED [ 14%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[Sim, at\xe9 100/m\xeas-100-False] PASSED [ 15%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[At\xe9 500/m\xeas-500-False] PASSED [ 16%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[At\xe9 5.000/m\xeas-5000-False] PASSED [ 17%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[Mais de 5.000/m\xeas-5001-False] PASSED [ 18%]
+tests/test_billing_v2_domain.py::test_parse_marketing_answer[Ainda n\xe3o sei-None-True] PASSED [ 19%]
+tests/test_billing_v2_domain.py::test_marketing_volume_never_raises_base_plan PASSED [ 30%]
+tests/test_billing_v2_domain.py::test_marketing_estimate[100-estimate0] PASSED [ 31%]
+tests/test_billing_v2_domain.py::test_marketing_estimate[500-estimate1] PASSED [ 32%]
+tests/test_billing_v2_domain.py::test_customer_direct_excludes_meta_but_shows_customer_estimate PASSED [ 38%]
+tests/test_billing_v2_domain.py::test_marketing_margin_by_mode PASSED    [ 40%]
+tests/test_billing_v2_domain.py::test_customer_direct_proposal_texts PASSED [ 42%]
+tests/test_billing_v2_mysql.py::test_marketing_solution_partner_prepaid_credits PASSED [ 70%]
+tests/test_billing_v2_mysql.py::test_marketing_customer_direct_tracks_without_consuming PASSED [ 71%]
+tests/test_billing_v2_mysql.py::test_mode_switch_keeps_history_snapshot PASSED [ 73%]
+tests/test_security_and_models.py::test_bootstrap_tenant_keeps_copy_default_flows_optional PASSED [ 91%]
+tests/test_security_and_models.py::test_hash_password_roundtrip PASSED   [ 92%]
+tests/test_security_and_models.py::test_normalize_model_list_removes_duplicates_and_prefixes PASSED [ 93%]
+tests/test_security_and_models.py::test_map_subscription_to_tenant_status_uses_valid_lifecycle_values PASSED [ 94%]
+tests/test_security_and_models.py::test_company_admin_cannot_patch_ai_models PASSED [ 95%]
+tests/test_security_and_models.py::test_company_admin_can_patch_non_model_settings PASSED [ 96%]
+tests/test_security_and_models.py::test_embedded_signup_exchange_accepts_empty_display_phone PASSED [ 97%]
+tests/test_security_and_models.py::test_resolve_signup_display_fields_prefers_graph_phone PASSED [ 98%]
+tests/test_security_and_models.py::test_superadmin_can_patch_ai_models PASSED [100%]

@@ -1,0 +1,8 @@
+# §131 Proposal — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §131 800 operacionais / marketing 'Sim, até 100/mês' — PLAN_INICIAL_2026_10 R$197.00 marketing_estimate=R$55.00
+[PASS] §131 2500 operacionais / marketing 'Até 500/mês' — PLAN_ESSENCIAL_2026_10 R$297.00 marketing_estimate=R$275.00
+[PASS] §131 5000 operacionais / marketing 'Não' — PLAN_CRESCIMENTO_2026_10 R$497.00 marketing_estimate=R$0.00
+[PASS] §131 10000 operacionais / marketing 'Não' — PLAN_PROFISSIONAL_2026_10 R$897.00 marketing_estimate=R$0.00
+[PASS] §131 20000 operacionais / marketing 'Não' — PLAN_EMPRESARIAL_2026_10 R$sob consulta marketing_estimate=R$0.00
+[PASS] §131 proposta controlada criada (Inicial R$197, SP) — http=201 id=3

@@ -166,6 +166,7 @@ class AIService:
         if source == "gemini":
             response_metadata["model_used"] = selected_model
             response_metadata["model_attempts"] = model_attempts
+        response_metadata["ai_usage"] = self._extract_usage(completion, source, selected_model)
         if debug_enabled:
             response_metadata["debug_mode"] = True
             logger.info(
@@ -238,6 +239,10 @@ class AIService:
             "Prefira 'Posso te mostrar...', 'Quer que eu te ajude com...' ou "
             "'Que tal...'. Seja breve e direto."
         )
+        context_lines.append(
+            "Escreva toda a resposta em UMA única mensagem coesa. Não divida a resposta "
+            "em várias mensagens nem use separadores para mensagens múltiplas."
+        )
 
         system_content = "\n".join(context_lines)
         messages = [{"role": "system", "content": system_content}]
@@ -245,6 +250,29 @@ class AIService:
             messages.append(message.model_dump())
         messages.append({"role": "user", "content": user_text})
         return messages
+
+    @staticmethod
+    def _extract_usage(completion: dict, source: str, model: str | None) -> Dict[str, Any]:
+        """Token usage for cost tracking; missing counts stay None (unknown, never zero)."""
+        completion = completion if isinstance(completion, dict) else {}
+        if source == "gemini":
+            usage = completion.get("usageMetadata") or {}
+            return {
+                "provider": "gemini",
+                "model": model or completion.get("modelVersion"),
+                "input_tokens": usage.get("promptTokenCount"),
+                "output_tokens": usage.get("candidatesTokenCount"),
+                "cached_tokens": usage.get("cachedContentTokenCount"),
+            }
+        usage = completion.get("usage") or {}
+        details = usage.get("prompt_tokens_details") or {}
+        return {
+            "provider": source,
+            "model": completion.get("model"),
+            "input_tokens": usage.get("prompt_tokens"),
+            "output_tokens": usage.get("completion_tokens"),
+            "cached_tokens": details.get("cached_tokens"),
+        }
 
     def _extract_openai_reply(self, completion: dict) -> str:
         choices = completion.get("choices", [])

@@ -1,0 +1,7 @@
+# §136 Marketing credit (solution_partner) — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §136 modo → solution_partner_credit_line (tenant smoke) — http=200
+[PASS] §136 saldo 100 créditos de campanha — available=100
+[PASS] §136 reserve: 99 disponíveis / 1 reservado — available=99 reserved=1
+[PASS] §136 delivered: 99 disponíveis / 0 reservado / 1 consumido — available=99 reserved=0 consumed=1
+[PASS] §136 failed: crédito liberado — available=99 reserved=0 consumed=1

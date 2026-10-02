@@ -1,0 +1,28 @@
+# §140/§141 Security (2026-10-02T03:31:05Z)
+
+## ss -lntp (produção, após restart controlado)
+== ss -lntp
+Local Peer
+127.0.0.1:8080 docker-proxy
+0.0.0.0:22 sshd
+0.0.0.0:80 nginx
+127.0.0.1:46145 containerd
+0.0.0.0:443 nginx
+[::]:22 sshd
+[::]:80 nginx
+
+Esperado: 22/80/443 públicos; 8080 apenas loopback; 3306 não público -> OK (3306 só na rede docker interna).
+
+## Autenticação
+POST /api/v1/auth/login inválido -> 401
+GET /api/v1/admin/billing/overview sem token -> 401
+GET /api/v1/billing/v2/summary sem token -> 401
+POST /api/v1/internal/billing/status sem chave -> 403
+
+## Segredos
+.env.production nunca lido/impresso; variáveis BILLING_V2_ENABLED/META_BILLING_DEFAULT adicionadas via append (backup do arquivo em ~/deploy-backups, chmod 600).
+Token de smoke gerado dentro do container (15 min), nunca impresso. Saídas filtradas.
+Stripe LIVE: não ativado; checkout de top-up apenas TEST/pendente. Meta (WABA/App/Webhook/Embedded Signup): inalterados. Centralized billing: não ativado.
+
+## Varredura de segredos nas evidências
+arquivos com padrões de segredo: 0

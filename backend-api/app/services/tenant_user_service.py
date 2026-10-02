@@ -62,6 +62,33 @@ class TenantUserService:
             created_by_user_id=created_by_user_id,
         )
 
+    async def invite_existing_user(
+        self,
+        *,
+        tenant_id: str,
+        email: str,
+        created_by_user_id: str | None = None,
+    ) -> TenantUserActionToken:
+        row = await self.user_repository.get_by_email(email.strip().lower())
+        if row is None or str(row.get("tenant_id") or "") != tenant_id:
+            raise ValueError("Usuario nao encontrado neste tenant")
+        user_id = str(row.get("id") or "")
+        if str(row.get("status") or "") != "invited":
+            updated = await self.user_repository.update_user(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                status="invited",
+            )
+            if updated is not None:
+                row = updated
+        return await self._issue_action_token(
+            tenant_id=tenant_id,
+            user=self._to_user(row),
+            token_type="invite",
+            expires_in_hours=self.settings.INVITE_TOKEN_TTL_HOURS,
+            created_by_user_id=created_by_user_id,
+        )
+
     async def update_user(
         self,
         *,

@@ -1,0 +1,8 @@
+# §138 Dry-run — extraído de production-smoke.txt (smoke em produção, tenant fixture controlado, 2026-10-02)
+
+[PASS] §138 simulação/dry-run: mesmos saldos, nenhuma reservation, nenhum ledger — simulation_http=200 source=ai reservations 6→6 ledger 14→14
+
+
+Testes automatizados relacionados (tests-backend.txt):
+tests/test_billing_v2_mysql.py::test_dry_run_changes_nothing PASSED      [ 74%]
+tests/test_product_hardening.py::test_dry_run_execution_context_flags PASSED [ 85%]

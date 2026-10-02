@@ -1,0 +1,16 @@
+# compose config (somente validação; saída completa NÃO salva pois expandiria segredos)
+config --quiet: OK
+services:
+mysql
+ai-engine
+flow-engine
+backend-api
+whatsapp-gateway
+nginx
+
+Variáveis Billing V2 no compose (nomes/defaults, sem valores do .env):
+      BILLING_V2_ENABLED: ${BILLING_V2_ENABLED:-false}
+      META_BILLING_DEFAULT: ${META_BILLING_DEFAULT:-customer_direct}
+      BILLING_MARKET: ${BILLING_MARKET:-BR}
+      BILLING_RESERVATION_STALE_MINUTES: ${BILLING_RESERVATION_STALE_MINUTES:-1440}
+      BILLING_HOUSEKEEPING_INTERVAL_SECONDS: ${BILLING_HOUSEKEEPING_INTERVAL_SECONDS:-600}
