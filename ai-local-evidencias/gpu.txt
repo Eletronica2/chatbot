@@ -1,0 +1,51 @@
+== lspci
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GM107 [GeForce GTX 750 Ti] [10de:1380] (rev a2) (prog-if 00 [VGA controller])
+	Subsystem: NVIDIA Corporation Device [10de:105f]
+	Flags: bus master, fast devsel, latency 0, IRQ 39, IOMMU group 1
+	Memory at f6000000 (32-bit, non-prefetchable) [size=16M]
+	Memory at e0000000 (64-bit, prefetchable) [size=256M]
+	Memory at f0000000 (64-bit, prefetchable) [size=32M]
+	I/O ports at e000 [size=128]
+	Expansion ROM at 000c0000 [disabled] [size=128K]
+	Capabilities: [60] Power Management version 3
+	Capabilities: [68] MSI: Enable+ Count=1/1 Maskable- 64bit+
+	Capabilities: [78] Express Legacy Endpoint, IntMsgNum 0
+	Capabilities: [100] Virtual Channel
+	Capabilities: [250] Latency Tolerance Reporting
+	Capabilities: [258] L1 PM Substates
+	Capabilities: [128] Power Budgeting <?>
+	Capabilities: [600] Vendor Specific Information: ID=0001 Rev=1 Len=024 <?>
+	Capabilities: [900] Secondary PCI Express
+	Kernel driver in use: nouveau
+	Kernel modules: nvidiafb, nouveau
+
+== driver
+nouveau              3186688  0
+gpu_sched              69632  1 nouveau
+drm_gpuvm              57344  1 nouveau
+mxm_wmi                12288  1 nouveau
+drm_ttm_helper         20480  2 nouveau
+ttm                   139264  2 drm_ttm_helper,nouveau
+drm_exec               12288  2 drm_gpuvm,nouveau
+drm_display_helper    307200  1 nouveau
+i2c_algo_bit           16384  1 nouveau
+video                  77824  1 nouveau
+wmi                    36864  3 video,mxm_wmi,nouveau
+no nvidia proprietary driver
+== dmesg nouveau
+[    8.702280] nouveau 0000:01:00.0: NVIDIA GM107 (117000a2)
+[    8.834120] nouveau 0000:01:00.0: fb: 4096 MiB GDDR5
+[    9.503924] nouveau 0000:01:00.0: drm: VRAM: 4096 MiB
+[    9.591090] fbcon: nouveaudrmfb (fb0) is primary device
+[    9.635850] nouveau 0000:01:00.0: [drm] fb0: nouveaudrmfb frame buffer device
+== dkms/secureboot
+SecureBoot disabled
+Platform is in Setup Mode
+== ubuntu-drivers
+nvidia-driver-580, (kernel modules provided by linux-modules-nvidia-580-generic)
+nvidia-driver-580-server, (kernel modules provided by linux-modules-nvidia-580-server-generic)
+nvidia-driver-580 - NVIDIA driver metapackage
+nvidia-driver-590 - NVIDIA driver metapackage (transitional package)
+nvidia-driver-595 - NVIDIA driver metapackage
+nvidia-driver-610 - NVIDIA driver metapackage (transitional package)
+nvidia-driver-615 - NVIDIA driver metapackage (transitional package)

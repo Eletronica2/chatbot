@@ -1,0 +1,18 @@
+# Embeddings locais (CPU, float32) — mesmas 20 consultas pt-BR, 2 tenants
+== google/embeddinggemma-2 (embeddings-google_embeddinggemma-2-20261008-232807.json)
+params carregados=271.0M dim=768 load=7.6s rss_delta=1554.8MB
+latência consulta: p50=76.5 p95=80.2 mean=76.8 min=74.0 max=84.6 (n=20)
+indexação: 254.9 ms/chunk
+hit@1=0.95 hit@3=1.0 MRR=0.975
+erros de ranking:
+  - margerita tem manjericao? esperado=Pizzas tradicionais rank=2 top1=Regras de atendimento Bella Massa > Regras de atendimento > Borda
+
+== intfloat/multilingual-e5-small (embeddings-intfloat_multilingual-e5-small-20261008-231612.json)
+params carregados=117.7M dim=384 load=6.22s rss_delta=634.6MB
+latência consulta: p50=16.0 p95=17.3 mean=16.2 min=15.4 max=17.9 (n=20)
+indexação: 22.3 ms/chunk
+hit@1=0.95 hit@3=1.0 MRR=0.967
+erros de ranking:
+  - tem pizza doce? esperado=Sobremesas rank=3 top1=Cardápio Bella Massa > Pizzas especiais
+
+Escolha: google/embeddinggemma-2 (Apache-2.0), 768d, prefixos de tarefa; e5-small fica como alternativa leve.

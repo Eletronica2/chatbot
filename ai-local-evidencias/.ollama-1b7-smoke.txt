@@ -1,0 +1,37 @@
+  Model
+    architecture        qwen3     
+    parameters          2.0B      
+    context length      40960     
+    embedding length    2048      
+    quantization        Q4_K_M    
+
+  Capabilities
+    completion     
+    tools          
+    thinking       
+        levels     false, true    
+        default    true           
+
+  Parameters
+    repeat_penalty    1                 
+    stop              "<|im_start|>"    
+    stop              "<|im_end|>"      
+    temperature       0.6               
+    top_k             20                
+    top_p             0.95              
+
+  License
+    Apache License               
+    Version 2.0, January 2004    
+    ...                          
+
+===
+⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏ ⠋ ⠙ ⠹ ⠸ ⠸ ⠴ ⠦ ⠧ ⠇ ⠏ ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ Uma pizza calabresa é uma pizza com molho de tomate, queijo derretido e cal
+calabresa.total duration:       4.297469114s
+load duration:        2.327140698s
+prompt eval count:    39 token(s)
+prompt eval duration: 457.901ms
+prompt eval rate:     85.17 tokens/s
+eval count:           27 token(s)
+eval duration:        1.505496s
+eval rate:            17.93 tokens/s

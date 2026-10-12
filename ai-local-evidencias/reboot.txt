@@ -1,0 +1,73 @@
+== REBOOT: boot anterior 2026-10-08 20:51:57, boot atual 2026-10-09 00:06:17
+ -1 257037ac4e764e48a9b710d7ffa04c73 Thu 2026-10-08 20:51:54 -03 Fri 2026-10-09 00:06:06 -03
+  0 b6c1a05f4de14837b6f3803a9cd68393 Fri 2026-10-09 00:06:17 -03 Fri 2026-10-09 00:09:00 -03
+active
+active
+active
+  ubuntu-lv <295,04g
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4 289,8G
+out 09 00:06:28 atendeai kernel: nouveau 0000:01:00.0: bus: MMIO read of 00000000 FAULT at 3e6684 [ PRIVRING ]
+out 09 00:06:29 atendeai kernel: nouveau 0000:01:00.0: drm: DDC responded, but no EDID for DVI-I-1
+out 09 00:06:29 atendeai kernel: nouveau 0000:01:00.0: drm: DDC responded, but no EDID for DVI-I-1
+out 09 00:06:29 atendeai kernel: nouveau 0000:01:00.0: drm: DDC responded, but no EDID for DVI-I-1
+== 2026-10-09T00:09:01-03:00 uptime: up 2 minutes
+PASS | docker ativo (Docker version 29.9.0)
+     ai-api Up About a minute (health: starting)
+     ollama Up About a minute (healthy)
+     qdrant Up About a minute (healthy)
+PASS | /ready = true (["fastapi=true","qdrant=true","ollama=true","model=true","embedding=true","inference=true"])
+PASS | Qdrant persistente: busca Bella retornou 3 chunks (top1: Regras de atendimento Bella Massa > Regras de atendimento > Personalização)
+PASS | isolamento: busca Zé retorna só pastelaria_do_ze
+{"text":"Sim, fazemos pizza meio a meio apenas no tamanho grande, com no máximo 2 sabores, e cobramos o valor do sabor mais caro.","level":"rag","model":"qwen3:4b-instruct-2507-q4_K_M","usage":{"prompt_tokens":1033,"completion_tokens":35},"latency_ms":36482,"load_ms":3673,"tps":6.87}
+PASS | modelo carregável e inferência real
+     filesystem /: 290G total, 247G livres
+PASS | filesystem expandido
+exit=0
+
+== containers
+SERVICE   STATUS                   PORTS
+ai-api    Up 2 minutes (healthy)   127.0.0.1:8100->8100/tcp
+ollama    Up 2 minutes (healthy)   11434/tcp
+qdrant    Up 2 minutes (healthy)   6333-6334/tcp
+== /health
+{"status":"ok"}
+== /ready
+{
+  "ready": true,
+  "checks": {
+    "fastapi": {
+      "ok": true
+    },
+    "qdrant": {
+      "ok": true,
+      "collection": "atende_knowledge"
+    },
+    "ollama": {
+      "ok": true
+    },
+    "model": {
+      "ok": true,
+      "name": "qwen3:4b-instruct-2507-q4_K_M"
+    },
+    "embedding": {
+      "ok": true,
+      "name": "google/embeddinggemma-2",
+      "dim": 768
+    },
+    "inference": {
+      "ok": true,
+      "detail": "tokens=2 load_ms=28343 total_ms=28983",
+      "age_s": 37
+    }
+  }
+}
+== portas em escuta (host)
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                 
+LISTEN 0      4096       127.0.0.1:8100      0.0.0.0:*    
+healthcheck exit=0
+
+qdrant points_count: 15 status: green
+pizzaria_bella_massa 11
+pastelaria_do_ze 4
+
+LISTEN 0      4096       127.0.0.1:8100      0.0.0.0:*    users:(("docker-proxy",pid=2252,fd=8))                 

@@ -1,0 +1,15 @@
+# Avaliação de recuperação (rag--20261008-233038.json) — 29 consultas pt-BR rotuladas, filtro de tenant obrigatório
+== dense: hit@1=0.931 hit@3=1.0 MRR=0.966 latência p50=67.0 p95=70.8 mean=67.9 min=64 max=91 (n=29)
+  miss: [pizzaria_bella_massa] margerita tem manjericao? esperado=Pizzas tradicionais rank=2 top1=Regras de atendimento Bella Massa > Regras de atendimento > Borda
+  miss: [pizzaria_bella_massa] broto esperado=Tamanhos rank=2 top1=Regras de atendimento Bella Massa > Regras de atendimento > Borda
+== hybrid: hit@1=0.966 hit@3=1.0 MRR=0.983 latência p50=68.0 p95=71.0 mean=68.4 min=66 max=73 (n=29)
+  miss: [pizzaria_bella_massa] vcs entrega no centro? esperado=Área atendida rank=2 top1=Política de entrega Bella Massa > Entrega > Endereço
+
+== Ingestão/versionamento (seed--20261008-233335.json) — 2ª ingestão substitui a 1ª sem chunks órfãos
+  pizzaria_bella_massa/cardapio: v1→v2 chunks=5 órfãos_removidos=5 linhas_instrução_removidas=0
+  pizzaria_bella_massa/regras: v1→v2 chunks=4 órfãos_removidos=4 linhas_instrução_removidas=0
+  pizzaria_bella_massa/entrega: v1→v2 chunks=2 órfãos_removidos=2 linhas_instrução_removidas=0
+  pastelaria_do_ze/cardapio: v1→v2 chunks=2 órfãos_removidos=2 linhas_instrução_removidas=0
+  pastelaria_do_ze/regras: v1→v2 chunks=2 órfãos_removidos=3 linhas_instrução_removidas=1
+
+Modo padrão: hybrid (dense EmbeddingGemma 2 + sparse BM25 com IDF no Qdrant, fusão RRF), top_k=3, chunks ≤600 caracteres com caminho de seção.

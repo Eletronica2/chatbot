@@ -1,0 +1,58 @@
+== 2026-10-09T00:36:42-03:00 uptime up 30 minutes (boot 2026-10-09 00:06:17)
+== containers
+SERVICE   STATUS                    PORTS
+ai-api    Up 5 minutes (healthy)    127.0.0.1:8100->8100/tcp
+ollama    Up 28 minutes (healthy)   11434/tcp
+qdrant    Up 28 minutes (healthy)   6333-6334/tcp
+== /health
+{"status":"ok"}
+== /ready
+{
+  "ready": true,
+  "checks": {
+    "fastapi": {
+      "ok": true
+    },
+    "qdrant": {
+      "ok": true,
+      "collection": "atende_knowledge"
+    },
+    "ollama": {
+      "ok": true
+    },
+    "model": {
+      "ok": true,
+      "name": "qwen3:4b-instruct-2507-q4_K_M"
+    },
+    "embedding": {
+      "ok": true,
+      "name": "google/embeddinggemma-2",
+      "dim": 768
+    },
+    "inference": {
+      "ok": true,
+      "detail": "tokens=2 load_ms=3455 total_ms=4083",
+      "age_s": 301
+    }
+  }
+}
+== portas em escuta (host)
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                 
+LISTEN 0      4096       127.0.0.1:8100      0.0.0.0:*    
+healthcheck.sh exit=0
+
+== healthchecks Docker definidos
+ollama: test=["CMD","ollama","list"] interval=30s retries=3 status=healthy restarts=0
+qdrant: test=["CMD-SHELL","bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && printf \"GET /healthz HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"] interval=30s retries=3 status=healthy restarts=0
+ai-api: test=["CMD-SHELL","python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/health', timeout=3).status == 200 else 1)\""] interval=30s retries=3 status=healthy restarts=0
+
+== /v1/status (sem credencial: só fila)
+{"queue":{"concurrency":1,"active":0,"waiting":0,"max_queue":3,"rejected_total":4},"embedding_model":"google/embeddinggemma-2"}
+== /v1/respond sem credencial
+401
+== logs ai-api (últimas 5 linhas, sem conteúdo de mensagens)
+{"ts": "2026-10-09T03:34:24.630+00:00", "event": "respond", "request_id": "1b63da6b-64f7-46d7-a714-4be7ed200a9b", "tenant_id": "pizzaria_bella_massa", "status": 503, "error_code": "saturated", "reason": "queue_full", "latency_ms": 764}
+{"ts": "2026-10-09T03:34:39.590+00:00", "event": "respond", "request_id": "7bd3e043-417c-4183-8239-0874b3bf7fd8", "tenant_id": "pizzaria_bella_massa", "key_id": "bella-svc", "status": 200, "level": "rag", "model": "qwen3:4b-instruct-2507-q4_K_M", "latency_ms": 15727, "prompt_tokens": 1169, "completion_tokens": 20, "retrieval_count": 3, "queue_ms": 0}
+{"ts": "2026-10-09T03:34:49.482+00:00", "event": "respond", "request_id": "3d2829f1-edb3-4208-b695-d4c4e14ea519", "tenant_id": "pizzaria_bella_massa", "key_id": "bella-svc", "status": 200, "level": "rag", "model": "qwen3:4b-instruct-2507-q4_K_M", "latency_ms": 25617, "prompt_tokens": 1028, "completion_tokens": 13, "retrieval_count": 3, "queue_ms": 15512}
+{"ts": "2026-10-09T03:35:06.440+00:00", "event": "respond", "request_id": "0a6e1098-f1bf-484f-8605-95623f2dd89d", "tenant_id": "pizzaria_bella_massa", "key_id": "bella-svc", "status": 200, "level": "rag", "model": "qwen3:4b-instruct-2507-q4_K_M", "latency_ms": 42575, "prompt_tokens": 1162, "completion_tokens": 31, "retrieval_count": 3, "queue_ms": 25305}
+{"ts": "2026-10-09T03:35:21.924+00:00", "event": "respond", "request_id": "631436b0-431a-4e83-8e93-2c7496d6b926", "tenant_id": "pizzaria_bella_massa", "key_id": "bella-svc", "status": 200, "level": "rag", "model": "qwen3:4b-instruct-2507-q4_K_M", "latency_ms": 58059, "prompt_tokens": 1169, "completion_tokens": 20, "retrieval_count": 3, "queue_ms": 42149}

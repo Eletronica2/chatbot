@@ -1,0 +1,101 @@
+== date
+2026-10-08T22:16:54-03:00
+== hostnamectl
+ Static hostname: atendeai
+       Icon name: computer-desktop
+         Chassis: desktop 🖥️
+      Machine ID: 4025025a4a8344d19224cd261ff0e046
+         Boot ID: 257037ac4e764e48a9b710d7ffa04c73
+Operating System: Ubuntu 26.04.1 LTS
+          Kernel: Linux 7.0.0-38-generic
+    Architecture: x86-64
+ Hardware Vendor: INTEL
+  Hardware Model: H81
+Firmware Version: 4.6.5
+   Firmware Date: Tue 2021-07-06
+    Firmware Age: 5y 3month 3d
+== os
+PRETTY_NAME="Ubuntu 26.04.1 LTS"
+NAME="Ubuntu"
+VERSION_ID="26.04"
+VERSION="26.04.1 LTS (Resolute Raccoon)"
+VERSION_CODENAME=resolute
+Linux atendeai 7.0.0-38-generic #38-Ubuntu SMP PREEMPT_DYNAMIC Fri Sep  4 09:10:14 UTC 2026 x86_64 GNU/Linux
+== cpu
+CPU(s):                                  8
+Model name:                              Intel(R) Core(TM) i7-4790 CPU @ 3.60GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      4
+Socket(s):                               1
+CPU(s) scaling MHz:                      66%
+Flags: (avx2=8 cores have avx2)
+== mem
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       593Mi        14Gi       1,4Mi       762Mi        14Gi
+Swap:          4,0Gi          0B       4,0Gi
+NAME      TYPE SIZE USED PRIO
+/swap.img file   4G   0B   -1
+== disk
+NAME                        SIZE TYPE FSTYPE      MOUNTPOINTS       MODEL
+loop0                      66,8M loop squashfs    /snap/core24/1643 
+loop1                       1,5M loop squashfs    /snap/hwctl/123   
+loop2                      50,1M loop squashfs    /snap/snapd/27710 
+loop3                      66,8M loop squashfs    /snap/core24/2124 
+loop4                       1,5M loop squashfs    /snap/hwctl/131   
+sda                       298,1G disk                               ST3320418AS
+├─sda1                        1G part vfat        /boot/efi         
+├─sda2                        2G part ext4        /boot             
+└─sda3                      295G part LVM2_member                   
+  └─ubuntu--vg-ubuntu--lv   100G lvm  ext4        /                 
+Filesystem                        Type      Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4       98G  7,3G   86G   8% /
+efivarfs                          efivarfs  128K   88K   36K  71% /sys/firmware/efi/efivars
+/dev/sda2                         ext4      2,0G   97M  1,7G   6% /boot
+/dev/sda1                         vfat      1,1G  6,4M  1,1G   1% /boot/efi
+== gpu
+01:00.0 VGA compatible controller [0300]: NVIDIA Corporation GM107 [GeForce GTX 750 Ti] [10de:1380] (rev a2)
+01:00.1 Audio device [0403]: NVIDIA Corporation GM107 High Definition Audio Controller [GeForce 940MX] [10de:0fbc] (rev a1)
+nouveau              3186688  0
+== net
+lo               UNKNOWN        127.0.0.1/8 ::1/128 
+enp3s0           DOWN           
+wlxe01cfca274a9  UP             192.168.0.50/24 2804:14d:2485:8792::1e54/128 2804:14d:2485:8792:e21c:fcff:fea2:74a9/64 fe80::e21c:fcff:fea2:74a9/64 
+default via 192.168.0.1 dev wlxe01cfca274a9 proto static 
+192.168.0.0/24 dev wlxe01cfca274a9 proto kernel scope link src 192.168.0.50 
+== listening
+State  Recv-Q Send-Q Local Address:Port Peer Address:PortProcess                                                 
+LISTEN 0      4096         0.0.0.0:22        0.0.0.0:*    
+LISTEN 0      4096   127.0.0.53%lo:53        0.0.0.0:*    
+LISTEN 0      4096      127.0.0.54:53        0.0.0.0:*    
+LISTEN 0      4096            [::]:22           [::]:*    
+== services
+chrony.service
+cron.service
+dbus.service
+fwupd.service
+getty@tty1.service
+ModemManager.service
+multipathd.service
+netplan-wpa-wlxe01cfca274a9.service
+networkd-dispatcher.service
+polkit.service
+rsyslog.service
+snapd.service
+ssh.service
+systemd-hostnamed.service
+systemd-journald.service
+systemd-logind.service
+systemd-networkd.service
+systemd-resolved.service
+systemd-udevd.service
+thermald.service
+udisks2.service
+unattended-upgrades.service
+upower.service
+user@1000.service
+wpa_supplicant.service
+== docker
+== ufw
+Status: inactive
+== uptime
+ 22:16:54 up  1:24,  3 users,  load average: 0,06, 0,05, 0,00

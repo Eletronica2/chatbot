@@ -1,0 +1,31 @@
+== 2026-10-08T22:19:46-03:00 lvextend
+  New size (75529 extents) matches existing size (75529 extents).
+  File system ext4 found on ubuntu-vg/ubuntu-lv mounted at /.
+  Size of logical volume ubuntu-vg/ubuntu-lv unchanged from <295,04 GiB (75529 extents).
+  Extending file system ext4 to <295,04 GiB (316791586816 bytes) on ubuntu-vg/ubuntu-lv...
+resize2fs /dev/ubuntu-vg/ubuntu-lv
+resize2fs 1.47.2 (1-Jan-2025)
+resize2fs done
+The filesystem is already 77341696 (4k) blocks long.  Nothing to do!
+
+  Extended file system ext4 on ubuntu-vg/ubuntu-lv.
+  Logical volume ubuntu-vg/ubuntu-lv successfully resized.
+== pvs/vgs/lvs
+  PV         VG        Fmt  Attr PSize    PFree
+  /dev/sda3  ubuntu-vg lvm2 a--  <295,04g    0 
+  VG        #PV #LV #SN Attr   VSize    VFree
+  ubuntu-vg   1   1   0 wz--n- <295,04g    0 
+  LV        VG        Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  ubuntu-lv ubuntu-vg -wi-ao---- <295,04g                                                    
+== df
+Filesystem                        Type  Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4  290G  7,3G  270G   3% /
+== tune2fs
+Filesystem state:         clean
+Block count:              77341696
+== dmesg
+[    0.360861] RAS: Correctable Errors collector initialized.
+[ 5211.295614] EXT4-fs (dm-0): resizing filesystem from 26214400 to 77341696 blocks
+[ 5212.874269] EXT4-fs (dm-0): resized filesystem to 77341696
+== write test
+ok

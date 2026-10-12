@@ -1,0 +1,30 @@
+== 2026-10-09T00:04:12-03:00 (4B carregado, ocioso)
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       4,6Gi       2,3Gi       1,7Mi       8,6Gi        10Gi
+Swap:          4,0Gi        36Ki       4,0Gi
+NAME      TYPE SIZE USED PRIO
+/swap.img file   4G  36K   -1
+
+NAME                       CPU %     MEM USAGE / LIMIT   MEM %
+atende-ai-local-ai-api-1   0.14%     1.7GiB / 4GiB       42.50%
+atende-ai-local-ollama-1   15.34%    2.009GiB / 7GiB     28.71%
+atende-ai-local-qdrant-1   0.19%     118.5MiB / 1GiB     11.57%
+
+NAME                 ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL               
+qwen3:1.7b-q4_K_M    8f68893c685c    1.9 GB    100% CPU     4096       llamacpp    24 minutes from now    
+
+Filesystem                        Type  Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4  290G   31G  247G  12% /
+/dev/sda2                         ext4  2,0G   97M  1,7G   6% /boot
+/dev/sda1                         vfat  1,1G  6,4M  1,1G   1% /boot/efi
+
+TYPE            TOTAL     ACTIVE    SIZE      RECLAIMABLE
+Images          4         3         11.75GB   25.87kB (0%)
+Containers      3         3         61.44kB   0B (0%)
+Local Volumes   4         4         8.251GB   0B (0%)
+Build Cache     51        0         5.888GB   3.79GB
+
+atende-ai-local_hf-models 3,6G
+atende-ai-local_ollama-models 3,6G
+atende-ai-local_qdrant-data 1,9M
+atende-ai-local_qdrant-snapshots 1,1M

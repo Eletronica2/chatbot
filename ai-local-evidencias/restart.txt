@@ -1,0 +1,24 @@
+== 2026-10-09T00:04:41-03:00 docker compose restart
+atende-ai-local_hf-models
+atende-ai-local_ollama-models
+atende-ai-local_qdrant-data
+atende-ai-local_qdrant-snapshots
+ Container atende-ai-local-ollama-1 Restarting 
+ Container atende-ai-local-qdrant-1 Restarting 
+ Container atende-ai-local-ai-api-1 Restarting 
+ Container atende-ai-local-qdrant-1 Started 
+ Container atende-ai-local-ollama-1 Started 
+ Container atende-ai-local-ai-api-1 Started 
+== 2026-10-09T00:04:48-03:00 uptime: up 3 hours, 12 minutes
+PASS | docker ativo (Docker version 29.9.0)
+     ai-api Up 13 seconds (healthy)
+     ollama Up 17 seconds (healthy)
+     qdrant Up 17 seconds (healthy)
+PASS | /ready = true (["fastapi=true","qdrant=true","ollama=true","model=true","embedding=true","inference=true"])
+PASS | Qdrant persistente: busca Bella retornou 3 chunks (top1: Regras de atendimento Bella Massa > Regras de atendimento > Personalização)
+PASS | isolamento: busca Zé retorna só pastelaria_do_ze
+{"text":"Sim, fazemos pizza meio a meio apenas no tamanho grande, com no máximo 2 sabores, e cobra-se o valor do sabor mais caro.","level":"rag","model":"qwen3:4b-instruct-2507-q4_K_M","usage":{"prompt_tokens":1033,"completion_tokens":35},"latency_ms":36882,"load_ms":3683,"tps":6.95}
+PASS | modelo carregável e inferência real
+     filesystem /: 290G total, 247G livres
+PASS | filesystem expandido
+exit=0

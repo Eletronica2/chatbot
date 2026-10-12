@@ -1,0 +1,35 @@
+== 2026-10-09T00:35:49-03:00 Ollama
+ollama version is 0.40.2
+image=ollama/ollama:0.40.2 digest=sha256:b86366bb528bbf7f1424435d165028497a5b69bf6ddb4fa5a87102e2b79f44fb restart=unless-stopped mem_limit=7516192768 health=healthy
+-- portas publicadas no host:
+(vazio = nenhuma)
+-- redes:
+atende-ai-local_ai_egress atende-ai-local_ai_internal 
+ai_internal internal=true
+-- variáveis OLLAMA_*/CUDA:
+CUDA_VISIBLE_DEVICES=
+OLLAMA_CONTEXT_LENGTH=4096
+OLLAMA_HOST=0.0.0.0:11434
+OLLAMA_KEEP_ALIVE=30m
+OLLAMA_LOAD_TIMEOUT=5m
+OLLAMA_MAX_LOADED_MODELS=1
+OLLAMA_MAX_QUEUE=8
+OLLAMA_NO_CLOUD=1
+OLLAMA_NUM_PARALLEL=1
+-- acesso do host a 127.0.0.1:11434:
+recusado (OK: não publicado)
+-- modelos:
+NAME                             ID              SIZE      MODIFIED    
+qwen3:4b-instruct-2507-q4_K_M    0edcdef34593    2.5 GB    2 hours ago    
+qwen3:1.7b-q4_K_M                8f68893c685c    1.4 GB    2 hours ago    
+-- carregados:
+NAME                             ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL               
+qwen3:4b-instruct-2507-q4_K_M    0edcdef34593    3.2 GB    100% CPU     4096       llamacpp    29 minutes from now    
+-- sem modelos cloud/remotos:
+0
+0 modelos :cloud
+== 2026-10-09T00:35:48-03:00 Teste a partir do notebook na LAN (deve falhar)
+porta 11434: inacessível pela LAN (OK)
+porta 6333: inacessível pela LAN (OK)
+porta 6334: inacessível pela LAN (OK)
+porta 8100: inacessível pela LAN (OK)

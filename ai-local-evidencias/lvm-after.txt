@@ -1,0 +1,21 @@
+2026-10-08T22:19:51-03:00
+  PV         VG        Fmt  Attr PSize    PFree
+  /dev/sda3  ubuntu-vg lvm2 a--  <295,04g    0 
+  VG        #PV #LV #SN Attr   VSize    VFree
+  ubuntu-vg   1   1   0 wz--n- <295,04g    0 
+  LV        VG        Attr       LSize    Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  ubuntu-lv ubuntu-vg -wi-ao---- <295,04g                                                    
+NAME                        SIZE TYPE FSTYPE      MOUNTPOINTS
+sda                       298,1G disk             
+├─sda1                        1G part vfat        /boot/efi
+├─sda2                        2G part ext4        /boot
+└─sda3                      295G part LVM2_member 
+  └─ubuntu--vg-ubuntu--lv   295G lvm  ext4        /
+Filesystem                        Type  Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4  290G  7,3G  270G   3% /
+TARGET SOURCE                            FSTYPE OPTIONS
+/      /dev/mapper/ubuntu--vg-ubuntu--lv ext4   rw,relatime
+/dev/disk/by-id/dm-uuid-LVM-F93G04zfD6cRZ5ZYJjuCVZpyNoz8CMD8PKhaIow1dk2MyuTro9NM504KcVKAnrFc / ext4 defaults 0 1
+/dev/disk/by-uuid/62f0f473-7999-4efb-b244-3379b5cc4194 /boot ext4 defaults 0 1
+/dev/disk/by-uuid/C23E-4BFB /boot/efi vfat defaults 0 1
+/swap.img	none	swap	sw	0	0

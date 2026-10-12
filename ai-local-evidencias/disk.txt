@@ -1,0 +1,6 @@
+Filesystem                        Type      Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv ext4      290G  7,3G  270G   3% /
+efivarfs                          efivarfs  128K   88K   36K  71% /sys/firmware/efi/efivars
+/dev/sda2                         ext4      2,0G   97M  1,7G   6% /boot
+/dev/sda1                         vfat      1,1G  6,4M  1,1G   1% /boot/efi
+ Timing buffered disk reads: 250 MB in  3.01 seconds =  82.95 MB/sec

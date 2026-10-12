@@ -1,0 +1,94 @@
+== 2026-10-09T00:04:13-03:00
+ollama version is 0.40.2
+NAME                             ID              SIZE      MODIFIED          
+qwen3:4b-instruct-2507-q4_K_M    0edcdef34593    2.5 GB    About an hour ago    
+qwen3:1.7b-q4_K_M                8f68893c685c    1.4 GB    About an hour ago    
+
+== qwen3:1.7b-q4_K_M
+  Model
+    architecture        qwen3     
+    parameters          2.0B      
+    context length      40960     
+    embedding length    2048      
+    quantization        Q4_K_M    
+
+  Capabilities
+    completion     
+    tools          
+    thinking       
+        levels     false, true    
+        default    true           
+
+  Parameters
+    repeat_penalty    1                 
+    stop              "<|im_start|>"    
+    stop              "<|im_end|>"      
+    temperature       0.6               
+    top_k             20                
+    top_p             0.95              
+
+  License
+    Apache License               
+    Version 2.0, January 2004    
+    ...                          
+
+-- manifest digest:
+config sha256:517ccaff02fe9f99718ab2f478e611aa2813c36263eeed86c2427bc122d14ad8
+model sha256:3d0b790534fe4b79525fc3692950408dca41171676ed7e21db57af5c65ef6ab6 1359279776
+template sha256:ae370d884f108d16e7cc8fd5259ebc5773a0afa6e078b11f4ed7e39a27e0dfc4 1723
+license sha256:d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12 11338
+params sha256:cff3f395ef3756ab63e58b0ad1b32bb6f802905cae1472e6a12034e4246fbbdb 120
+v2+json sha256:8f68893c685c3ddff2aa3fffce2aa60a30bb2da65ca488b61fff134a4d1730e7 859
+-- license (primeiras linhas):
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+== qwen3:4b-instruct-2507-q4_K_M
+  Model
+    architecture        qwen3     
+    parameters          4.0B      
+    context length      262144    
+    embedding length    2560      
+    quantization        Q4_K_M    
+
+  Capabilities
+    tools         
+    thinking      
+    completion    
+
+  Parameters
+    stop              "<|im_start|>"    
+    stop              "<|im_end|>"      
+    temperature       0.7               
+    top_k             20                
+    top_p             0.8               
+    repeat_penalty    1                 
+
+  License
+    Apache License               
+    Version 2.0, January 2004    
+    ...                          
+
+-- manifest digest:
+config sha256:b72accf9724e93698c57cbd3b1af2d3341b3d05ec2089d86d273d97964853cd2
+model sha256:85e4a5b7b8ef0e48af0e8658f5aaab9c2324c76c1641493f4d1e25fce54b18b9 2497280480
+template sha256:eade0a07cac7712787bbce23d12f9306adb4781d873d1df6e16f7840fa37afec 1379
+license sha256:d18a5cc71b84bc4af394a31116bd3932b42241de70c77d2b76d69a314ec8aa12 11338
+params sha256:0914c7781e001948488d937994217538375b4fd8c1466c5e7a625221abd3ea7a 119
+v2+json sha256:0edcdef34593eac1aa2be9c7d06c432dcf81945adca5eca2f27662c18f168ba0 859
+-- license (primeiras linhas):
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+== origem: registry.ollama.ai/library/qwen3 (Qwen Team / Alibaba Cloud), OLLAMA_NO_CLOUD=1
+CUDA_VISIBLE_DEVICES=
+OLLAMA_CONTEXT_LENGTH=4096
+OLLAMA_HOST=0.0.0.0:11434
+OLLAMA_KEEP_ALIVE=30m
+OLLAMA_LOAD_TIMEOUT=5m
+OLLAMA_MAX_LOADED_MODELS=1
+OLLAMA_MAX_QUEUE=8
+OLLAMA_NO_CLOUD=1
+OLLAMA_NUM_PARALLEL=1

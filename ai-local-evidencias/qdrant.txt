@@ -1,0 +1,42 @@
+== 2026-10-09T00:35:56-03:00 Qdrant
+image=qdrant/qdrant:v1.19.2 digest=sha256:b7b0444c4c351c970b98e90a6f89c2ee4287c65b44e52b4cb503fa5b2aa927ad restart=unless-stopped mem_limit=1073741824 health=healthy
+-- portas publicadas no host:
+(vazio = nenhuma)
+redes: atende-ai-local_ai_internal 
+QDRANT__LOG_LEVEL=WARN
+QDRANT__SERVICE__API_KEY=<redacted>
+QDRANT__TELEMETRY_DISABLED=true
+-- volumes:
+atende-ai-local_qdrant-snapshots -> /qdrant/snapshots
+atende-ai-local_qdrant-data -> /qdrant/storage
+
+-- sem api-key: 401 (esperado 401)
+-- api-key errada: 401 (esperado 401)
+-- versão: 1.19.2
+-- coleções: ['atende_knowledge']
+-- atende_knowledge: status=green points=15 segments=4
+   vectors: {"dense": {"size": 768, "distance": "Cosine"}}
+   sparse_vectors: {"bm25": {"modifier": "idf"}}
+   metadata: {"embedding_model": "google/embeddinggemma-2", "embedding_dim": 768}
+   payload_schema: {"document_id": {"type": "keyword"}, "tenant_id": {"type": "keyword", "params": {"type": "keyword", "is_tenant": true}}, "content_hash": {"type": "keyword"}, "document_version": {"type": "integer"}}
+   pontos pizzaria_bella_massa 11
+   pontos pastelaria_do_ze 4
+-- snapshots no volume: ['atende_knowledge-6229632720093209-2026-10-09-03-03-45.snapshot']
+-- backups fora do container (mesmo disco físico!):
+total 1020
+drwxr-xr-x 2 root root    4096 Oct  9 00:03 .
+drwxr-xr-x 3 root root    4096 Oct  9 00:03 ..
+-rw------- 1 root root 1028608 Oct  9 00:03 atende_knowledge-6229632720093209-2026-10-09-03-03-45.snapshot
+-rw-r--r-- 1 root root     239 Oct  9 00:03 atende_knowledge-6229632720093209-2026-10-09-03-03-45.snapshot.json
+{"collection":"atende_knowledge","snapshot":"atende_knowledge-6229632720093209-2026-10-09-03-03-45.snapshot","points":15,"sha256":"2764b89b8d7eaf652a29bd1508244b5ce3fda79e58d3fdbfbf9ed96b02de8d5c","created_at":"2026-10-09T00:03:48-03:00"}
+
+== Teste de restauração NÃO destrutivo (scripts/restore_test.sh) — coleção temporária, produção intocada
+== 2026-10-09T00:36:27-03:00 backup: atende_knowledge-6229632720093209-2026-10-09-03-03-45.snapshot
+sha256 OK (2764b89b8d7eaf652a29bd1508244b5ce3fda79e58d3fdbfbf9ed96b02de8d5c)
+upload/recover: 200 ok
+live:     {'points': 15, 'per_tenant': {'pizzaria_bella_massa': 11, 'pastelaria_do_ze': 4}, 'metadata': {'embedding_model': 'google/embeddinggemma-2', 'embedding_dim': 768}, 'is_tenant': True, 'vectors': {'dense': {'size': 768, 'distance': 'Cosine'}}, 'sparse': {'bm25': {'modifier': 'idf'}}}
+restored: {'points': 15, 'per_tenant': {'pizzaria_bella_massa': 11, 'pastelaria_do_ze': 4}, 'metadata': {'embedding_model': 'google/embeddinggemma-2', 'embedding_dim': 768}, 'is_tenant': True, 'vectors': {'dense': {'size': 768, 'distance': 'Cosine'}}, 'sparse': {'bm25': {'modifier': 'idf'}}}
+delete test collection: ok
+collections: ['atende_knowledge']
+INTEGRITY OK
+exit=0

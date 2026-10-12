@@ -1,0 +1,48 @@
+# Latência consolidada (CPU i7-4790, sem GPU)
+
+qwen3:1.7b-q4_K_M ctx=4096: carga fria=15287ms | TTFT p50=472.5 p95=7539.7 mean=1827.8 min=430 max=11304 (n=8) | total p50=2322.0 p95=10187.7 mean=3547 min=939 max=13561 (n=8) | geração 13.9 tok/s | prompt sem cache 90.2 tok/s
+qwen3:1.7b-q4_K_M ctx=8192: carga fria=4740ms | TTFT p50=484.0 p95=7661.7 mean=1852.9 min=405 max=11462 (n=8) | total p50=2935.0 p95=10294.0 mean=3920.4 min=959 max=13723 (n=8) | geração 13.8 tok/s | prompt sem cache 89.0 tok/s
+qwen3:1.7b-q4_K_M pt-BR via API: todas p50=3622.0 p95=7913.4 mean=3530.4 min=0 max=19197 (n=37) | LLM p50=5769.0 p95=8879.0 mean=6220.2 min=2684 max=19197 (n=21)
+
+qwen3:4b-instruct-2507-q4_K_M ctx=4096: carga fria=23052ms | TTFT p50=818.0 p95=19264.5 mean=4347.4 min=689 max=29124 (n=8) | total p50=5079.5 p95=24117.9 mean=8370.9 min=2823 max=33688 (n=8) | geração 7.0 tok/s | prompt sem cache 34.7 tok/s
+qwen3:4b-instruct-2507-q4_K_M ctx=8192: carga fria=9218ms | TTFT p50=880.5 p95=20659.7 mean=4664.6 min=688 max=31263 (n=8) | total p50=4553.5 p95=25659.8 mean=8435 min=2797 max=35940 (n=8) | geração 6.7 tok/s | prompt sem cache 32.4 tok/s
+qwen3:4b-instruct-2507-q4_K_M pt-BR via API: todas p50=8843.0 p95=15817.4 mean=7384.8 min=0 max=29801 (n=37) | LLM p50=13283.0 p95=16935.0 mean=13011.2 min=4017 max=29801 (n=21)
+
+== Concorrência (concurrency-qwen3_4b-instruct-2507-q4_K_M_1_2_3_5-20261009-003221.json) — LLM_CONCURRENCY=1, fila máx 3, timeout fila 90 s
+  1 simultâneas: ok=1 503=0 outros_erros=0 lote=14872ms | wall p50=14872.0 p95=14872.0 mean=14872 min=14872 max=14872 (n=1) | fila p50=0.0 p95=0.0 mean=0 min=0 max=0 (n=1)
+     #0 status=200 wall=14872ms fila=0 latência=14847 tokens=20 erro=None retry_after=None
+  2 simultâneas: ok=2 503=0 outros_erros=0 lote=16063ms | wall p50=9647.5 p95=15420.5 mean=9647.5 min=3233 max=16062 (n=2) | fila p50=1478.5 p95=2809.2 mean=1478.5 min=0 max=2957 (n=2)
+     #0 status=200 wall=3233ms fila=0 latência=3228 tokens=20 erro=None retry_after=None
+     #1 status=200 wall=16062ms fila=2957 latência=16057 tokens=34 erro=None retry_after=None
+  3 simultâneas: ok=3 503=0 outros_erros=0 lote=40142ms | wall p50=28492.0 p95=38975.2 mean=27923.3 min=15138 max=40140 (n=3) | fila p50=14935.0 p95=26851.9 mean=14370.3 min=0 max=28176 (n=3)
+     #0 status=200 wall=15138ms fila=0 latência=15133 tokens=20 erro=None retry_after=None
+     #1 status=200 wall=28492ms fila=14935 latência=28486 tokens=34 erro=None retry_after=None
+     #2 status=200 wall=40140ms fila=28176 latência=40135 tokens=13 erro=None retry_after=None
+  5 simultâneas: ok=4 503=1 outros_erros=0 lote=50320ms | wall p50=32140.5 p95=48311.1 mean=32584.8 min=15739 max=50319 (n=4) | fila p50=21247.0 p95=35056.1 mean=19743 min=0 max=36478 (n=4)
+     #0 status=200 wall=15739ms fila=0 latência=15728 tokens=20 erro=None retry_after=None
+     #1 status=200 wall=50319ms fila=36478 latência=50307 tokens=34 erro=None retry_after=None
+     #2 status=503 wall=551ms fila=None latência=None tokens=None erro=saturated retry_after=15
+     #3 status=200 wall=27348ms fila=15495 latência=27338 tokens=18 erro=None retry_after=None
+     #4 status=200 wall=36933ms fila=26999 latência=36924 tokens=13 erro=None retry_after=None
+  recursos:
+  pico host: used=5691 MB, menor available=9735 MB, swap usado max=0 MB
+  ai-api-1: mem max=1784 MiB, cpu max=109% (100% = 1 thread; teto 800%)
+  ollama-1: mem max=3519 MiB, cpu max=402% (100% = 1 thread; teto 800%)
+  qdrant-1: mem max=361 MiB, cpu max=5% (100% = 1 thread; teto 800%)
+
+== Concorrência (concurrency-qwen3_4b-instruct-2507-q4_K_M_7-20261009-003423.json) — LLM_CONCURRENCY=1, fila máx 3, timeout fila 90 s
+  7 simultâneas: ok=4 503=3 outros_erros=0 lote=58092ms | wall p50=34104.5 p95=55743.5 mean=35508.2 min=15758 max=58066 (n=4) | fila p50=20408.5 p95=39622.4 mean=20741.5 min=0 max=42149 (n=4)
+     #0 status=200 wall=15758ms fila=0 latência=15727 tokens=20 erro=None retry_after=None
+     #1 status=503 wall=551ms fila=None latência=None tokens=None erro=saturated retry_after=15
+     #2 status=503 wall=671ms fila=None latência=None tokens=None erro=saturated retry_after=15
+     #3 status=503 wall=774ms fila=None latência=None tokens=None erro=saturated retry_after=15
+     #4 status=200 wall=25626ms fila=15512 latência=25617 tokens=13 erro=None retry_after=None
+     #5 status=200 wall=42583ms fila=25305 latência=42575 tokens=31 erro=None retry_after=None
+     #6 status=200 wall=58066ms fila=42149 latência=58059 tokens=20 erro=None retry_after=None
+  recursos:
+  pico host: used=5688 MB, menor available=9739 MB, swap usado max=0 MB
+  ai-api-1: mem max=1793 MiB, cpu max=165% (100% = 1 thread; teto 800%)
+  ollama-1: mem max=3515 MiB, cpu max=415% (100% = 1 thread; teto 800%)
+  qdrant-1: mem max=362 MiB, cpu max=4% (100% = 1 thread; teto 800%)
+
+Nível determinístico (preço/horário/entrega/pagamento) responde em ~0 ms sem LLM; handoff idem.

@@ -1,0 +1,58 @@
+Testing has begun.
+Please wait 1 minutes for test to complete.
+Test will complete after Thu Oct  8 22:18:35 2026 -03
+Use smartctl -X to abort test.
+== pvs
+  PV         VG        Fmt  Attr PSize    PFree    Used   
+  /dev/sda3  ubuntu-vg lvm2 a--  <295,04g <195,04g 100,00g
+== vgs
+  VG        #PV #LV #SN Attr   VSize    VFree    Free  Ext  
+  ubuntu-vg   1   1   0 wz--n- <295,04g <195,04g 49929 4,00m
+== lvs
+  LV        VG        Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert Path                     Attr       Origin Snap% 
+  ubuntu-lv ubuntu-vg -wi-ao---- 100,00g                                                     /dev/ubuntu-vg/ubuntu-lv -wi-ao----              
+== lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/ubuntu-vg/ubuntu-lv
+  LV Name                ubuntu-lv
+  VG Name                ubuntu-vg
+  LV UUID                PKhaIo-w1dk-2Myu-Tro9-NM50-4KcV-KAnrFc
+  LV Write Access        read/write
+  LV Creation host, time ubuntu-server, 2026-10-07 19:48:10 -0300
+  LV Status              available
+  # open                 1
+  LV Size                100,00 GiB
+  Current LE             25600
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     16384
+  Block device           252:0
+   
+== findmnt /
+TARGET SOURCE                            FSTYPE OPTIONS
+/      /dev/mapper/ubuntu--vg-ubuntu--lv ext4   rw,relatime
+== tune2fs
+Filesystem features:      has_journal ext_attr resize_inode dir_index orphan_file filetype needs_recovery extent 64bit flex_bg metadata_csum_seed sparse_super large_file huge_file dir_nlink extra_isize metadata_csum orphan_present
+Filesystem state:         clean
+Errors behavior:          Continue
+Block count:              26214400
+Block size:               4096
+Mount count:              3
+Last checked:             Wed Oct  7 19:48:10 2026
+== dmesg errors
+(fim dmesg)
+SMART Self-test log structure revision number 1
+Num  Test_Description    Status                  Remaining  LifeTime(hours)  LBA_of_first_error
+# 1  Short offline       Self-test routine in progress 80%      9425         -
+
+  Volume group "ubuntu-vg" successfully backed up.
+total 32
+drwxr-xr-x 3 root root 4096 Oct  8 22:17 .
+drwx------ 5 root root 4096 Oct  8 22:17 ..
+-rw-r--r-- 1 root root  769 Oct  7 19:51 fstab
+drwxr-xr-x 2 root root 4096 Oct  7 19:49 netplan
+-rw-r--r-- 1 root root  549 Oct  8 22:17 sda.sfdisk
+-rw-r--r-- 1 root root 4307 Sep  7 05:00 sshd_config
+-rw------- 1 root root 1350 Oct  8 22:17 ubuntu-vg.vgcfg
+BACKUP_DIR=/root/pre-ia01-backup-20261008-221745
