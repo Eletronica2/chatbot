@@ -1,0 +1,2 @@
+Provider integration implemented behind global LOCAL_AI_ENABLED=false and per-tenant ai_provider=gemini/local plus local_ai_enabled=false defaults. Superadmin-only API write is audited; settings UI exposes selection only to Superadmin. Local provider failure returns no outbound text and sets human handoff.
+No tenant changed and no production config deployed.

@@ -1,0 +1,1 @@
+NOT RUN — no live WireGuard tunnel exists. netwatch logic and systemd units are prepared but were not installed or exercised. SSH/Wi-Fi were not interrupted.

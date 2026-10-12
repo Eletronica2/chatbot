@@ -1,0 +1,2 @@
+AI Engine provider maps a bounded allowlist of flow state, collected fields, next actions and recent history into the local request. AWS ConversationService passes fallback flow context into AI generation.
+Static code review only; no live Flow Engine ↔ VPN ↔ local inference request was made.

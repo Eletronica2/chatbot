@@ -1,0 +1,2 @@
+Local AI API tests: identity-vs-body, invalid/unknown tenant, HMAC tenant binding, Qdrant mandatory tenant filter, versioned knowledge lifecycle across Bella Massa and Pastelaria do Zé fixtures.
+Result: 69 passed total in local API suite (tests are fixture/unit tests, no production tenant data).

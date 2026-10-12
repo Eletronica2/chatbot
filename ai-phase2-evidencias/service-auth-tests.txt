@@ -1,0 +1,3 @@
+Local AI API test suite includes HMAC signature, scope/tenant binding, body/path tampering, timestamp expiry, replay, key rotation/expiry, and invalid key configuration cases.
+Result: 69 passed. Lightweight test environment used stub torch/SentenceTransformer imports; no model was loaded or called by these unit tests.
+No AWS-to-local live authentication call was run.

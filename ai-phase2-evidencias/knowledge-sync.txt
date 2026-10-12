@@ -1,0 +1,2 @@
+Knowledge sync endpoint and per-(tenant, document) registry implemented; upsert/delete operations carry version, SHA-256, timestamp and status. Fixture test covers repeat, update, stale version, hash conflict, deletion tombstone and cross-tenant registry separation.
+Local AI API suite: 69 passed. AWS outbox/retry/reconciliation and production documents are not connected.

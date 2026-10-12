@@ -1,0 +1,6 @@
+WireGuard configuration review
+Local host: wg absent; no config applied.
+AWS host: SSH public key authentication denied; no host inspection or config applied.
+Static review: setup-local.sh, setup-aws.sh, netwatch.sh, rollback-local.sh pass bash -n.
+Planned tunnel subnet 10.77.0.0/30 does not overlap observed local LAN 192.168.0.0/24 or local Docker 172.17-19.0.0/16. AWS/VPC route overlap was not independently checked in this task.
+No private key was generated or recorded.

@@ -1,0 +1,4 @@
+Checkpoint confirmation
+IA-01 is committed in repository history: af9908a (server) and 43c0a2c (report/evidence).
+Current HEAD at audit start: 43c0a2cb16170614ac98901529e2cf69a0dd6924 (main).
+Pre-existing IA-02 working-tree changes were preserved. This task does not rewrite history or stage/commit files.

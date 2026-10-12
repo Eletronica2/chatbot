@@ -1,0 +1,8 @@
+IA-02 baseline (sanitized)
+Date: 2026-10-12
+Branch: main
+HEAD at audit start: 43c0a2cb16170614ac98901529e2cf69a0dd6924
+IA-01 commits: af9908a (server), 43c0a2c (report/evidence)
+Working tree at task start: pre-existing IA-02 edits in AI Engine, local API and WireGuard files; preserved.
+Secrets: .env.production, runtime .env and backup/archive files excluded from review artifacts and Git staging.
+No Git reset/clean, production deployment, database backup/restore, migration execution, AWS changes, or WhatsApp send.

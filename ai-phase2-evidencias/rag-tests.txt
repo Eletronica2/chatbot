@@ -1,0 +1,2 @@
+IA-01 RAG fixture evidence is retained at ../ai-local-evidencias/rag-tests.txt and ../ai-local-evidencias/tenant-isolation.txt.
+IA-02 local API tests: 69 passed including grounding/prompt policy and tenant-filter regression checks. Test environment used fake embedding imports; no model inference or private data.

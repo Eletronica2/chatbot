@@ -1,0 +1,1 @@
+NOT RUN — WireGuard is not installed/configured on the local host. No peer keys, handshake, private ping, or tunnel latency are available.

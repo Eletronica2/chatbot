@@ -1,0 +1,1 @@
+NOT RUN — no WireGuard interface or AWS SSH access. VPN RTT, connection time, retrieval time from AWS, total API latency, packet loss, and concurrent end-to-end benchmarks are unavailable.

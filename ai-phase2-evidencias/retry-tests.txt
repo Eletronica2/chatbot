@@ -1,0 +1,1 @@
+AI Engine unit suite: 8 passed, including a mocked 503/Retry-After retry, transient read-timeout retry, tenant-bound HMAC signature, and stable request IDs. Retries are bounded with jitter and circuit breaker; live network fault injection remains pending.

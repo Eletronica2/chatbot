@@ -1,0 +1,5 @@
+IPv6 audit, 2026-10-12 (read-only)
+Wi-Fi has global IPv6 addresses and an IPv6 default route from router advertisements.
+ss reports SSH listening on [::]:22. This alone does not establish Internet reachability.
+sudo -n nft list ruleset, ufw status, and sshd -T could not run: SSH user requires interactive sudo authentication.
+No IPv6/firewall changes made. External reachability check remains pending; do not declare IPv6 exposure confirmed or ruled out.

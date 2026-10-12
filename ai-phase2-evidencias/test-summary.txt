@@ -1,0 +1,8 @@
+Automated validation in isolated Python 3.14 environment, 2026-10-12:
+- backend-api/tests: 70 passed, 31 skipped. The harness pre-created an asyncio event loop because Python 3.14 changed get_event_loop behavior; skipped tests require a MySQL integration database.
+- ai-engine/tests: 8 passed.
+- atende-ai-local/ai-api/tests: 69 passed. Lightweight torch/SentenceTransformer import stubs prevented downloading/loading the embedding model; tests used fakes and fixtures.
+- docker compose config --quiet: local AI Compose and production Compose both passed. Production .env values were not emitted.
+- git diff --check, Python AST parse, and bash -n for WireGuard/offsite scripts passed.
+- Flutter analyze/build unavailable: Flutter/Dart SDK not installed in the workspace.
+- No live inference request, VPN, AWS↔local request, reboot, firewall change, database migration, or WhatsApp send performed.

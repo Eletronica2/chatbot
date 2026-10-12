@@ -1,0 +1,1 @@
+Current AWS health could not be verified: SSH to ec2-user@3.218.194.130 denied publickey authentication. Existing aws-production-deploy-evidencias are historical and not treated as current health. No AWS changes made.

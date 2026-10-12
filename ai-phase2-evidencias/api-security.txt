@@ -1,0 +1,2 @@
+Local server inspection (read-only): FastAPI binds only 127.0.0.1:8100. Ollama and Qdrant have no host port publication. `/ready` returned ready=true with FastAPI, Qdrant, Ollama, embedding, Qwen3 4B, and cached inference probe checks passing.
+No WireGuard source restriction or service HMAC was live-configured because the VPN is not installed.

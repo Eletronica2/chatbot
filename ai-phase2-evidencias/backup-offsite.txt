@@ -1,0 +1,1 @@
+NOT READY for real tenant data. IA-01 Qdrant backup and restore were tested on the same physical HDD. Restic off-host encryption/retention/integrity/restore-test script and systemd timer are prepared, but no authorized remote repository or password file is configured; nothing was uploaded or restored remotely.

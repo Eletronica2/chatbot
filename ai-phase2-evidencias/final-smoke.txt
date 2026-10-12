@@ -1,0 +1,2 @@
+Local read-only smoke, 2026-10-12: GET http://127.0.0.1:8100/ready => ready=true; FastAPI, Qdrant, Ollama, embedding, Qwen3 4B and short inference checks passed. Queue active=0, waiting=0. No message was submitted and no WhatsApp send occurred.
+Local AI Compose config and production Compose config both passed `docker compose config --quiet`; no containers were changed or started by these checks. Production `.env.production` values were not printed or copied into evidence.
