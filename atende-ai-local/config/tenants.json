@@ -1,0 +1,14 @@
+{
+  "tenants": [
+    {
+      "tenant_id": "pizzaria_bella_massa",
+      "display_name": "Pizzaria Bella Massa",
+      "profile": "Pizzaria de bairro, atendimento descontraído e objetivo."
+    },
+    {
+      "tenant_id": "pastelaria_do_ze",
+      "display_name": "Pastelaria do Zé",
+      "profile": "Pastelaria tradicional, atendimento simples e direto."
+    }
+  ]
+}

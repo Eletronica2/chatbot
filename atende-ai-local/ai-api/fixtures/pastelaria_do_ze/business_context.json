@@ -1,0 +1,23 @@
+{
+  "business_name": "Pastelaria do Zé",
+  "products": [
+    {"name": "Pastel de Carne", "price": 12.00, "available": true},
+    {"name": "Pastel de Queijo", "price": 11.00, "available": true},
+    {"name": "Pastel de Frango com Catupiry", "price": 13.00, "available": true},
+    {"name": "Pastel de Palmito", "price": 14.00, "available": false},
+    {"name": "Caldo de Cana 500 ml", "price": 9.00, "available": true, "aliases": ["caldo de cana"]}
+  ],
+  "hours": [
+    {"days": "segunda a sábado", "open": "9h", "close": "19h"},
+    {"days": "domingo", "open": "8h", "close": "13h"}
+  ],
+  "delivery": {
+    "neighborhoods": [
+      {"name": "Vila Esperança", "fee": 4.00},
+      {"name": "Jardim das Flores", "fee": 6.00}
+    ],
+    "not_served": ["Centro"]
+  },
+  "payment_methods": ["dinheiro", "cartão de débito"],
+  "promotions": []
+}

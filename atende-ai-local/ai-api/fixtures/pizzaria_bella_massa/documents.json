@@ -1,0 +1,20 @@
+[
+  {
+    "document_id": "cardapio",
+    "title": "Cardápio Bella Massa",
+    "source": "fixture",
+    "content": "# Cardápio Bella Massa\n\n## Pizzas tradicionais\n- Calabresa (calabresa fatiada, cebola e azeitona): média R$ 52,00, grande R$ 65,00\n- Mussarela (mussarela, tomate e orégano): grande R$ 60,00\n- Margherita (mussarela, tomate e manjericão fresco): grande R$ 62,00\n- Portuguesa (presunto, ovo, cebola, ervilha e mussarela): grande R$ 70,00 — temporariamente indisponível\n\n## Pizzas especiais\n- Frango com Catupiry (frango desfiado e Catupiry original): grande R$ 68,00\n\n## Bebidas\n- Refrigerante 2 litros (Coca-Cola ou Guaraná): R$ 14,00\n- Não trabalhamos com bebidas alcoólicas.\n\n## Sobremesas\n- Pizza de Chocolate média (chocolate ao leite e granulado): R$ 48,00\n\n## Tamanhos\n- Média: 6 fatias, 30 cm.\n- Grande: 8 fatias, 35 cm.\n- Não temos tamanho broto nem família."
+  },
+  {
+    "document_id": "regras",
+    "title": "Regras de atendimento Bella Massa",
+    "source": "fixture",
+    "content": "# Regras de atendimento\n\n## Personalização\n- O cliente pode pedir para retirar ingredientes (por exemplo, sem cebola) sem custo adicional.\n- Não fazemos troca de ingredientes por outros.\n- Pizza meio a meio somente no tamanho grande, com no máximo 2 sabores; cobra-se o valor do sabor mais caro.\n\n## Borda\n- Não oferecemos borda recheada.\n\n## Pedidos\n- Pedidos são confirmados pela atendente após conferência de endereço e pagamento.\n- Tempo médio de entrega: 40 a 60 minutos.\n- Retirada no balcão: 25 minutos.\n\n## Cancelamento\n- Cancelamento sem custo até a pizza entrar no forno. Depois disso, a equipe avalia o caso."
+  },
+  {
+    "document_id": "entrega",
+    "title": "Política de entrega Bella Massa",
+    "source": "fixture",
+    "content": "# Entrega\n\n## Área atendida\n- Centro (taxa R$ 5,00), Jardim América (taxa R$ 7,00) e Vila Nova (taxa R$ 8,00).\n- Não entregamos no Distrito Industrial nem na Zona Rural.\n\n## Endereço\n- Endereço da loja: Rua das Oliveiras, 120, Centro.\n- Estacionamento na rua."
+  }
+]

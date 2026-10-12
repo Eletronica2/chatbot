@@ -1,0 +1,30 @@
+{
+  "business_name": "Pizzaria Bella Massa",
+  "products": [
+    {"name": "Pizza Calabresa Grande", "price": 65.00, "available": true, "aliases": ["calabresa grande"]},
+    {"name": "Pizza Calabresa Média", "price": 52.00, "available": true, "aliases": ["calabresa media"]},
+    {"name": "Pizza Mussarela Grande", "price": 60.00, "available": true},
+    {"name": "Pizza Margherita Grande", "price": 62.00, "available": true},
+    {"name": "Pizza Frango com Catupiry Grande", "price": 68.00, "available": true},
+    {"name": "Pizza Portuguesa Grande", "price": 70.00, "available": false},
+    {"name": "Refrigerante 2 litros", "price": 14.00, "available": true, "aliases": ["refrigerante 2 litros", "refri 2l"]},
+    {"name": "Pizza de Chocolate Média", "price": 48.00, "available": true}
+  ],
+  "hours": [
+    {"days": "terça a quinta", "open": "18h", "close": "23h"},
+    {"days": "sexta a domingo", "open": "18h", "close": "0h"},
+    {"days": "segunda", "open": "fechado", "close": "fechado"}
+  ],
+  "delivery": {
+    "neighborhoods": [
+      {"name": "Centro", "fee": 5.00},
+      {"name": "Jardim América", "fee": 7.00},
+      {"name": "Vila Nova", "fee": 8.00}
+    ],
+    "not_served": ["Distrito Industrial", "Zona Rural"]
+  },
+  "payment_methods": ["PIX", "dinheiro", "cartão de crédito", "cartão de débito"],
+  "promotions": [
+    {"title": "Terça em dobro: na compra de uma pizza grande, a segunda grande de mussarela sai por R$ 30,00", "price": 30.00}
+  ]
+}

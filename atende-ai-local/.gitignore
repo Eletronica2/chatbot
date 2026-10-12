@@ -1,0 +1,7 @@
+.env
+config/credentials.json
+secrets/
+backups/
+bench-results/
+__pycache__/
+*.pyc
