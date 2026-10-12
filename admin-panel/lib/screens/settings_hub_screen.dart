@@ -60,6 +60,7 @@ class SettingsHubScreen extends StatefulWidget {
 class _SettingsHubScreenState extends State<SettingsHubScreen> {
   late Future<_SettingsHubData> _future;
   bool _savingAi = false;
+  bool _savingProvider = false;
 
   String get _tenantId => authService.tenantId ?? 'default';
 
@@ -147,6 +148,28 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
       }
     }
   }
+
+  Future<void> _setAiProvider(String provider) async {
+    if (_savingProvider || !_isSuperadmin) return;
+    setState(() => _savingProvider = true);
+    try {
+      await tenantService.updateAiProvider(tenantId: _tenantId, provider: provider);
+      if (!mounted) return;
+      _refresh();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Provider atualizado para ${provider == 'local' ? 'IA local' : 'Gemini'}')),
+      );
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível atualizar o provider: $err')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingProvider = false);
+    }
+  }
+
+  bool get _isSuperadmin => authService.isSuperadmin;
 
   @override
   Widget build(BuildContext context) {
@@ -368,6 +391,14 @@ class _SettingsHubScreenState extends State<SettingsHubScreen> {
                     );
                   },
                 ),
+                if (_isSuperadmin && !_isSystemHomeContext) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  _ProviderControlCard(
+                    settings: settings,
+                    enabled: !_savingProvider,
+                    onChanged: (value) => _setAiProvider(value),
+                  ),
+                ],
               ],
             ),
           );
@@ -385,6 +416,41 @@ class _SettingsHubData {
 
   final TenantSettings settings;
   final SubscriptionInfo subscription;
+}
+
+class _ProviderControlCard extends StatelessWidget {
+  const _ProviderControlCard({required this.settings, required this.enabled, required this.onChanged});
+
+  final TenantSettings settings;
+  final bool enabled;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => AppPanelCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const AppSectionHeader(
+            title: 'Provider de IA do tenant',
+            subtitle: 'Controle disponível somente para Superadmin. A IA local continua desligada por padrão.',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          DropdownButtonFormField<String>(
+            value: settings.aiProvider,
+            decoration: const InputDecoration(labelText: 'Provider'),
+            items: const [
+              DropdownMenuItem(value: 'gemini', child: Text('Gemini (atual)')),
+              DropdownMenuItem(value: 'local', child: Text('IA local (WireGuard)')),
+            ],
+            onChanged: enabled ? (value) { if (value != null && value != settings.aiProvider) onChanged(value); } : null,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            settings.localAiEnabled
+                ? 'IA local autorizada para este tenant; o tráfego também depende da configuração global e da VPN.'
+                : 'Provider local desabilitado para este tenant.',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        ]),
+      );
 }
 
 class _AiControlCard extends StatelessWidget {

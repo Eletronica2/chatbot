@@ -66,9 +66,13 @@ services:
       CREDENTIALS_FILE: /config/credentials.json
       TENANTS_FILE: /config/tenants.json
       HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-1}
+      REGISTRY_PATH: /data/registry.db
+      NETWATCH_FILE: /netwatch/netwatch.json
     volumes:
       - ./config:/config:ro
       - hf-models:/models/hf
+      - ai-state:/data
+      - /var/lib/atende-ai/netwatch:/netwatch:ro
     ports:
       - "127.0.0.1:8100:8100"
     networks: [ai_internal, ai_egress]
@@ -85,3 +89,4 @@ volumes:
   qdrant-data:
   qdrant-snapshots:
   hf-models:
+  ai-state:

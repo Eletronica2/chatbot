@@ -361,6 +361,10 @@ class ConversationService:
                     metadata_overrides=tenant_settings.as_ai_metadata(),
                 )
                 await self._record_ai_usage(message, session, ai_response.metadata, ctx)
+                if not ai_response.handled:
+                    return await self._ai_unavailable_handoff(
+                        message, session, ai_response.metadata, ctx, source="ai_fallback", started_at=started_at
+                    )
                 if ai_response.handled and ai_response.reply_text:
                     if await self._should_suppress_auto_reply(message, ctx):
                         return self._suppressed_late_reply(message, session, source="ai_fallback")
@@ -566,6 +570,10 @@ class ConversationService:
             metadata_overrides=tenant_settings.as_ai_metadata(),
         )
         await self._record_ai_usage(message, session, ai_response.metadata, ctx)
+        if not ai_response.handled:
+            return await self._ai_unavailable_handoff(
+                message, session, ai_response.metadata, ctx, source="ai", started_at=started_at
+            )
         if await self._should_suppress_auto_reply(message, ctx):
             return self._suppressed_late_reply(message, session, source="ai")
         detected_intent = ai_response.detected_intent or intent_result.intent
@@ -620,6 +628,39 @@ class ConversationService:
             started_at=started_at,
             detected_intent=persist_intent,
             execution_context=ctx,
+        )
+        return action
+
+    async def _ai_unavailable_handoff(
+        self,
+        message: NormalizedMessage,
+        session: ConversationSession,
+        ai_metadata: Dict[str, Any] | None,
+        ctx: ExecutionContext,
+        *,
+        source: str,
+        started_at: float,
+    ) -> ConversationAction:
+        """Keep the inbound message and route failures to the human queue without sending/billing a reply."""
+        context = dict(session.context or {})
+        context["human_handoff_pending"] = True
+        context["human_handoff_reason"] = str((ai_metadata or {}).get("error") or "ai_unavailable")[:80]
+        context["human_handoff_at"] = datetime.utcnow().isoformat()
+        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+        session = await self._persist_session_update(ctx, session, context_updates=context)
+        metadata = {**(ai_metadata or {}), "human_handoff_pending": True, "ai_failure": True}
+        if ctx.is_test:
+            metadata["dry_run"] = True
+        action = ConversationAction(
+            source=f"{source}_unavailable", reply_text="", tenant_id=message.tenant_id,
+            phone_number=message.phone_number, metadata=metadata,
+            session_state=session.conversation_state, requires_handoff=True,
+        )
+        await self._log_interaction(
+            message=message, session_id=session.session_id, flow_used=session.active_flow,
+            state=session.current_state, user_message=message.content, bot_response="",
+            source=f"{source}_unavailable", started_at=started_at,
+            detected_intent=session.detected_intent, execution_context=ctx,
         )
         return action
 

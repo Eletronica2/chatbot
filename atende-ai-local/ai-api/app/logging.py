@@ -9,7 +9,8 @@ _logger = logging.getLogger("atende_ai_local")
 _ALLOWED = {
     "request_id", "tenant_id", "key_id", "status", "error_code", "reason", "level", "model", "latency_ms",
     "prompt_tokens", "completion_tokens", "retrieval_count", "queue_ms", "guard", "documents", "chunks",
-    "chunks_removed", "mode", "detail", "path", "method",
+    "chunks_removed", "mode", "detail", "path", "method", "provider", "deadline_ms", "results", "cached",
+    "generation_ms", "retrieval_ms", "auth",
 }
 
 

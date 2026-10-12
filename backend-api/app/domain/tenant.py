@@ -42,6 +42,8 @@ class TenantSettings(BaseModel):
     tenant_id: str
     tenant_name: str = "Tenant"
     ai_enabled: bool = True
+    ai_provider: str = "gemini"
+    local_ai_enabled: bool = False
     flow_editing_enabled: bool = True
     debug_mode: bool = False
     gemini_model: str = DEFAULT_GEMINI_MODEL
@@ -53,10 +55,13 @@ class TenantSettings(BaseModel):
     )
 
     def as_ai_metadata(self) -> Dict[str, object]:
-        return {
+        metadata: Dict[str, object] = {
             "ai_model": self.gemini_model,
             "ai_fallback_models": list(self.fallback_models),
             "tenant_id": self.tenant_id,
             "debug_mode": self.debug_mode,
+            # Explicitly overwrite caller supplied metadata to prevent provider spoofing.
+            "ai_provider": self.ai_provider if self.ai_provider == "local" and self.local_ai_enabled else "gemini",
         }
+        return metadata
 

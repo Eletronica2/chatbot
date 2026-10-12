@@ -24,7 +24,7 @@ class TenantSettingsService:
         def _load() -> TenantSettings:
             row = self.database.fetch_one(
                 """
-                SELECT ts.ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
+                SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
                        ts.gemini_model, ts.fallback_models, ts.available_models,
                        t.name AS tenant_name
                 FROM tenants t
@@ -52,7 +52,7 @@ class TenantSettingsService:
                 )
                 row = self.database.fetch_one(
                     """
-                    SELECT ts.ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
+                    SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
                            ts.gemini_model, ts.fallback_models, ts.available_models,
                            t.name AS tenant_name
                     FROM tenants t
@@ -72,6 +72,8 @@ class TenantSettingsService:
                 tenant_id=tenant_id,
                 tenant_name=str(row.get("tenant_name") or f"Tenant {tenant_id}"),
                 ai_enabled=bool(row.get("ai_enabled", True)),
+                ai_provider=str(row.get("ai_provider") or "gemini"),
+                local_ai_enabled=bool(row.get("local_ai_enabled", False)),
                 flow_editing_enabled=bool(row.get("flow_editing_enabled", True)),
                 debug_mode=bool(row.get("debug_mode", False)),
                 gemini_model=str(row.get("gemini_model") or DEFAULT_GEMINI_MODEL),
@@ -89,6 +91,8 @@ class TenantSettingsService:
         ai_enabled: Optional[bool] = None,
         flow_editing_enabled: Optional[bool] = None,
         debug_mode: Optional[bool] = None,
+        ai_provider: Optional[str] = None,
+        local_ai_enabled: Optional[bool] = None,
         gemini_model: Optional[str] = None,
         fallback_models: Optional[List[str]] = None,
     ) -> TenantSettings:
@@ -97,6 +101,12 @@ class TenantSettingsService:
         next_ai_enabled = current.ai_enabled if ai_enabled is None else bool(ai_enabled)
         next_flow_editing_enabled = current.flow_editing_enabled if flow_editing_enabled is None else bool(flow_editing_enabled)
         next_debug_mode = current.debug_mode if debug_mode is None else bool(debug_mode)
+        next_ai_provider = current.ai_provider if ai_provider is None else ai_provider
+        next_local_ai_enabled = current.local_ai_enabled if local_ai_enabled is None else bool(local_ai_enabled)
+        if next_ai_provider not in {"gemini", "local"}:
+            raise ValueError("ai_provider deve ser gemini ou local")
+        if next_ai_provider == "local" and not next_local_ai_enabled:
+            raise ValueError("ative explicitamente o provider local para selecioná-lo")
         next_gemini_model = current.gemini_model
         if gemini_model is not None:
             normalized_primary = normalize_model_list([gemini_model])
@@ -119,11 +129,13 @@ class TenantSettingsService:
             self.database.execute(
                 """
                 INSERT INTO tenant_settings (
-                    tenant_id, ai_enabled, flow_editing_enabled, debug_mode,
+                    tenant_id, ai_enabled, ai_provider, local_ai_enabled, flow_editing_enabled, debug_mode,
                     gemini_model, fallback_models, available_models
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     ai_enabled = VALUES(ai_enabled),
+                    ai_provider = VALUES(ai_provider),
+                    local_ai_enabled = VALUES(local_ai_enabled),
                     flow_editing_enabled = VALUES(flow_editing_enabled),
                     debug_mode = VALUES(debug_mode),
                     gemini_model = VALUES(gemini_model),
@@ -134,6 +146,8 @@ class TenantSettingsService:
                 (
                     tenant_pk,
                     1 if next_ai_enabled else 0,
+                    next_ai_provider,
+                    1 if next_local_ai_enabled else 0,
                     1 if next_flow_editing_enabled else 0,
                     1 if next_debug_mode else 0,
                     next_gemini_model,

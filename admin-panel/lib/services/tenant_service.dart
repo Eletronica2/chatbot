@@ -99,6 +99,19 @@ class TenantService {
     );
   }
 
+  Future<TenantSettings> updateAiProvider({
+    required String tenantId,
+    required String provider,
+  }) async {
+    final enabled = provider == 'local';
+    final data = await _apiClient.patch(
+      '/api/v1/tenants/$tenantId/settings',
+      body: {'ai_provider': provider, 'local_ai_enabled': enabled},
+    );
+    if (data is Map<String, dynamic>) return TenantSettings.fromJson(data);
+    throw StateError('Não foi possível atualizar o provider de IA');
+  }
+
   Future<bool> updateFlowMessage({
     required String tenantId,
     required String state,

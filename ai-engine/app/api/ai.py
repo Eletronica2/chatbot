@@ -157,7 +157,8 @@ def _to_legacy_response(result: AIResponsePayload) -> LegacyAIRespondResponse:
     metadata = dict(result.metadata or {})
     error_code = result.error or "ai_unavailable"
     metadata.update({"error": error_code, "retryable": bool(result.retryable)})
-    fallback_reply = settings.AI_FALLBACK_REPLY
+    # Local provider failures go to a human: no canned text is sent, so nothing is billed.
+    fallback_reply = "" if metadata.get("provider") == "local" else settings.AI_FALLBACK_REPLY
     return LegacyAIRespondResponse(
         handled=False,
         reply_text=fallback_reply,

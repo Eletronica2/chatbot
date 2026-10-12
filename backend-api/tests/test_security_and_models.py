@@ -76,6 +76,25 @@ def test_company_admin_can_patch_non_model_settings():
     assert_tenant_settings_patch_access(user, payload)
 
 
+def test_company_admin_cannot_select_local_provider():
+    user = _authenticated_user('owner')
+    payload = TenantSettingsPatchPayload(ai_provider='local', local_ai_enabled=True)
+    with pytest.raises(HTTPException) as err:
+        assert_tenant_settings_patch_access(user, payload)
+    assert err.value.status_code == 403
+
+
+def test_tenant_ai_metadata_cannot_be_spoofed_and_local_is_opt_in():
+    from app.domain.tenant import TenantSettings
+
+    default = TenantSettings(tenant_id='tenant-demo')
+    assert default.as_ai_metadata()['ai_provider'] == 'gemini'
+    local = TenantSettings(tenant_id='tenant-demo', ai_provider='local', local_ai_enabled=True)
+    assert local.as_ai_metadata()['ai_provider'] == 'local'
+    disabled = TenantSettings(tenant_id='tenant-demo', ai_provider='local', local_ai_enabled=False)
+    assert disabled.as_ai_metadata()['ai_provider'] == 'gemini'
+
+
 def test_embedded_signup_exchange_accepts_empty_display_phone():
     payload = EmbeddedSignupExchangePayload(
         code='oauth-code',

@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Header, HTTPException, Request
 
 from app.domain.models import TENANT_PATTERN
+from app.security.service_auth import HEADER_SIGNATURE, ServiceAuthError, ServiceVerifier
 
 _TENANT_RE = re.compile(TENANT_PATTERN)
 
@@ -82,6 +83,19 @@ def resolve_tenant(principal: Principal, requested: str | None, registry: Tenant
 
 def require_principal(scope: str):
     async def dependency(request: Request, authorization: str | None = Header(None)) -> Principal:
+        if HEADER_SIGNATURE in request.headers:
+            verifier: ServiceVerifier = request.app.state.service_verifier
+            try:
+                key, tenant, request_id = verifier.verify(
+                    method=request.method, path=request.url.path, headers=request.headers,
+                    body=await request.body(), scope=scope,
+                )
+            except ServiceAuthError as exc:
+                raise AuthError(exc.status, exc.code, "autenticação de serviço recusada") from None
+            request.state.key_id = key.key_id
+            request.state.signed_request_id = request_id
+            return Principal(key_id=key.key_id, tenants=frozenset({tenant}), scopes=key.scopes)
+
         store: CredentialStore = request.app.state.credentials
         if not authorization or not authorization.lower().startswith("bearer "):
             raise AuthError(401, "credential_missing", "credencial ausente")

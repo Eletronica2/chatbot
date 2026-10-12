@@ -1,0 +1,8 @@
+[Unit]
+Description=Atende AI - verificação de Wi-Fi e túnel WireGuard
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/atende-ai-netwatch
+TimeoutStartSec=60

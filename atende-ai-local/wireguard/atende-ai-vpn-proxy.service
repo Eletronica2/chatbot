@@ -1,0 +1,18 @@
+[Unit]
+Description=Atende AI - proxy do túnel WireGuard para a API local (127.0.0.1:8100)
+Requires=atende-ai-vpn-proxy.socket
+After=atende-ai-vpn-proxy.socket
+
+[Service]
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=32 127.0.0.1:8100
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=

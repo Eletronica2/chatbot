@@ -1,15 +1,16 @@
 ﻿"""Tenant settings API used by admin-panel."""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.api.access import assert_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.tenant import TenantSettings
-from app.services.dependencies import authenticated_user_dependency, tenant_settings_service_dependency
+from app.services.dependencies import admin_audit_service_dependency, authenticated_user_dependency, tenant_settings_service_dependency
+from app.services.admin_audit_service import AdminAuditService
 from app.services.tenant_settings_service import TenantSettingsService
 
 router = APIRouter(prefix="/api/v1/tenants", tags=["Tenant Settings"])
@@ -20,6 +21,8 @@ class TenantSettingsPatchPayload(BaseModel):
     ai_enabled: Optional[bool] = None
     flow_editing_enabled: Optional[bool] = None
     debug_mode: Optional[bool] = None
+    ai_provider: Optional[Literal["gemini", "local"]] = None
+    local_ai_enabled: Optional[bool] = None
     gemini_model: Optional[str] = None
     fallback_models: Optional[List[str]] = None
 
@@ -33,6 +36,8 @@ class TenantSettingsResponse(BaseModel):
     gemini_model: str
     fallback_models: List[str] = Field(default_factory=list)
     available_models: List[str] = Field(default_factory=list)
+    ai_provider: str = "gemini"
+    local_ai_enabled: bool = False
 
     @classmethod
     def from_domain(cls, item: TenantSettings) -> "TenantSettingsResponse":
@@ -43,7 +48,8 @@ def assert_tenant_settings_patch_access(
     user: AuthenticatedUser,
     payload: TenantSettingsPatchPayload,
 ) -> None:
-    if payload.gemini_model is not None or payload.fallback_models is not None:
+    if (payload.gemini_model is not None or payload.fallback_models is not None
+            or payload.ai_provider is not None or payload.local_ai_enabled is not None):
         assert_superadmin(user)
 
 
@@ -66,17 +72,29 @@ async def patch_tenant_settings(
     payload: TenantSettingsPatchPayload,
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: TenantSettingsService = Depends(tenant_settings_service_dependency),
+    audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
 ) -> TenantSettingsResponse:
     assert_tenant_settings_patch_access(user, payload)
     target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
-    updated = await service.update(
-        target_tenant_id,
-        tenant_name=payload.tenant_name,
-        ai_enabled=payload.ai_enabled,
-        flow_editing_enabled=payload.flow_editing_enabled,
-        debug_mode=payload.debug_mode,
-        gemini_model=payload.gemini_model,
-        fallback_models=payload.fallback_models,
-    )
+    try:
+        updated = await service.update(
+            target_tenant_id,
+            tenant_name=payload.tenant_name,
+            ai_enabled=payload.ai_enabled,
+            flow_editing_enabled=payload.flow_editing_enabled,
+            debug_mode=payload.debug_mode,
+            ai_provider=payload.ai_provider,
+            local_ai_enabled=payload.local_ai_enabled,
+            gemini_model=payload.gemini_model,
+            fallback_models=payload.fallback_models,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if payload.ai_provider is not None or payload.local_ai_enabled is not None:
+        await audit_service.append(
+            tenant_id=target_tenant_id, action="tenant.ai_provider.update", entity_type="tenant_settings",
+            entity_key=target_tenant_id, summary="Provider de IA do tenant atualizado", actor=user,
+            metadata={"ai_provider": updated.ai_provider, "local_ai_enabled": updated.local_ai_enabled},
+        )
     return TenantSettingsResponse.from_domain(updated)
 

@@ -14,6 +14,7 @@ from app.clients.openai_client import (
     OpenAIRateLimitError,
     OpenAIServerError,
 )
+from app.clients.local_ai_client import LocalAIClient
 from app.clients.gemini_client import (
     GeminiAuthError,
     GeminiClient,
@@ -24,6 +25,7 @@ from app.clients.gemini_client import (
 from app.config.settings import settings
 from app.domain.message import AIReply, AIRequestPayload, AIResponsePayload, ChatMessage, IntentAnalysis
 from app.services.intent_service import IntentService
+from app.services.local_provider import generate_local
 
 logger = logging.getLogger(__name__)
 
@@ -44,12 +46,17 @@ class AIService:
         openai_client: OpenAIClient,
         gemini_client: GeminiClient,
         intent_service: IntentService,
+        local_client: LocalAIClient | None = None,
     ):
         self.openai_client = openai_client
         self.gemini_client = gemini_client
         self.intent_service = intent_service
+        self.local_client = local_client
         self.mock_enabled = settings.MOCK_AI
         self.provider = settings.AI_PROVIDER.lower().strip()
+
+    def local_available(self) -> bool:
+        return bool(settings.LOCAL_AI_ENABLED and self.local_client is not None and self.local_client.configured)
 
     async def detect_intent(self, text: str) -> IntentAnalysis:
         return self.intent_service.classify(text or "")
@@ -66,6 +73,18 @@ class AIService:
         preferred_model = self._normalize_model_name(metadata.get("ai_model"))
         fallback_models = self._normalize_model_list(metadata.get("ai_fallback_models"))
         debug_enabled = bool(settings.AI_DEBUG_PROMPTS or metadata.get("debug_mode"))
+
+        if str(metadata.get("ai_provider") or "").strip().lower() == "local":
+            # Tenant explicitly routed to the local server. No silent fallback to an external provider.
+            if not self.local_available():
+                logger.warning("local_ai requested but disabled/not configured tenant=%s", payload.tenant_id)
+                return self._unavailable_response(
+                    payload.session_state, error="local_ai_disabled", retryable=False,
+                    metadata={"provider": "local", "handoff_required": True},
+                )
+            return await generate_local(
+                self.local_client, payload, metadata, intent.intent, intent.confidence, settings.LOCAL_AI_MODEL,
+            )
 
         if settings.BLOCK_REALTIME_FACTS and self._looks_like_realtime_question(user_text):
             logger.info("Realtime guard triggered tenant=%s session=%s", payload.tenant_id, payload.session_id)

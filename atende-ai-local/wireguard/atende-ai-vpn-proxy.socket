@@ -1,0 +1,12 @@
+[Unit]
+Description=Atende AI - API local exposta somente no IP do túnel WireGuard (10.77.0.2:8100)
+
+[Socket]
+# FreeBind permite subir antes do wg0 existir; o IP só é alcançável quando o túnel está ativo.
+ListenStream=10.77.0.2:8100
+FreeBind=yes
+NoDelay=yes
+Backlog=32
+
+[Install]
+WantedBy=sockets.target

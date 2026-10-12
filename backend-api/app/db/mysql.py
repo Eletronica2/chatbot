@@ -154,6 +154,17 @@ class MySQLDatabase:
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             """
         )
+        for column, definition in (
+            ("ai_provider", "VARCHAR(20) NOT NULL DEFAULT 'gemini'"),
+            ("local_ai_enabled", "TINYINT(1) NOT NULL DEFAULT 0"),
+        ):
+            cursor.execute(
+                "SELECT 1 FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s LIMIT 1",
+                ("tenant_settings", column),
+            )
+            if cursor.fetchone() is None:
+                cursor.execute(f"ALTER TABLE tenant_settings ADD COLUMN {column} {definition}")
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS users (

@@ -74,6 +74,12 @@ services:
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash-latest}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       MOCK_AI: "false"
+      # Local provider remains disabled until the private tunnel and credential are provisioned.
+      LOCAL_AI_ENABLED: ${LOCAL_AI_ENABLED:-false}
+      LOCAL_AI_BASE_URL: ${LOCAL_AI_BASE_URL:-http://10.77.0.2:8100}
+      LOCAL_AI_KEY_ID: ${LOCAL_AI_KEY_ID:-}
+      LOCAL_AI_SECRET_B64: ${LOCAL_AI_SECRET_B64:-}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
       interval: 20s

@@ -22,6 +22,13 @@ class Settings(BaseSettings):
     llm_concurrency: int = Field(1, ge=1, le=4)
     llm_max_queue: int = Field(3, ge=0, le=32)
     llm_queue_timeout_s: float = 90.0
+    llm_max_per_tenant: int = Field(2, ge=1, le=32)
+
+    service_keys_json: str = "[]"
+    service_max_skew_s: float = 30.0
+    idempotency_ttl_s: float = 600.0
+    registry_path: str = "/data/registry.db"
+    netwatch_file: str = "/netwatch/netwatch.json"
 
     qdrant_url: str = "http://qdrant:6333"
     qdrant_api_key: str = ""

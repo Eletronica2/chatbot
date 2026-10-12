@@ -10,6 +10,7 @@ from app.inference.ollama_client import OllamaClient
 from app.prompts.builder import PromptParts, build_messages, render_flow_state, trim_history
 from app.retrieval.store import KnowledgeStore
 from app.retrieval.text import strip_accents
+from app.services.grounding import unsupported_existence_claims
 from app.services.structured import (
     HANDOFF_TEXT,
     Business,
@@ -19,7 +20,12 @@ from app.services.structured import (
     price_cents_in,
 )
 
-FALLBACK_TEXT = "Não tenho essa informação confirmada no momento. Posso encaminhar sua dúvida para a nossa equipe?"
+FALLBACK_TEXT = "Não tenho essa informação confirmada no momento. Posso encaminhar sua dúvida para a equipe?"
+MIN_GENERATION_S = 1.0
+
+
+class DeadlineExceeded(Exception):
+    pass
 OFF_TOPIC_TEXT = "Posso ajudar apenas com assuntos da {name}, como cardápio, preços, horários e entregas."
 COMMERCIAL_CLAIMS = ("gratis", "de graca", "gratuit", "desconto", "brinde", "cortesia", "frete free")
 
@@ -44,6 +50,12 @@ def unsupported_claims(text: str, context_texts: list[str]) -> list[str]:
     out = strip_accents(text.lower())
     ctx = strip_accents(" ".join(context_texts).lower())
     return [w for w in COMMERCIAL_CLAIMS if w in out and w not in ctx]
+
+
+def authorized_context_texts(business_text: str, docs: list[dict], tenant_name: str,
+                             tenant_profile: str) -> list[str]:
+    """Only tenant-controlled business data may ground factual/commercial claims."""
+    return [business_text, *(str(d.get("text") or "") for d in docs), tenant_name, tenant_profile]
 
 
 class Responder:
@@ -102,19 +114,37 @@ class Responder:
             message=message,
         ))
 
-        async with self.gate.slot() as queue_ms:
-            gen = await self.llm.chat(
+        deadline = started + opts.deadline_ms / 1000 if opts.deadline_ms else None
+
+        def remaining() -> float | None:
+            if deadline is None:
+                return None
+            left = deadline - time.perf_counter()
+            if left < MIN_GENERATION_S:
+                raise DeadlineExceeded()
+            return left
+
+        async with self.gate.slot(tenant_id, timeout_s=remaining()) as queue_ms:
+            budget = remaining()
+            call = self.llm.chat(
                 model, messages,
                 num_ctx=opts.num_ctx or self.s.llm_num_ctx,
                 temperature=opts.temperature if opts.temperature is not None else self.s.llm_temperature,
                 max_tokens=opts.max_tokens or self.s.llm_max_tokens,
                 keep_alive=self.s.llm_keep_alive,
             )
+            try:
+                # Cancelling the stream closes the HTTP connection, which makes Ollama abort the generation.
+                gen = await (asyncio.wait_for(call, timeout=budget) if budget is not None else call)
+            except asyncio.TimeoutError:
+                raise DeadlineExceeded() from None
 
         text, guard = gen.text, None
-        context_texts = [message, biz.render() if not biz.is_empty() else "", *(d["text"] for d in docs),
-                         *(h["content"] for h in history), render_flow_state(req.flow_context),
-                         tenant.get("display_name", ""), tenant.get("profile", "")]
+        context_texts = authorized_context_texts(
+            biz.render() if not biz.is_empty() else "", docs,
+            tenant.get("display_name", ""), tenant.get("profile", ""),
+        )
+        # Customer wording, conversation history and collected flow fields are not business evidence.
         allowed_prices = biz.known_prices() | {c for t in context_texts for c in price_cents_in(t)}
         allowed_numbers = {n for t in context_texts for n in numbers_in(t)}
         if not text:
@@ -125,6 +155,8 @@ class Responder:
             text, guard = FALLBACK_TEXT, "number_not_in_context"
         elif unsupported_claims(text, context_texts):
             text, guard = FALLBACK_TEXT, "claim_not_in_context"
+        elif unsupported_existence_claims(text, context_texts, closed_payment_list=bool(biz.payment_methods)):
+            text, guard = FALLBACK_TEXT, "existence_not_in_context"
         elif ungrounded_names(text, context_texts):
             text, guard = OFF_TOPIC_TEXT.format(name=tenant.get("display_name", "empresa")), "entity_not_in_context"
 

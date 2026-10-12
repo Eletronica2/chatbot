@@ -10,11 +10,13 @@ from app.retrieval.store import KnowledgeStore
 class Readiness:
     """Cheap checks on every call; the inference probe (1 token) is cached for ready_inference_ttl_s."""
 
-    def __init__(self, settings: Settings, encoder: Encoder | None, store: KnowledgeStore, llm: OllamaClient):
+    def __init__(self, settings: Settings, encoder: Encoder | None, store: KnowledgeStore, llm: OllamaClient,
+                 registry=None):
         self.s = settings
         self.encoder = encoder
         self.store = store
         self.llm = llm
+        self.registry = registry
         self._probe_at = 0.0
         self._probe_ok = False
         self._probe_detail = "not_run"
@@ -47,6 +49,11 @@ class Readiness:
         except Exception as exc:
             checks["ollama"] = {"ok": False, "detail": str(exc)[:120]}
             checks["model"] = {"ok": False, "name": self.s.llm_model}
+        if self.registry is not None:
+            try:
+                checks["registry"] = {"ok": self.registry.ping()}
+            except Exception as exc:
+                checks["registry"] = {"ok": False, "detail": str(exc)[:120]}
         checks["embedding"] = {"ok": self.encoder is not None,
                                "name": self.encoder.model_name if self.encoder else self.s.embedding_model,
                                "dim": self.encoder.dim if self.encoder else None}

@@ -43,6 +43,23 @@ class Settings(BaseSettings):
     )
     MAX_HISTORY_MESSAGES: int = 6
 
+    # Local AI server (Ollama + RAG) reached through the private WireGuard tunnel.
+    # Master switch only: each tenant still has to be set to provider "local" by a Super Admin.
+    LOCAL_AI_ENABLED: bool = False
+    LOCAL_AI_BASE_URL: str = "http://10.77.0.2:8100"
+    LOCAL_AI_KEY_ID: Optional[str] = None
+    LOCAL_AI_SECRET_B64: Optional[str] = None
+    LOCAL_AI_MODEL: Optional[str] = None
+    LOCAL_AI_CONNECT_TIMEOUT_S: float = 3.0
+    LOCAL_AI_TOTAL_BUDGET_S: float = 45.0
+    LOCAL_AI_MAX_ATTEMPTS: int = 2
+    LOCAL_AI_BACKOFF_BASE_S: float = 0.5
+    LOCAL_AI_BACKOFF_MAX_S: float = 4.0
+    LOCAL_AI_BREAKER_THRESHOLD: int = 3
+    LOCAL_AI_BREAKER_COOLDOWN_S: float = 30.0
+    LOCAL_AI_STATUS_TTL_S: float = 15.0
+    INTERNAL_API_KEY: Optional[str] = None
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

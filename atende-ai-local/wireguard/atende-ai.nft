@@ -1,0 +1,21 @@
+# Atende AI — regras do túnel WireGuard (servidor local).
+# Tabela própria: não usa "flush ruleset", não toca SSH, Wi-Fi nem as regras do Docker.
+# Carregada pelo PostUp do wg-quick e removida no PreDown. Rollback manual: nft delete table inet atende_ai
+table inet atende_ai {
+    chain input {
+        type filter hook input priority -5; policy accept;
+        iifname "wg0" ct state established,related accept
+        iifname "wg0" ip saddr 10.77.0.1 tcp dport 8100 accept
+        iifname "wg0" ip saddr 10.77.0.1 icmp type echo-request accept
+        iifname "wg0" counter drop
+        # A API só pode ser alcançada pelo loopback ou pelo túnel.
+        iifname != { "lo", "wg0" } tcp dport 8100 counter drop
+    }
+
+    chain forward {
+        type filter hook forward priority -5; policy accept;
+        # A AWS não alcança a LAN nem as redes Docker através do túnel (ip_forward=1 por causa do Docker).
+        iifname "wg0" counter drop
+        oifname "wg0" counter drop
+    }
+}

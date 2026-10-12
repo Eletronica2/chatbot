@@ -11,7 +11,7 @@ WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
-RUN useradd --uid 10001 --create-home app && mkdir -p /models/hf && chown -R app:app /models
+RUN useradd --uid 10001 --create-home app && mkdir -p /models/hf /data && chown -R app:app /models /data
 COPY --chown=app:app app ./app
 COPY --chown=app:app tests ./tests
 COPY --chown=app:app bench ./bench

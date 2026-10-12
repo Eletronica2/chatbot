@@ -17,6 +17,7 @@ class RespondOptions(BaseModel):
     num_ctx: int | None = Field(None, ge=1024, le=8192)
     retrieval_mode: Literal["dense", "hybrid"] | None = None
     allow_deterministic: bool = True
+    deadline_ms: int | None = Field(None, ge=1000, le=180_000)
 
 
 class RespondRequest(BaseModel):
@@ -87,6 +88,23 @@ class UpsertRequest(BaseModel):
 class DeleteRequest(BaseModel):
     tenant_id: str | None = Field(None, max_length=64)
     document_ids: list[str] = Field(min_length=1, max_length=100)
+
+
+class SyncOperation(BaseModel):
+    op: Literal["upsert", "delete"]
+    document_id: str = Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9_\-.:]+$")
+    version: int = Field(ge=1)
+    content_hash: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")
+    updated_at: str = Field(min_length=1, max_length=40)
+    status: Literal["active", "inactive", "deleted"] = "active"
+    title: str | None = Field(None, max_length=200)
+    content: str | None = Field(None, max_length=200_000)
+    content_type: Literal["text", "markdown"] = "markdown"
+
+
+class SyncRequest(BaseModel):
+    tenant_id: str | None = Field(None, max_length=64)
+    operations: list[SyncOperation] = Field(min_length=1, max_length=20)
 
 
 class SearchRequest(BaseModel):

@@ -1,13 +1,15 @@
 import time
 
+import httpx
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from app.domain.models import DeleteRequest, RespondRequest, RespondResponse, SearchRequest, UpsertRequest
+from app.domain.models import DeleteRequest, RespondRequest, RespondResponse, SearchRequest, SyncRequest, UpsertRequest
 from app.inference.gate import Saturated
 from app.inference.ollama_client import OllamaError
 from app.logging import log_event
 from app.security.auth import Principal, require_principal, resolve_tenant
+from app.services.responder import DeadlineExceeded
 
 router = APIRouter()
 
@@ -33,9 +35,19 @@ def _tenant(request: Request, principal: Principal, requested: str | None) -> tu
 @router.post("/v1/respond", response_model=RespondResponse)
 async def respond(req: RespondRequest, request: Request, principal: Principal = Depends(require_principal("respond"))):
     tenant_id, tenant = _tenant(request, principal, req.tenant_id)
+    signed_request_id = getattr(request.state, "signed_request_id", None)
+    if signed_request_id is not None and signed_request_id != req.request_id:
+        return JSONResponse({"error_code": "request_id_mismatch"}, status_code=400)
     started = time.perf_counter()
     try:
-        result = await request.app.state.responder.respond(req, tenant_id, tenant)
+        result, cached = await request.app.state.idempotency.run(
+            f"{principal.key_id}:{tenant_id}:{req.request_id}",
+            lambda: request.app.state.responder.respond(req, tenant_id, tenant),
+        )
+    except DeadlineExceeded:
+        log_event("respond", request_id=req.request_id, tenant_id=tenant_id, status=504, error_code="deadline_exceeded",
+                  deadline_ms=req.options.deadline_ms, latency_ms=int((time.perf_counter() - started) * 1000))
+        return JSONResponse({"error_code": "deadline_exceeded", "request_id": req.request_id}, status_code=504)
     except Saturated as exc:
         log_event("respond", request_id=req.request_id, tenant_id=tenant_id, status=503, error_code="saturated",
                   reason=exc.reason, latency_ms=int((time.perf_counter() - started) * 1000))
@@ -48,15 +60,41 @@ async def respond(req: RespondRequest, request: Request, principal: Principal = 
         if str(exc) == "model_not_allowed":
             return JSONResponse({"error_code": "model_not_allowed"}, status_code=400)
         raise
-    except OllamaError as exc:
+    except (OllamaError, httpx.HTTPError) as exc:
         log_event("respond", request_id=req.request_id, tenant_id=tenant_id, status=502, error_code="inference_error")
-        return JSONResponse({"error_code": "inference_error", "detail": str(exc)[:200], "request_id": req.request_id},
+        return JSONResponse({"error_code": "inference_error", "detail": type(exc).__name__, "request_id": req.request_id},
                             status_code=502)
     log_event("respond", request_id=req.request_id, tenant_id=tenant_id, key_id=principal.key_id, status=200,
-              level=result.level, model=result.model, latency_ms=result.latency_ms,
+              provider="local", level=result.level, model=result.model,
+              latency_ms=int((time.perf_counter() - started) * 1000) if cached else result.latency_ms,
               prompt_tokens=result.usage.prompt_tokens, completion_tokens=result.usage.completion_tokens,
-              retrieval_count=result.retrieval.documents_used, queue_ms=result.timings.queue_ms, guard=result.guard)
+              retrieval_count=result.retrieval.documents_used, queue_ms=result.timings.queue_ms,
+              retrieval_ms=result.timings.retrieval_ms, generation_ms=result.timings.generation_ms,
+              guard=result.guard, cached=cached or None, deadline_ms=req.options.deadline_ms)
     return result
+
+
+@router.post("/v1/knowledge/sync")
+async def knowledge_sync(req: SyncRequest, request: Request,
+                         principal: Principal = Depends(require_principal("knowledge:write"))):
+    tenant_id, _ = _tenant(request, principal, req.tenant_id)
+    results = [await request.app.state.knowledge.sync(tenant_id, op) for op in req.operations]
+    summary: dict[str, int] = {}
+    for r in results:
+        summary[r["result"]] = summary.get(r["result"], 0) + 1
+    log_event("knowledge_sync", tenant_id=tenant_id, key_id=principal.key_id, documents=len(results),
+              results=summary)
+    return {"tenant_id": tenant_id, "results": results}
+
+
+@router.get("/v1/knowledge/manifest")
+async def knowledge_manifest(request: Request, tenant_id: str | None = None,
+                             principal: Principal = Depends(require_principal("knowledge:read"))):
+    tenant, _ = _tenant(request, principal, tenant_id)
+    entries = request.app.state.registry.manifest(tenant)
+    return {"tenant_id": tenant, "documents": [
+        {"document_id": e.document_id, "version": e.version, "content_hash": e.content_hash, "status": e.status,
+         "updated_at": e.updated_at, "chunks": e.chunks} for e in entries]}
 
 
 @router.post("/v1/knowledge/upsert")
