@@ -2,19 +2,21 @@
 
 ## Estado e ativação
 
-A IA local é opt-in por tenant (`ai_provider=local` e `local_ai_enabled=1`). O default de banco é `gemini` e flag local `0`. A API de settings exige Superadmin para alterar essas opções e grava auditoria. O AI Engine também exige `LOCAL_AI_ENABLED=true` e segredo HMAC configurado; sem a chave global ou com o serviço local indisponível, não tenta mascarar a falha com outro modelo: deixa a resposta vazia e encaminha a conversa para humano.
+A IA local é opt-in por tenant (`ai_provider=local` e `local_ai_enabled=1`). O default de banco é `gemini` e flag local `0`. A API de settings exige Superadmin para alterar essas opções e grava auditoria. O AI Engine também exige `LOCAL_AI_ENABLED=true` e segredo HMAC configurado; sem a chave global ou com o serviço local indisponível, não tenta mascarar a falha com outro modelo: deixa a resposta vazia e encaminha a conversa para humano. Em 2026-10-12, `LOCAL_AI_ENABLED=false` em produção; a chave de smoke não roteia conversas porque o provider global permanece desligado.
 
 Não ativar tenants reais antes de concluir VPN, backup externo, autorização de dados e teste de isolamento. A migração aditiva está em `database/migrations/011_tenant_ai_provider.sql`; o bootstrap da API também garante as colunas em MySQL 8.4.
 
 ## Rede planejada
 
-WireGuard usa `10.77.0.0/30` (AWS `10.77.0.1`, servidor `10.77.0.2`), somente as rotas de peer, sem alterar rota default. O host local inicia a sessão e usa `PersistentKeepalive=25`; não se abre porta no roteador Wi-Fi. Ollama e Qdrant ficam em redes Docker privadas. FastAPI segue no loopback e um socket proxy expõe `10.77.0.2:8100` somente pela interface do túnel. `setup-local.sh`, `setup-aws.sh`, `netwatch.sh` e `rollback-local.sh` são scripts preparados, ainda não executados.
+WireGuard usa `10.77.0.0/30` (AWS `10.77.0.1`, servidor `10.77.0.2`), somente as rotas de peer, sem alterar rota default. O host local inicia a sessão e usa `PersistentKeepalive=25`; não se abre porta no roteador Wi-Fi. Ollama e Qdrant ficam em redes Docker privadas. FastAPI segue no loopback e um socket proxy expõe `10.77.0.2:8100` somente pela interface do túnel. Em 2026-10-12, `setup-local.sh` e `setup-aws.sh` foram executados manualmente; handshake e `/ready` da AWS pela VPN passaram. `netwatch.sh` está instalado no timer. Não foi simulada queda do Wi-Fi.
 
 No lado AWS, revisar a necessidade de UDP 51820 antes de qualquer mudança no Security Group. O endpoint de IA nunca deve ser publicado na Internet. Regras de encaminhamento devem continuar impedindo acesso da AWS à LAN e redes Docker locais.
 
 ## Autenticação e isolamento
 
-Chamadas internas usam HMAC-SHA256 sobre método, path, timestamp, nonce, tenant, request ID e hash do corpo. Nonces repetidos e timestamps fora da janela são recusados. A chave restringe tenants e escopos. Na API local, o tenant autenticado é usado em todos os filtros Qdrant. A API não recebe acesso ao MySQL AWS. A chave global local permanece desabilitada por padrão e não deve ser registrada nos logs.
+Chamadas internas usam HMAC-SHA256 sobre método, path, timestamp, nonce, tenant, request ID e hash do corpo. Nonces repetidos e timestamps fora da janela são recusados. `SERVICE_KEYS_JSON` define cada `key_id`, `secret_b64`, lista explícita de tenants, escopos e expiração `not_after`; wildcard de tenant é recusado. A identidade HMAC é reduzida a um único tenant por requisição e o tenant informado no JSON não amplia o acesso. A API local usa cache de nonce limitado em memória (um worker); reiniciar o processo limpa esse cache, e a janela de timestamp limita a aceitação de uma captura antiga. Na API local, o tenant autenticado é usado em todos os filtros Qdrant. A API não recebe acesso ao MySQL AWS. Os segredos ficam apenas em `.env`/`.env.production` protegidos com modo `600`, nunca em logs ou Git.
+
+O teste operacional IA-02 usa `LocalAIClient` e `generate_local` existentes em um runner explícito dentro do container AI Engine. O runner não muda `LOCAL_AI_ENABLED`, não cria endpoint público e não envia WhatsApp. Credenciais de smoke são curtas e tenant-específicas; devem ser removidas após os testes.
 
 ## Knowledge sync e prompt
 

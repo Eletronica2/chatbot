@@ -2,16 +2,16 @@
 # Atende AI — IA-02: configura o túnel WireGuard no servidor local (lado cliente; ele inicia a conexão).
 #
 # Uso (executar a partir de uma sessão SSH na LAN; a sessão não passa pelo túnel):
-#   sudo bash /opt/atende-ai-local/wireguard/setup-local.sh <CHAVE_PUBLICA_AWS> [ENDPOINT_AWS:51820]
+#   sudo bash /home/atendeai/ia02-wireguard/setup-local.sh [CHAVE_PUBLICA_AWS] [ENDPOINT_AWS:51820]
 #
 # O que faz: auditoria root (somente leitura) -> backups -> instala wireguard-tools -> gera chave local (600)
 # -> wg0 10.77.0.2/30 com AllowedIPs 10.77.0.1/32 (sem rota default, sem full tunnel) -> regras nft restritas
 # -> proxy 10.77.0.2:8100 -> 127.0.0.1:8100 -> monitor de rede. Não altera netplan, Wi-Fi, IP, SSH nem Docker.
 # Se a rota default ou o SSH mudarem depois de subir o túnel, o túnel é desligado automaticamente.
-# Rollback completo: sudo bash /opt/atende-ai-local/wireguard/rollback-local.sh
+# Rollback da VPN/proxy: sudo /usr/local/sbin/atende-ai-wireguard-rollback
 set -euo pipefail
 
-AWS_PUBKEY=${1:?informe a chave pública WireGuard da AWS}
+AWS_PUBKEY=${1:-}
 ENDPOINT=${2:-3.218.194.130:51820}
 SRC=$(cd "$(dirname "$0")" && pwd)
 TS=$(date +%Y%m%d-%H%M%S)
@@ -20,7 +20,23 @@ REPORT=/tmp/ia02-setup-report.txt
 WIFI=wlxe01cfca274a9
 
 [[ $EUID -eq 0 ]] || { echo "execute com sudo"; exit 1; }
-[[ "$AWS_PUBKEY" =~ ^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw480]=$ ]] || { echo "chave pública inválida"; exit 1; }
+[[ -r /etc/os-release ]] || { echo "não foi possível identificar o sistema operacional"; exit 1; }
+. /etc/os-release
+[[ ${ID:-} == ubuntu && ${VERSION_ID:-} == 26.04 ]] || {
+  echo "este instalador foi preparado para Ubuntu 26.04; sistema detectado: ${PRETTY_NAME:-desconhecido}"; exit 1;
+}
+if [[ -n "$AWS_PUBKEY" && ! "$AWS_PUBKEY" =~ ^[A-Za-z0-9+/]{42}[AEIMQUYcgkosw480]=$ ]]; then
+  echo "chave pública AWS inválida"; exit 1
+fi
+exec 9>/run/lock/atende-ai-wireguard-setup.lock
+flock -n 9 || { echo "outra configuração WireGuard já está em andamento"; exit 1; }
+if [[ -f /etc/wireguard/wg0.conf ]] \
+   && ! grep -Fq '# Atende AI — túnel privado servidor local' /etc/wireguard/wg0.conf; then
+  echo "wg0.conf existente não pertence à IA-02; nenhuma configuração foi alterada"; exit 1
+fi
+if ip link show wg0 >/dev/null 2>&1 && [[ ! -f /etc/wireguard/wg0.conf ]]; then
+  echo "wg0 já existe sem configuração IA-02; nenhuma configuração foi alterada"; exit 1
+fi
 
 exec > >(tee "$REPORT") 2>&1
 chmod 644 "$REPORT"
@@ -50,11 +66,6 @@ cp -a /etc/ssh/sshd_config "$BACKUP/" 2>/dev/null || true
 [[ -d /etc/wireguard ]] && cp -a /etc/wireguard "$BACKUP/wireguard"
 chmod -R go-rwx "$BACKUP"
 echo "backup de configuração: $BACKUP"
-if [[ -x /opt/atende-ai-local/scripts/backup.sh || -f /opt/atende-ai-local/scripts/backup.sh ]]; then
-  echo "-- snapshot Qdrant"
-  KEEP=14 bash /opt/atende-ai-local/scripts/backup.sh | tail -2 || echo "AVISO: backup Qdrant falhou (continuando; registrar)"
-fi
-
 echo "== 4. Pacotes"
 if ! command -v wg >/dev/null; then
   apt-get update -q >/dev/null
@@ -63,7 +74,7 @@ fi
 wg --version
 command -v iw >/dev/null && { echo "-- power save (somente leitura)"; iw dev "$WIFI" get power_save || true; }
 
-echo "== 5. Chave local (gerada no servidor; nunca exibida)"
+echo "== 5. Chave local (gerada no servidor; chave privada nunca exibida)"
 install -d -m 700 /etc/wireguard
 if [[ ! -f /etc/wireguard/wg0.key ]]; then
   (umask 077; wg genkey > /etc/wireguard/wg0.key)
@@ -72,10 +83,10 @@ chmod 600 /etc/wireguard/wg0.key
 LOCAL_PUBKEY=$(wg pubkey < /etc/wireguard/wg0.key)
 
 echo "== 6. Configuração wg0"
-install -d -m 755 /etc/atende-ai
-install -m 644 "$SRC/atende-ai.nft" /etc/atende-ai/atende-ai.nft
+install -d -m 700 /etc/wireguard
+install -m 600 "$SRC/atende-ai.nft" /etc/wireguard/atende-ai.nft
 NFT_CHECK=$(mktemp)
-sed 's/table inet atende_ai {/table inet atende_ai_validation {/' /etc/atende-ai/atende-ai.nft > "$NFT_CHECK"
+sed 's/table inet atende_ai {/table inet atende_ai_validation {/' /etc/wireguard/atende-ai.nft > "$NFT_CHECK"
 if nft -c -f "$NFT_CHECK"; then
   rm -f "$NFT_CHECK"
 else
@@ -88,9 +99,10 @@ cat > /etc/wireguard/wg0.conf <<EOF
 [Interface]
 Address = 10.77.0.2/30
 PostUp = wg set %i private-key /etc/wireguard/wg0.key
-PostUp = nft delete table inet atende_ai 2>/dev/null || true
-PostUp = nft -f /etc/atende-ai/atende-ai.nft
-PreDown = nft delete table inet atende_ai || true
+
+EOF
+if [[ -n "$AWS_PUBKEY" ]]; then
+  cat >> /etc/wireguard/wg0.conf <<EOF
 
 [Peer]
 PublicKey = $AWS_PUBKEY
@@ -98,18 +110,30 @@ Endpoint = $ENDPOINT
 AllowedIPs = 10.77.0.1/32
 PersistentKeepalive = 25
 EOF
+else
+  echo "Chave pública AWS ainda não configurada; o peer será adicionado após preparar o lado AWS."
+fi
 umask 022
 chmod 600 /etc/wireguard/wg0.conf
 
 echo "== 7. Proxy e monitor"
 install -m 644 "$SRC/atende-ai-vpn-proxy.socket" "$SRC/atende-ai-vpn-proxy.service" \
   "$SRC/atende-ai-netwatch.service" "$SRC/atende-ai-netwatch.timer" /etc/systemd/system/
+install -d -m 755 /etc/systemd/system/wg-quick@wg0.service.d
+install -m 644 "$SRC/wg-quick-atende-ai.conf" \
+  /etc/systemd/system/wg-quick@wg0.service.d/10-atende-ai-nft.conf
 install -m 755 "$SRC/netwatch.sh" /usr/local/sbin/atende-ai-netwatch
+install -m 755 "$SRC/rollback-local.sh" /usr/local/sbin/atende-ai-wireguard-rollback
 install -d -m 755 /var/lib/atende-ai/netwatch
 systemctl daemon-reload
 
 echo "== 8. Ativação"
-systemctl enable --now wg-quick@wg0
+systemctl enable wg-quick@wg0
+if systemctl is-active --quiet wg-quick@wg0; then
+  systemctl restart wg-quick@wg0
+else
+  systemctl start wg-quick@wg0
+fi
 sleep 2
 DEFAULT_AFTER=$(ip -4 route show default)
 DEFAULT6_DEV_AFTER=$(ip -6 route show default | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -1)

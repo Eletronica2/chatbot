@@ -1,0 +1,115 @@
+{
+ "tenant_id": "pizzaria_bella_massa",
+ "source": "flow-engine/app/flows/tenants/pizzaria_bella_massa/atendimento_pizzaria_delivery.yaml",
+ "operations": [
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-pizzas-tradicionais",
+   "version": 1,
+   "title": "Pizzas tradicionais Bella Massa",
+   "content": "# Pizzas tradicionais Bella Massa\n\nNossas Pizzas Tradicionais\n\n- Mussarela: broto R$ 39,90, média R$ 49,90, grande R$ 59,90\n- Calabresa: broto R$ 42,90, média R$ 52,90, grande R$ 62,90\n- Portuguesa: broto R$ 45,90, média R$ 55,90, grande R$ 65,90\n- Frango c/ Catupiry: broto R$ 46,90, média R$ 56,90, grande R$ 66,90\n- Palmito: broto R$ 43,90, média R$ 53,90, grande R$ 63,90\n- Napolitana: broto R$ 40,90, média R$ 50,90, grande R$ 60,90\n\nTamanhos: broto 25 cm, média 35 cm, grande 45 cm.\n",
+   "content_hash": "d5c44c754b8d133c2fad41b92aa5c475f3e1a3edae208beb5ff2a53a96461ab7",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-pizzas-especiais",
+   "version": 1,
+   "title": "Pizzas especiais Bella Massa",
+   "content": "# Pizzas especiais Bella Massa\n\nNossas Pizzas Especiais\n\n- Camaão Especial: broto R$ 69,90, média R$ 82,90, grande R$ 99,90\n- Parma com Rúcula: broto R$ 64,90, média R$ 77,90, grande R$ 92,90\n- Quatro Queijos Premium: broto R$ 59,90, média R$ 72,90, grande R$ 87,90\n- Costela BBQ: broto R$ 72,90, média R$ 85,90, grande R$ 102,90\n- Salmão Defumado: broto R$ 74,90, média R$ 89,90, grande R$ 109,90\n\nTamanhos: broto 25 cm, média 35 cm, grande 45 cm.\n",
+   "content_hash": "d9724c3cf798fb6c269f5df73a915450894a3d272a8422357775af2d44db169c",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-pizzas-doces",
+   "version": 1,
+   "title": "Pizzas doces Bella Massa",
+   "content": "# Pizzas doces Bella Massa\n\nPizzas Doces — pra adoçar a noite!\n\n- Chocolate c/ Morango: broto R$ 49,90, média R$ 59,90, grande R$ 72,90\n- Banana c/ Canela: broto R$ 42,90, média R$ 52,90, grande R$ 63,90\n- Prestígio: broto R$ 47,90, média R$ 57,90, grande R$ 69,90\n- Nutella c/ Leite Ninho: broto R$ 59,90, média R$ 72,90, grande R$ 86,90\n- Romeu e Julieta: broto R$ 44,90, média R$ 54,90, grande R$ 66,90\n\nTamanhos: broto 25 cm, média 35 cm, grande 45 cm.\n",
+   "content_hash": "34ee37e419ba765b15249f23ea85ca5a7eecfc22484fe51d1596e7911f553645",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-bebidas",
+   "version": 1,
+   "title": "Bebidas Bella Massa",
+   "content": "# Bebidas Bella Massa\n\nNossas bebidas\n\n• Refrigerante Lata (350ml) — R$ 7,00\nCoca-Cola, Guaraná Antarctica, Fanta, Sprite\n• Refrigerante 2L — R$ 14,00\nCoca-Cola, Guaraná Antarctica, Fanta\n• Suco Natural (500ml) — R$ 10,00\nLaranja, Limão, Maracujá, Uva\n• Água Mineral (500ml) — R$ 4,00\n• Água com Gás (500ml) — R$ 5,00\n",
+   "content_hash": "0ed61dd06a758097e1b8bf26f7202809ae31bd3d107972c6313276a627ead0e3",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-promocoes",
+   "version": 1,
+   "title": "Promoções Bella Massa",
+   "content": "# Promoções Bella Massa\n\nPromoções de Hoje!\n\nCombo Família\n2 Pizzas Grandes Tradicionais + Refrigerante 2L\nDe R$ 139,70 por apenas R$ 89,90\n\nPizza Doce com 20% OFF\nVálido após as 22h — qualquer sabor doce!\n\nFrete Grátis\nPara pedidos acima de R$ 80,00 em até 5km\n\nEspecial do Dia\nPizza Grande Quatro Queijos Premium por R$ 69,90\n(normalmente R$ 87,90)\n",
+   "content_hash": "f60d22bc4ad5e7662ac3275df25e7d639ed901b06da4b41974d08e530cbc5ac0",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-horarios",
+   "version": 1,
+   "title": "Horários Bella Massa",
+   "content": "# Horários Bella Massa\n\nNossos horários de funcionamento ⏰\n\nSegunda a Quinta: 18h às 23h\nSexta e Sábado: 18h à 00h\nDomingo: 18h às 22h\n\nDelivery disponível todos os dias!\nRetirada no local — sem taxa de entrega\n",
+   "content_hash": "8832ef2c2365c3aaf1c4bcf72a4b67ff488f35958a098e80c84b945571de1850",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-tamanhos",
+   "version": 1,
+   "title": "Tamanhos de pizza Bella Massa",
+   "content": "# Tamanhos de pizza Bella Massa\n\nBroto (25cm) — pra 1-2 pessoas\nMédia (35cm) — pra 2-3 pessoas\nGrande (45cm) — pra 3-4 pessoas\n",
+   "content_hash": "2edfb54a5ac72554630160b04cb4e2a5b639c3ff702d73dc970481ae863d57db",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "upsert",
+   "document_id": "bella-flow-entrega-pagamento",
+   "version": 1,
+   "title": "Entrega e pagamento Bella Massa",
+   "content": "# Entrega e pagamento Bella Massa\n\n(Delivery disponível para endereços em até 8km da pizzaria)\n\n• PIX — chave: pizzariabellamassa@pix.com\n• Cartão — crédito ou débito (maquininha na entrega)\n• Dinheiro — informe se precisar de troco\n",
+   "content_hash": "80f4192f4d345b9c80c93681a88e0a684f8e78ca6770019bbf9573240a4b4f10",
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "active",
+   "content_type": "markdown"
+  },
+  {
+   "op": "delete",
+   "document_id": "cardapio",
+   "version": 1,
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "deleted"
+  },
+  {
+   "op": "delete",
+   "document_id": "regras",
+   "version": 1,
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "deleted"
+  },
+  {
+   "op": "delete",
+   "document_id": "entrega",
+   "version": 1,
+   "updated_at": "2026-10-22T00:00:00Z",
+   "status": "deleted"
+  }
+ ]
+}
