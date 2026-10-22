@@ -317,3 +317,49 @@ def test_flow_state_whitelist_and_bounds():
 
 def test_content_hash_is_sha256_of_utf8():
     assert content_sha256("ã") == hashlib.sha256("ã".encode()).hexdigest()
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("Vocês oferecem Wi-Fi?", True), ("vcs tem estacionamento?", True), ("Aceitam pet no salão?", True),
+    ("Dá pra reservar mesa pra 20?", True), ("Quem ganhou o jogo do Flamengo ontem?", False),
+    ("Qual a capital da França?", False),
+])
+def test_offering_questions_are_on_topic(message, expected):
+    from app.services.grounding import asks_about_offering
+    assert asks_about_offering(message) is expected
+
+
+def test_offtopic_deflection_detection():
+    from app.services.grounding import is_offtopic_deflection
+    assert is_offtopic_deflection("Posso ajudar apenas com assuntos da Pizzaria Bella Massa, como cardápio.")
+    assert not is_offtopic_deflection("Não tenho essa informação confirmada no momento.")
+
+
+def test_policy_keeps_business_questions_on_topic():
+    assert "nunca são fora do assunto" in GLOBAL_POLICY
+
+
+def test_entity_guard_tolerates_plural_but_blocks_unknown_names():
+    from app.services.responder import ungrounded_names
+    ctx = ["# Pizzas tradicionais Bella Massa\n- Calabresa: broto R$ 42,90, média R$ 52,90, grande R$ 62,90"]
+    assert ungrounded_names("Temos a Pizza Calabresa grande por R$ 62,90.", ctx) == []
+    assert ungrounded_names("A grande sai por R$ 62,90 na Pizzaria Bella Massa.", ctx + ["Pizzaria Bella Massa"]) == []
+    assert ungrounded_names("Entregamos no Morumbi também.", ctx) == ["Morumbi"]
+    assert ungrounded_names("Temos Heineken gelada.", ctx) == ["Heineken"]
+
+
+def test_readiness_probe_uses_runtime_context_size():
+    from types import SimpleNamespace
+
+    from app.config.settings import Settings
+    from app.services.readiness import Readiness
+
+    seen = {}
+
+    class FakeLLM:
+        async def chat(self, model, messages, **kw):
+            seen.update(kw)
+            return SimpleNamespace(completion_tokens=1, load_ms=0, total_ms=1)
+
+    asyncio.run(Readiness(Settings(llm_num_ctx=4096), None, None, FakeLLM())._probe_inference())
+    assert seen["num_ctx"] == 4096

@@ -37,6 +37,21 @@ _PAYMENT_HINTS = {"vale", "pix", "cartao", "credito", "debito", "dinheiro", "bol
                   "alelo", "vr", "va", "pagamento", "pagamentos", "bitcoin", "cripto", "picpay", "transferencia"}
 
 
+_OFFERING_QUESTION_RE = re.compile(
+    r"\b(tem|teem|possu\w*|oferec\w*|aceit\w*|fazem|faz|servem|serve|vendem|vende|disponibiliz\w*|"
+    r"trabalham com|existe|existem|ha|pode|podem|da pra)\b"
+)
+
+
+def asks_about_offering(message: str) -> bool:
+    """Customer asks whether the business has/offers/accepts something (on-topic even if unknown)."""
+    return bool(_OFFERING_QUESTION_RE.search(strip_accents(message.lower())))
+
+
+def is_offtopic_deflection(text: str) -> bool:
+    return strip_accents(text.lower()).strip().startswith("posso ajudar apenas com assuntos")
+
+
 def _tokens(text: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", strip_accents(text.lower()))
 

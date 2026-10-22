@@ -13,6 +13,7 @@ from app.embeddings.encoder import Encoder
 from app.inference.gate import InferenceGate
 from app.inference.ollama_client import OllamaClient
 from app.logging import log_event, setup_logging
+from app.prompts.builder import PromptParts, build_messages
 from app.retrieval.store import KnowledgeStore, TenantScopeError
 from app.security.auth import CredentialStore, TenantRegistry
 from app.security.service_auth import ServiceVerifier, parse_keys
@@ -48,9 +49,42 @@ async def lifespan(app: FastAPI):
     app.state.knowledge = KnowledgeService(encoder, store, app.state.registry)
     app.state.readiness = Readiness(s, encoder, store, llm, app.state.registry)
     log_event("startup", detail=f"ready_in_ms={int((time.perf_counter() - started) * 1000)}")
+    served = sorted({t for key in service_keys.values() for t in key.tenants if app.state.tenants.get(t)})
+    warmup = asyncio.create_task(_warm_model(app.state.readiness, llm, gate, s, app.state.tenants, served))
     yield
+    warmup.cancel()
     await llm.close()
     await store.client.close()
+
+
+async def _warm_model(readiness: Readiness, llm: OllamaClient, gate: InferenceGate, s, tenants: TenantRegistry,
+                      served: list[str], attempts: int = 10, delay_s: float = 15.0) -> None:
+    # After a reboot the model is not resident and the stable prompt prefix is not in the KV cache; on CPU the
+    # first customer request would pay both (~40 s) and can exceed the caller's deadline. Ollama may still be
+    # starting, hence the retries.
+    for attempt in range(1, attempts + 1):
+        report = await readiness.check()
+        detail = report["checks"].get("inference", {}).get("detail")
+        if report["ready"]:
+            log_event("warmup", detail=f"ok attempt={attempt} {detail}")
+            break
+        log_event("warmup", detail=f"pending attempt={attempt} {detail}")
+        await asyncio.sleep(delay_s)
+    else:
+        return
+    for tenant_id in served:
+        tenant = tenants.get(tenant_id) or {}
+        messages = build_messages(PromptParts(
+            tenant_name=tenant.get("display_name", tenant_id), tenant_profile=tenant.get("profile", ""),
+            flow_state="", structured="", documents=[], history=[], summary="", message="ok"))
+        try:
+            async with gate.slot(tenant_id, timeout_s=s.llm_timeout_s) as _:
+                gen = await llm.chat(s.llm_model, messages, num_ctx=s.llm_num_ctx, temperature=0.0, max_tokens=1,
+                                     keep_alive=s.llm_keep_alive)
+            log_event("warmup", tenant_id=tenant_id, detail=f"prefix prompt_tokens={gen.prompt_tokens} "
+                                                            f"total_ms={gen.total_ms}")
+        except Exception as exc:
+            log_event("warmup", tenant_id=tenant_id, detail=f"prefix error: {str(exc)[:120]}")
 
 
 app = FastAPI(title="Atende Ai Local AI API", version="0.1.0", lifespan=lifespan, docs_url=None, redoc_url=None)

@@ -10,7 +10,7 @@ from app.inference.ollama_client import OllamaClient
 from app.prompts.builder import PromptParts, build_messages, render_flow_state, trim_history
 from app.retrieval.store import KnowledgeStore
 from app.retrieval.text import strip_accents
-from app.services.grounding import unsupported_existence_claims
+from app.services.grounding import asks_about_offering, is_offtopic_deflection, unsupported_existence_claims
 from app.services.structured import (
     HANDOFF_TEXT,
     Business,
@@ -33,14 +33,24 @@ COMMERCIAL_CLAIMS = ("gratis", "de graca", "gratuit", "desconto", "brinde", "cor
 _PROPER_NOUN_RE = re.compile(r"(?<![.!?:\n]\s)(?<!^)\b([A-ZÀ-Ý][\wÀ-ÿ\-]{2,})")
 
 
+def _singular(word: str) -> str:
+    """Plural tolerance only ("Pizza" is grounded by "pizzas"); never matches a different word."""
+    if len(word) > 4 and word.endswith("es") and word[-3] in "rsz":
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s"):
+        return word[:-1]
+    return word
+
+
 def ungrounded_names(text: str, context_texts: list[str]) -> list[str]:
     """Mid-sentence capitalized names (places, brands, people) must come from the authorized context."""
     ctx = set(strip_accents(" ".join(context_texts).lower()).replace("-", " ").split())
-    ctx |= {w.strip(".,;:!?()\"'") for w in list(ctx)}
+    ctx |= {w.strip(".,;:!?()\"'*_") for w in list(ctx)}
+    ctx |= {_singular(w) for w in list(ctx)}
     names = []
     for m in _PROPER_NOUN_RE.finditer(text.strip()):
         parts = strip_accents(m.group(1).lower()).split("-")
-        if not all(p in ctx for p in parts if p):
+        if not all(p in ctx or _singular(p) in ctx for p in parts if p):
             names.append(m.group(1))
     return names
 
@@ -159,6 +169,9 @@ class Responder:
             text, guard = FALLBACK_TEXT, "existence_not_in_context"
         elif ungrounded_names(text, context_texts):
             text, guard = OFF_TOPIC_TEXT.format(name=tenant.get("display_name", "empresa")), "entity_not_in_context"
+        if is_offtopic_deflection(text) and asks_about_offering(message):
+            # "Do you have/offer X?" is about the business; unknown X must get the standard unknown answer.
+            text, guard = FALLBACK_TEXT, "offering_question_without_data"
 
         return done(
             text, "rag" if docs else "llm",

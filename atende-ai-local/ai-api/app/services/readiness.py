@@ -27,8 +27,10 @@ class Readiness:
             if time.monotonic() - self._probe_at < self.s.ready_inference_ttl_s and self._probe_ok:
                 return
             try:
+                # Same num_ctx as real requests: a different context size forces Ollama to reload the model.
                 gen = await self.llm.chat(self.s.llm_model, [{"role": "user", "content": "Responda apenas: ok"}],
-                                          num_ctx=512, temperature=0.0, max_tokens=2, keep_alive=self.s.llm_keep_alive)
+                                          num_ctx=self.s.llm_num_ctx, temperature=0.0, max_tokens=2,
+                                          keep_alive=self.s.llm_keep_alive)
                 self._probe_ok = gen.completion_tokens > 0
                 self._probe_detail = f"tokens={gen.completion_tokens} load_ms={gen.load_ms} total_ms={gen.total_ms}"
             except Exception as exc:
