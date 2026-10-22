@@ -102,6 +102,8 @@ services:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-atenda}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-atenda}
       FLOW_ENGINE_URL: http://flow-engine:8002
       AI_ENGINE_URL: http://ai-engine:8003
+      # Must exceed the AI Engine local budget (LOCAL_AI_TOTAL_BUDGET_S=45): CPU inference takes 10-30 s.
+      AI_ENGINE_TIMEOUT: ${AI_ENGINE_TIMEOUT:-60}
       GATEWAY_API_URL: http://whatsapp-gateway:40000
       APP_SECRET_KEY: ${APP_SECRET_KEY}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY}
@@ -164,6 +166,8 @@ services:
       DEBUG: "false"
       LOG_LEVEL: ${GATEWAY_LOG_LEVEL:-INFO}
       BACKEND_API_URL: http://backend-api:8000
+      # Must exceed the backend's flow + AI budget (AI_ENGINE_TIMEOUT=60).
+      BACKEND_API_TIMEOUT: ${BACKEND_API_TIMEOUT:-75}
       BACKEND_INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       META_VERIFY_TOKEN: ${META_VERIFY_TOKEN}
       META_APP_SECRET: ${META_APP_SECRET:-}
