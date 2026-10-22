@@ -1,1 +1,4 @@
-No Billing V2 code or database was changed. AI failure handoff returns an empty reply, so the existing reserve path has no outbound text to reserve. Backend suite result: 70 passed, 31 skipped (MySQL integration tests skipped without a test database). No billing operation or real WhatsApp send occurred.
+No Billing V2 code, plan, price, entitlement, ledger, quota, or BillingGate setting was changed for HMAC setup.
+The harness calls the local provider directly inside ai-engine and never invokes the backend message route, Flow
+Engine, WhatsApp Gateway, WABA, or Stripe. LOCAL_AI_ENABLED remains false. No message reservation, charge, or real
+WhatsApp send is requested. Current post-provision production health check remains pending.

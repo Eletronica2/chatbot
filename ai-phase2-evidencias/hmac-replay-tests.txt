@@ -1,0 +1,4 @@
+Final live test accepted an authenticated seed request and rejected reuse of the same nonce with
+401 replay_detected. The verifier uses a bounded in-memory cache keyed by key ID plus a timestamp skew window.
+Unit tests also cover expired timestamps. Nonce state does not persist across process restart; an external shared
+nonce store is not configured.

@@ -1,0 +1,7 @@
+Pre-HMAC public production baseline: MySQL, Backend API, Flow Engine, AI Engine and WhatsApp Gateway healthy;
+Nginx running. Public URLs were not rechecked after this HMAC-only service recreation.
+
+Current IA-02 local AI services: AWS ai-engine health passed after manual HMAC provision; local Ubuntu ai-api
+health passed after manual image update. The live signed provider harness subsequently completed and cleaned up
+its synthetic fixtures. No other production service was recreated by these provisioning steps. LOCAL_AI_ENABLED
+remains false and no real WhatsApp message was sent.

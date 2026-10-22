@@ -1,0 +1,4 @@
+Final live harness passed a one-second deadline classification, closed VPN port handling as local_ai_unreachable,
+and 503 Retry-After classification. It did not stop FastAPI, Qdrant, Ollama, WireGuard, or AWS services. The
+same-tenant overload returned bounded 503 as expected. Wi-Fi was not interrupted; no WhatsApp or BillingGate
+call was made.

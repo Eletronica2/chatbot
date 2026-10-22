@@ -1,0 +1,29 @@
+IA-02 final hardening audit and revocation — 2026-10-15
+
+Read-only health (SSH user, no sudo):
+AWS: mysql, backend-api, ai-engine, flow-engine, whatsapp-gateway running/healthy. AI Engine reports LOCAL_AI_ENABLED=false.
+Ubuntu: ai-api, qdrant, ollama running/healthy. /ready returned ready=true; FastAPI, Qdrant collection, Ollama, Qwen3 model, registry, embedding, and live inference checks passed.
+WireGuard: current `wg show` requires privilege and was not run; previous handshake evidence is historical, not current.
+
+IPv6:
+Wi-Fi wlxe01cfca274a9 has two global IPv6 addresses and a default route via router RA. SSH listens on [::]:22. FastAPI host listeners are 127.0.0.1:8100 and 10.77.0.2:8100; no Qdrant/Ollama host listener observed. Root firewall rules and router configuration were not inspected. AWS probe vantage had no IPv6 route, so external exposure remains undetermined. No firewall or network change performed.
+
+Flutter:
+flutter build web --release: PASS, 152.5s.
+dart analyze: PASS, seven pre-existing info-level style/deprecation notices (prior checkpoint).
+flutter analyze: prior failure in Dart analysis-server protocol, FormatException.
+flutter test: unavailable; admin-panel/test directory does not exist.
+No authenticated browser session was available for Superadmin visual/RBAC validation.
+
+HMAC revocation completed by user manually on 2026-10-15:
+Local script removed three test identities; preserved zero other configured service identities (count reported), recreated only ai-api, readiness passed, old key returned 401 key_unknown, replay protection remained active, and two env snapshots were sanitized. Temporary bundle and source archive removed.
+AWS script removed the configured test identity, recreated only ai-engine, confirmed it healthy with LOCAL_AI_ENABLED=false and no test key, and old key returned 401 key_unknown. One .env.production snapshot was sanitized; temporary bundle and smoke harness removed.
+Post-revocation read-only health: AWS MySQL, Backend API, AI Engine, Flow Engine, WhatsApp Gateway all healthy; Ubuntu local API, Qdrant, Ollama healthy and /ready=true with inference probe. No WireGuard handshake query due sudo requirement.
+
+Regression attempt:
+Backend/API pytest did not collect: backend-api/.venv lacks FastAPI; three import/collection errors. No dependency installation and no production DB use. Historical isolated runner counts remain separately recorded in AI_LOCAL_PHASE2_REPORT.md; no skipped tests counted as passed.
+
+Off-host backup:
+No S3 bucket, IAM resources, Restic repository/password, upload, or restore test created. Existing script archives Qdrant snapshots only; registry SQLite must be added to a consistent backup set before real-data use. No user data uploaded.
+
+Safety limits honored: no sudo, no AWS/network/production configuration change, no real tenant activation, no WhatsApp message, no Meta/WABA or Stripe LIVE change.

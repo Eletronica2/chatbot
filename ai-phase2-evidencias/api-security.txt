@@ -1,2 +1,6 @@
-Local server inspection (read-only): FastAPI binds only 127.0.0.1:8100. Ollama and Qdrant have no host port publication. `/ready` returned ready=true with FastAPI, Qdrant, Ollama, embedding, Qwen3 4B, and cached inference probe checks passing.
-No WireGuard source restriction or service HMAC was live-configured because the VPN is not installed.
+WireGuard is active AWS 10.77.0.1/30 <-> Ubuntu 10.77.0.2/30. Local FastAPI binds to 127.0.0.1:8100;
+the proxy listens only on 10.77.0.2:8100. Ollama and Qdrant have no host-published ports. AWS accesses the API
+through wg0. SSH and the Wi-Fi default route remained unchanged.
+
+Final live HMAC tests passed for valid auth, missing/invalid signatures, request tampering, replay, tenant scope,
+and key scope. LOCAL_AI_ENABLED remained false. No Security Group change was made during the HMAC test round.

@@ -1,0 +1,4 @@
+WireGuard is active AWS 10.77.0.1/30 <-> Ubuntu 10.77.0.2/30. Local FastAPI remains on 127.0.0.1:8100 and the
+socket proxy listens only on 10.77.0.2:8100. The API route is not published publicly. Ollama and Qdrant remain
+private Docker-network services without host-published ports. AWS accesses the FastAPI proxy over wg0. SSH and the
+Wi-Fi default route remained unchanged. No Security Group change was needed for this round.

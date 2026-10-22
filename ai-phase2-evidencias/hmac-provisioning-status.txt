@@ -1,0 +1,23 @@
+IA-02 short-lived HMAC smoke credentials were provisioned on both hosts and used successfully in the final live
+integration run. Three 256-bit CSPRNG identities were restricted to synthetic fixture tenants; one Bella identity
+was respond-only for the insufficient-scope check. Bundle files and parent directories used modes 600/700.
+No secret values, key material, or secret-derived hashes are recorded here.
+
+AWS provisioning recreated only ai-engine, kept LOCAL_AI_ENABLED=false, and validated HMAC configuration. Local
+Ubuntu deployment backed up source, .env, and old image identity, then built and recreated only ai-api. It
+validated the Bella key and HMAC routes; API health returned after startup.
+
+Final live harness passed HMAC authentication/negative cases, replay rejection, tenant isolation, synthetic
+fixture sync/retrieval/cleanup, real Qwen3 inference via the private VPN, concurrency saturation, timeout, closed
+port, and Retry-After classification. LOCAL_AI_ENABLED remained false. No production tenant was activated and no
+WhatsApp message was sent.
+
+Final hardening audit and revocation 2026-10-15:
+- Three temporary identities confirmed from protected bundles, configured expiry 2026-10-14T23:21:25Z (time had passed at audit 2026-10-15T01:20Z): ia02-9xsjLC2mHwA3CGTSAiqeByYn (Bella full: respond, knowledge:read, knowledge:write), ia02-sJqu3G3Eh5vrKVJdcSUmDz6u (Pastelaria full: same scopes), ia02-KNjs51pea4zFHoNylk76j-dv (Bella respond-only). Local ai-api had three; AWS ai-engine had Bella full only. Secrets omitted.
+- Staged idempotent revocation scripts and uploaded to each host:
+  local: /home/atendeai/ia02-wireguard/revoke-hmac-test-keys.sh
+  AWS: /home/ec2-user/ia02-wireguard/revoke-hmac-test-key.sh
+- Commands executed locally first, then AWS (AWS verification calls the private local API and expects 401 key_unknown):
+  ssh -t -i /home/arthur/Downloads/atendeai.pem atendeai@192.168.0.50 'sudo bash /home/atendeai/ia02-wireguard/revoke-hmac-test-keys.sh'
+  ssh -t -i /home/arthur/Downloads/atendeai.pem ec2-user@3.218.194.130 'sudo bash /home/ec2-user/ia02-wireguard/revoke-hmac-test-key.sh'
+- User manually executed both scripts on 2026-10-15. Local: TEMP_TEST_KEYS_REMOVED=3, OTHER_SERVICE_KEYS_PRESERVED=0, LOCAL_AI_READY=true, OLD_TEST_KEY_REJECTED=true error=key_unknown, REPLAY_PROTECTION_CODE=active, BACKUP_ENV_SNAPSHOTS_SANITIZED=2; bundle/source archive removed. AWS: AWS_TEMP_KEY_REMOVED=True, LOCAL_AI_ENABLED=false, AI_ENGINE_HEALTHY=true, HMAC_TEST_KEY_ABSENT=true, OLD_TEST_KEY_REJECTED=true error=key_unknown, AWS_ENV_BACKUPS_SANITIZED=1; bundle/harness removed. Backups: /var/backups/atende-ai-local/ia02-hmac-revoke-20261015T012929Z and /var/backups/atende-ai-ia02/hmac-revoke-20261015T012948Z.

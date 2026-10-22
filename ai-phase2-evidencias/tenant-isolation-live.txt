@@ -1,0 +1,5 @@
+Final live harness passed two isolated synthetic tenants. Each key synced a unique fixture; searches returned only
+documents whose tenant matched the signed identity, and each tenant's own fixture was retrieved. Bella's key
+could not access the other tenant by signed header or body, and tenant_id in the request body could not expand
+identity. A respond-only credential was rejected from knowledge search. Both fixture documents were deleted in
+the harness cleanup block.

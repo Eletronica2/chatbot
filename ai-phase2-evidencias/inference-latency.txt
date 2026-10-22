@@ -1,0 +1,6 @@
+Historical AI-01 Qwen3 4B typical 13.3 s, p95 16.9 s; not repeated as a benchmark here.
+
+Final live AWS AI Engine -> VPN -> FastAPI -> Qdrant -> Qwen3 call: client total 15.094 s; server total
+14.686 s; queue 0 ms; retrieval 205 ms; generation 14.479 s; prompt 959 tokens; completion 37 tokens; 3
+retrieval documents/chunks reported by the response. This is one synthetic fixture inference, not a latency SLO
+or production-load benchmark.

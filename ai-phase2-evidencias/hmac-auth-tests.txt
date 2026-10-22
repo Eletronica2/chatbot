@@ -1,0 +1,7 @@
+Unit suites passed in isolated runners: local API 30 passed; AI Engine 8 passed (one existing Pydantic deprecation
+warning).
+
+Final live AWS AI Engine -> local Ubuntu API run passed: absent credential, invalid HMAC, body tampering, path
+tampering, expired timestamp, unknown key, unauthorized signed tenant, body tenant escalation, and insufficient
+scope were all rejected with expected status/error behavior. Omitted tenant resolved to the key's single allowed
+tenant. AWS key identity and secret matched the test bundle without logging either value.

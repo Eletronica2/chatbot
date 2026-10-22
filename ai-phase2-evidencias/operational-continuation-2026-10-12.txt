@@ -1,0 +1,91 @@
+ATENDE AI IA-02 — CONTINUAÇÃO OPERACIONAL
+CHECKED_AT=2026-10-12
+RELEASE_COMMIT=db32c4977514827f0d9c0f901aebc38609f9442f
+
+ACESSO
+AWS_SSH=PASS (ec2-user@3.218.194.130)
+LOCAL_SSH=PASS (atendeai@192.168.0.50)
+LOCAL_WIFI=UP (wlxe01cfca274a9, 192.168.0.50/24)
+LOCAL_DEFAULT_ROUTE=192.168.0.1 (unchanged)
+
+PREDEPLOY BACKUP / ROLLBACK
+MYSQL_BACKUP=/home/ec2-user/db-backups/atenda-ia02-predeploy-20261012T220059Z.sql.gz
+MYSQL_BACKUP_MODE=600
+MYSQL_BACKUP_BYTES=15489
+MYSQL_BACKUP_SHA256=4788113b11149cc011d9ef98abbc3bf2f20ddd557b951ee9e34680da1c73f8ef
+MYSQL_BACKUP_GZIP_TEST=PASS
+SOURCE_BACKUP=/home/ec2-user/deploy-backups/ia02-predeploy-source-20261012T220059Z.tar.gz
+SOURCE_BACKUP_MODE=600
+SOURCE_BACKUP_SHA256=a5017728ce2300625fb5a53cc6e181b9a43492e47c8f9fdbade0fa8949815961
+ROLLBACK_MANIFEST=/home/ec2-user/deploy-backups/ia02-rollback-20261012T220059Z.txt
+OFFSITE_BACKUP=NOT_CONFIGURED
+RESTORE_TEST=NOT_RUN
+
+DEPLOY
+COMPOSE_CONFIG_WITH_ENV=PASS
+MIGRATION=011_tenant_ai_provider.sql APPLIED_AND_RECORDED
+MIGRATION_COLUMNS=2
+TENANT_SETTINGS=4 rows; gemini / local_ai_enabled=0
+AI_PROVIDER=gemini
+LOCAL_AI_ENABLED=false
+DEPLOYED_SERVICES=backend-api, ai-engine, nginx static bundle
+UNCHANGED_SERVICES=mysql, flow-engine, whatsapp-gateway
+PRODUCTION_HEALTH=mysql healthy; backend healthy; flow healthy; AI healthy; WhatsApp gateway healthy; Nginx running
+RESTART_COUNTS=0 for all six production containers after rollout
+HTTP_200=http://127.0.0.1:8080/; https://meuatendeai.com.br/; https://painel.meuatendeai.com.br/; https://painel.meuatendeai.com.br/main.dart.js; https://api.meuatendeai.com.br/health
+HOST_PUBLISHED_PORTS=127.0.0.1:8080 only
+ENV_PRODUCTION=not printed or copied
+WHATSAPP_REAL=NOT_SENT
+
+TESTS
+MYSQL_BILLING_V2=31 passed on disposable mysql:8.4.11 container; container removed
+FLUTTER_BUILD=PASS release; API_BASE_URL=https://api.meuatendeai.com.br
+FLUTTER_ANALYZE=CLI failed twice with incomplete Dart analysis-server JSON frame
+DART_ANALYZE=PASS with 7 informational style/deprecation findings; 0 errors
+PREVIOUS_BACKEND=70 passed, 31 skipped before scratch MySQL setup
+PREVIOUS_AI_ENGINE=8 passed
+PREVIOUS_LOCAL_API=69 passed using Torch/SentenceTransformer stubs
+
+NETWORK / BLOCKERS
+WG_TOOLS_INSTALLED=YES (wireguard-tools v1.0.20250521)
+WG0_INTERFACE=ACTIVE at 10.77.0.2/30 after third manual run
+LOCAL_SERVICES=wg-quick@wg0, atende-ai-vpn-proxy.socket, atende-ai-netwatch.timer active
+LOCAL_API=127.0.0.1:8100 health 200; proxy listening only on 10.77.0.2:8100
+WG_HANDSHAKE=PASS (live peer handshake validated after AWS and local scripts were run manually; see updated wireguard-handshake.txt)
+OBSERVED_ROUTES=local LAN 192.168.0.0/24; local Docker 172.17.0.0/16–172.21.0.0/16; AWS VPC 172.31.64.0/20
+PROPOSED_WG_SUBNET=10.77.0.0/30 (no observed overlap)
+LOCAL_IPV6=global address on Wi-Fi; sshd listens on [::]:22; firewall/sshd audit waiting for interactive sudo
+AWS_SECURITY_GROUP=sg-0eaa966854eb4344e (launch-wizard-1), attached to EC2 3.218.194.130
+AWS_CLI_CREDENTIALS=UNAVAILABLE on EC2; authenticated Console used
+EXISTING_INGRESS=HTTP 80 from 0.0.0.0/0; SSH 22 from 189.101.62.25/32; HTTPS 443 from 0.0.0.0/0 (all preserved)
+WIREGUARD_RULE=ADDED inbound UDP 51820 from 189.101.62.25/32, only this peer; rollback: remove exact rule
+RULE_APPROVAL=GRANTED by user after correcting SG ID typo; console confirmed successful modification
+LOCAL_INSTALLER=/home/atendeai/ia02-wireguard/setup-local.sh (staged via SSH; no privileged command executed)
+LOCAL_INSTALLER_SHA256=28943b6206d3cd79d5f14620db5b051731f24a7f63c3caf85799774715e208a4
+LOCAL_INSTALLER_COMMAND=sudo bash /home/atendeai/ia02-wireguard/setup-local.sh
+LOCAL_RUN_1_AND_2=FAILED: nested AppArmor profile wg-quick//nft denied nft file reads; wg-quick removed wg0; route defaults and SSH listeners remained
+LOCAL_APPARMOR_FIX=systemd ExecStartPre/ExecStopPost on only wg-quick@wg0 to load/remove table outside the nested profile; no AppArmor policy weakening
+LOCAL_RUN_3=SUCCEEDED: IPv4/IPv6 default routes and SSH listeners unchanged
+LOCAL_PUBLIC_KEY=j43mEmv1pELjYqcdzBn7ZrdHB6DArOEDPNOqLODKcWY=
+AWS_INSTALLER=/home/ec2-user/ia02-wireguard/setup-aws.sh (run manually with sudo; wg0 active and peer handshake verified)
+AWS_INSTALLER_SHA256=d918dbdc6f9a5f83ff36d1a811ca1f0eaf1d7a9223a469c4cf3fd9cc11f18651
+AWS_INSTALLER_COMMAND=sudo bash /home/ec2-user/ia02-wireguard/setup-aws.sh j43mEmv1pELjYqcdzBn7ZrdHB6DArOEDPNOqLODKcWY=
+AWS_PUBLIC_KEY_DESTINATION=/home/ec2-user/ia02-wireguard/aws-public.key (written by AWS installer for later local peer configuration)
+EXTERNAL_BACKUP_DESTINATION=NOT_AUTHORIZED
+VPN=PASS; LIVE_HMAC_SYNC_RETRIEVAL_INFERENCE_TENANT_ISOLATION_CONCURRENCY=PASS; WIFI_RECOVERY_BENCHMARK=PENDING
+PILOT_READY=NO
+
+LIVE VPN VALIDATION (2026-10-12)
+AWS_WG0=ACTIVE 10.77.0.1/30 UDP 51820; local peer 10.77.0.2/32
+LOCAL_WG0=ACTIVE 10.77.0.2/30; endpoint 3.218.194.130:51820; AllowedIPs 10.77.0.1/32; PersistentKeepalive 25
+HANDSHAKE=PASS; local output at run showed latest handshake 2 seconds, 92 B received, 180 B sent
+DEFAULT_ROUTE_AND_SSH=UNCHANGED; default via 192.168.0.1 on Wi-Fi wlxe01cfca274a9; SSH remains on 0.0.0.0:22 and [::]:22
+PRIVATE_AWS_TO_LOCAL_HEALTH=PASS; HTTP 200 from 10.77.0.2:8100/health, 434 ms total
+PRIVATE_AWS_TO_LOCAL_READY=PASS; Qdrant, Ollama, Qwen3 4B, embedding and cached 2-token real inference all ready; inference probe load 3478 ms, total 4112 ms
+LOCAL_NETWATCH=ACTIVE; timer and proxy socket active; four observed periodic runs succeeded without restarting WG; no failure/reconnect was injected
+LOCAL_API_TESTS=30 passed in 2.32 s in local API container, including HMAC validation/replay/scope and tenant-isolation fixture tests
+LIVE_HMAC_AWS_TO_LOCAL=PASS; valid/invalid auth, replay, scoped identities, sync/search/delete, Qwen inference, and failure handling all passed with synthetic data
+LIVE_TENANT_DATA_ISOLATION=PASS; two unique fixtures stayed tenant-filtered and were deleted after run; no production tenant/data queried or changed
+AI_ENGINE_ISOLATED_TEST_RUNNER=PASS (8 passed); pytest was installed only in a disposable runner, not production image
+WHATSAPP_REAL_SEND=NOT_RUN; no real message sent
+PILOT_READY=NO; provider remains globally and per-tenant disabled; live HMAC path passed, remaining operational readiness items are listed in AI_LOCAL_PHASE2_REPORT.md

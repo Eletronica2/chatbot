@@ -1,8 +1,17 @@
-Automated validation in isolated Python 3.14 environment, 2026-10-12:
-- backend-api/tests: 70 passed, 31 skipped. The harness pre-created an asyncio event loop because Python 3.14 changed get_event_loop behavior; skipped tests require a MySQL integration database.
+Previous checkpoint automated validation in isolated Python 3.14 environment, 2026-10-12:
+- backend-api/tests: 70 passed, 31 skipped. The harness pre-created an asyncio event loop; skipped tests require MySQL integration.
 - ai-engine/tests: 8 passed.
-- atende-ai-local/ai-api/tests: 69 passed. Lightweight torch/SentenceTransformer import stubs prevented downloading/loading the embedding model; tests used fakes and fixtures.
-- docker compose config --quiet: local AI Compose and production Compose both passed. Production .env values were not emitted.
-- git diff --check, Python AST parse, and bash -n for WireGuard/offsite scripts passed.
-- Flutter analyze/build unavailable: Flutter/Dart SDK not installed in the workspace.
-- No live inference request, VPN, AWS↔local request, reboot, firewall change, database migration, or WhatsApp send performed.
+- atende-ai-local/ai-api/tests: 69 passed using lightweight torch/SentenceTransformer import stubs.
+- Billing V2 disposable MySQL integration: 31 passed.
+- Flutter release web build passed; dart analyze had seven informational existing style/deprecation notices.
+
+Current IA-02 continuation:
+- Disposable runners: local AI API 30 passed; AI Engine 8 passed (one existing Pydantic deprecation warning).
+- Live HMAC integration harness passed end-to-end through AWS AI Engine, WireGuard, Ubuntu FastAPI, Qdrant and Qwen3.
+- Coverage included HMAC negative/replay checks, tenant scope/isolation, fixture sync/search/cleanup, grounded
+  synthetic inference, unknown fact safety, bounded concurrency, timeout, closed port and Retry-After handling.
+- Global LOCAL_AI_ENABLED stayed false; no WhatsApp or production tenant traffic was used.
+- `bash -n`, Python `py_compile` and `git diff --check` passed for changed scripts/harness.
+
+Known pending items are listed in AI_LOCAL_PHASE2_REPORT.md; these include Wi-Fi failure/recovery simulation,
+IPv6 firewall review, off-host backup/restore exercise and UI-level tenant-provider validation.

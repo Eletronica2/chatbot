@@ -1,0 +1,5 @@
+Final live run invoked the deployed AI Engine LocalAIClient and generate_local provider explicitly while the global
+LOCAL_AI_ENABLED flag remained false. The signed request crossed WireGuard to Ubuntu FastAPI, retrieved the Bella
+fixture from Qdrant, and generated a grounded Qwen3 response: “A pizza de calabresa grande custa R$ 65,00.”
+Completion usage was 37 tokens; end-to-end client time 15.094 s (server 14.686 s, retrieval 205 ms, generation
+14.479 s). No WhatsApp or live tenant route was used.

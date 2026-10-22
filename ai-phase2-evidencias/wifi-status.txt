@@ -3,6 +3,6 @@ Wi-Fi interface wlxe01cfca274a9: UP, IPv4 192.168.0.50/24; public IPv6 is assign
 Default IPv4 route: via 192.168.0.1 dev wlxe01cfca274a9.
 Ethernet enp3s0: DOWN (no cable); no attempt to change it.
 Docker networks observed: 172.17.0.0/16, 172.18.0.0/16 and 172.19.0.0/16.
-WireGuard tools are not installed; no wg0 or handshake.
+At the initial read-only baseline, WireGuard tools were not installed. After the manual IA-02 setup, wg0 is active and the AWS peer handshake is confirmed; see wireguard-handshake.txt and operational-continuation-2026-10-12.txt.
 Network, Wi-Fi, routes, netplan, and SSH configuration were not modified.
 Previous sanitized sample in this folder: gateway 3/3, mean RTT 11.4 ms; ICMP to AWS was blocked (expected by SG).

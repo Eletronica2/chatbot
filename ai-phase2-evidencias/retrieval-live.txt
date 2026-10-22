@@ -1,0 +1,4 @@
+Final live search passed for synthetic Bella Massa and Pastelaria do Zé fixtures. Each request used its tenant's
+HMAC identity; returned result tenant IDs matched the authenticated tenant, and each own fixture appeared in
+retrieval. Both fixtures were deleted after the run. Retrieval of the Bella fixture was also used by the Qwen3
+inference answer grounded to the synthetic R$ 65,00 price.

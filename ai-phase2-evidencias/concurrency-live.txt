@@ -1,0 +1,4 @@
+Final live same-tenant burst submitted three signed Qwen requests with retries disabled: two were admitted (one
+active, one waiting) and returned real completion tokens; the third was rejected with the expected bounded 503
+local_ai_saturated. The AI Engine global local-provider switch remained false; the harness invoked the provider
+adapter directly and did not route any WhatsApp traffic.

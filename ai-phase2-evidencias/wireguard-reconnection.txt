@@ -1,1 +1,1 @@
-NOT RUN — no live WireGuard tunnel exists. netwatch logic and systemd units are prepared but were not installed or exercised. SSH/Wi-Fi were not interrupted.
+PARTIAL — WireGuard and `atende-ai-netwatch.timer` are active. Four periodic netwatch service runs completed successfully without restarting WireGuard; the VPN handshake remained healthy. A real failure/reconnect cycle, reboot, and Wi-Fi interruption were not injected. SSH/Wi-Fi were not interrupted.

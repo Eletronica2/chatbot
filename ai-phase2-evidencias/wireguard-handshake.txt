@@ -1,1 +1,3 @@
-NOT RUN — WireGuard is not installed/configured on the local host. No peer keys, handshake, private ping, or tunnel latency are available.
+PASS — AWS `10.77.0.1/30` and Ubuntu `10.77.0.2/30` formed a live WireGuard tunnel on 2026-10-12. Local `wg show` reported a handshake 2 seconds earlier, 92 B received and 180 B sent, endpoint `3.218.194.130:51820`, keepalive 25 s. From EC2, `ip route get 10.77.0.2` selected `wg0`; GET `http://10.77.0.2:8100/health` returned 200. The local default route remained on Wi-Fi through `192.168.0.1` and SSH listeners remained on IPv4/IPv6.
+
+The `/ready` endpoint reached over the tunnel returned `ready=true`; its real cached readiness probe generated 2 tokens. This is not yet an authenticated AI Engine provider call. No private key was recorded.
