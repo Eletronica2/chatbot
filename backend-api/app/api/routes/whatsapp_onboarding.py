@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from app.api.access import resolve_tenant_scope
+from app.api.access import is_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.whatsapp_account import WhatsAppAccount
 from app.services.admin_audit_service import AdminAuditService
@@ -73,8 +73,16 @@ async def embedded_signup_preflight(
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: WhatsAppOnboardingService = Depends(whatsapp_onboarding_service_dependency),
 ) -> dict:
-    _ = user
-    return service.embedded_signup_preflight()
+    return mask_preflight_for(user, service.embedded_signup_preflight())
+
+
+def mask_preflight_for(user: AuthenticatedUser, data: dict) -> dict:
+    """The app-level webhook verify token is a platform secret: only Super Admins see the value."""
+    configured = bool(str(data.get("verify_token") or "").strip())
+    data = {**data, "verify_token_configured": configured}
+    if not is_superadmin(user):
+        data["verify_token"] = "••••••••" if configured else ""
+    return data
 
 
 @router.post(
