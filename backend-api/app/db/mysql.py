@@ -157,6 +157,8 @@ class MySQLDatabase:
         for column, definition in (
             ("ai_provider", "VARCHAR(20) NOT NULL DEFAULT 'gemini'"),
             ("local_ai_enabled", "TINYINT(1) NOT NULL DEFAULT 0"),
+            ("auto_reply_mode", "VARCHAR(16) NOT NULL DEFAULT 'on'"),
+            ("auto_reply_allowlist", "JSON NULL"),
         ):
             cursor.execute(
                 "SELECT 1 FROM information_schema.COLUMNS "

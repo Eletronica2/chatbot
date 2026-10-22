@@ -25,6 +25,8 @@ class TenantSettingsPatchPayload(BaseModel):
     local_ai_enabled: Optional[bool] = None
     gemini_model: Optional[str] = None
     fallback_models: Optional[List[str]] = None
+    auto_reply_mode: Optional[Literal["on", "off", "allowlist"]] = None
+    auto_reply_allowlist: Optional[List[str]] = Field(default=None, max_length=20)
 
 
 class TenantSettingsResponse(BaseModel):
@@ -38,10 +40,13 @@ class TenantSettingsResponse(BaseModel):
     available_models: List[str] = Field(default_factory=list)
     ai_provider: str = "gemini"
     local_ai_enabled: bool = False
+    auto_reply_mode: str = "on"
+    auto_reply_allowlist_count: int = 0
 
     @classmethod
     def from_domain(cls, item: TenantSettings) -> "TenantSettingsResponse":
-        return cls(**item.model_dump())
+        data = item.model_dump(exclude={"auto_reply_allowlist"})
+        return cls(**data, auto_reply_allowlist_count=len(item.auto_reply_allowlist))
 
 
 def assert_tenant_settings_patch_access(
@@ -49,7 +54,8 @@ def assert_tenant_settings_patch_access(
     payload: TenantSettingsPatchPayload,
 ) -> None:
     if (payload.gemini_model is not None or payload.fallback_models is not None
-            or payload.ai_provider is not None or payload.local_ai_enabled is not None):
+            or payload.ai_provider is not None or payload.local_ai_enabled is not None
+            or payload.auto_reply_mode is not None or payload.auto_reply_allowlist is not None):
         assert_superadmin(user)
 
 
@@ -87,9 +93,18 @@ async def patch_tenant_settings(
             local_ai_enabled=payload.local_ai_enabled,
             gemini_model=payload.gemini_model,
             fallback_models=payload.fallback_models,
+            auto_reply_mode=payload.auto_reply_mode,
+            auto_reply_allowlist=payload.auto_reply_allowlist,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if payload.auto_reply_mode is not None or payload.auto_reply_allowlist is not None:
+        await audit_service.append(
+            tenant_id=target_tenant_id, action="tenant.auto_reply.update", entity_type="tenant_settings",
+            entity_key=target_tenant_id, summary="Resposta automática do tenant atualizada", actor=user,
+            metadata={"auto_reply_mode": updated.auto_reply_mode,
+                      "auto_reply_allowlist_count": len(updated.auto_reply_allowlist)},
+        )
     if payload.ai_provider is not None or payload.local_ai_enabled is not None:
         await audit_service.append(
             tenant_id=target_tenant_id, action="tenant.ai_provider.update", entity_type="tenant_settings",

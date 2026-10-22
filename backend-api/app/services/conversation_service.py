@@ -60,6 +60,24 @@ class ConversationService:
     ) -> ConversationAction:
         """Inbound never consumes. The single reply of the turn is reserved before send."""
         ctx = execution_context or ExecutionContext.production()
+        if ctx.persist and not ctx.is_test:
+            tenant_settings = await self.tenant_settings_service.get_or_create(message.tenant_id)
+            block_reason = tenant_settings.auto_reply_block_reason(message.phone_number)
+            if block_reason:
+                if await self.message_service.was_processed(
+                    tenant_id=message.tenant_id,
+                    external_message_id=message.message_id,
+                    direction="incoming",
+                ):
+                    return ConversationAction(
+                        source="duplicate",
+                        reply_text="",
+                        tenant_id=message.tenant_id,
+                        phone_number=message.phone_number,
+                        metadata={"duplicate": True},
+                        session_state={},
+                    )
+                return await self._auto_reply_blocked(message, ctx, block_reason, tenant_settings.auto_reply_mode)
         if not self._billing_v2_active():
             return await self._handle_incoming_core(message, execution_context=ctx)
 
@@ -163,6 +181,42 @@ class ConversationService:
             tenant_id=message.tenant_id,
             phone_number=message.phone_number,
             metadata={"billing": {"enforced": True, "blocked": True, "code": code}, "human_handoff_pending": True},
+            session_state=session.conversation_state,
+            requires_handoff=True,
+        )
+
+    async def _auto_reply_blocked(
+        self, message: NormalizedMessage, ctx: ExecutionContext, reason: str, mode: str
+    ) -> ConversationAction:
+        """Store the inbound and leave it for a human; no flow, no AI, no billing reservation, nothing sent."""
+        logger.info("auto_reply_blocked tenant=%s message=%s reason=%s", message.tenant_id, message.message_id, reason)
+        session = await self._resolve_session(message, ctx)
+        self._append_message(session, role="user", content=message.content)
+        await self._persist_message(
+            ctx,
+            tenant_id=message.tenant_id,
+            session_id=session.session_id,
+            direction="incoming",
+            role="user",
+            content=message.content,
+            source="gateway",
+            metadata={**(message.metadata or {}), "auto_reply_blocked": reason},
+            external_message_id=message.message_id,
+            phone_number_id=message.phone_number_id,
+        )
+        context = dict(session.context or {})
+        context["human_handoff_pending"] = True
+        context["human_handoff_reason"] = reason
+        context["human_handoff_at"] = datetime.utcnow().isoformat()
+        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+        context["last_message"] = message.content
+        session = await self._persist_session_update(ctx, session, context_updates=context)
+        return ConversationAction(
+            source="auto_reply_disabled",
+            reply_text="",
+            tenant_id=message.tenant_id,
+            phone_number=message.phone_number,
+            metadata={"auto_reply": {"mode": mode, "blocked": True, "reason": reason}, "human_handoff_pending": True},
             session_state=session.conversation_state,
             requires_handoff=True,
         )

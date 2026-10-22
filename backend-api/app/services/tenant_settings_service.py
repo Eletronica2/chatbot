@@ -7,10 +7,12 @@ from typing import Dict, List, Optional
 
 from app.db.mysql import MySQLDatabase
 from app.domain.tenant import (
+    AUTO_REPLY_MODES,
     DEFAULT_GEMINI_FALLBACK_MODELS,
     DEFAULT_GEMINI_MODEL,
     TenantSettings,
     normalize_model_list,
+    normalize_sender,
 )
 
 
@@ -25,6 +27,7 @@ class TenantSettingsService:
             row = self.database.fetch_one(
                 """
                 SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
+                       ts.auto_reply_mode, ts.auto_reply_allowlist,
                        ts.gemini_model, ts.fallback_models, ts.available_models,
                        t.name AS tenant_name
                 FROM tenants t
@@ -53,6 +56,7 @@ class TenantSettingsService:
                 row = self.database.fetch_one(
                     """
                     SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
+                       ts.auto_reply_mode, ts.auto_reply_allowlist,
                            ts.gemini_model, ts.fallback_models, ts.available_models,
                            t.name AS tenant_name
                     FROM tenants t
@@ -74,6 +78,8 @@ class TenantSettingsService:
                 ai_enabled=bool(row.get("ai_enabled", True)),
                 ai_provider=str(row.get("ai_provider") or "gemini"),
                 local_ai_enabled=bool(row.get("local_ai_enabled", False)),
+                auto_reply_mode=str(row.get("auto_reply_mode") or "on"),
+                auto_reply_allowlist=self._sender_list(row.get("auto_reply_allowlist")),
                 flow_editing_enabled=bool(row.get("flow_editing_enabled", True)),
                 debug_mode=bool(row.get("debug_mode", False)),
                 gemini_model=str(row.get("gemini_model") or DEFAULT_GEMINI_MODEL),
@@ -95,8 +101,24 @@ class TenantSettingsService:
         local_ai_enabled: Optional[bool] = None,
         gemini_model: Optional[str] = None,
         fallback_models: Optional[List[str]] = None,
+        auto_reply_mode: Optional[str] = None,
+        auto_reply_allowlist: Optional[List[str]] = None,
     ) -> TenantSettings:
         current = await self.get_or_create(tenant_id)
+        next_auto_reply_mode = current.auto_reply_mode if auto_reply_mode is None else auto_reply_mode
+        if next_auto_reply_mode not in AUTO_REPLY_MODES:
+            raise ValueError("auto_reply_mode deve ser on, off ou allowlist")
+        next_auto_reply_allowlist = current.auto_reply_allowlist
+        if auto_reply_allowlist is not None:
+            next_auto_reply_allowlist = []
+            for item in auto_reply_allowlist:
+                digits = normalize_sender(item)
+                if not 10 <= len(digits) <= 15:
+                    raise ValueError("auto_reply_allowlist aceita apenas números E.164 (10 a 15 dígitos)")
+                if digits not in next_auto_reply_allowlist:
+                    next_auto_reply_allowlist.append(digits)
+            if len(next_auto_reply_allowlist) > 20:
+                raise ValueError("auto_reply_allowlist aceita no máximo 20 números")
         next_tenant_name = tenant_name.strip() if isinstance(tenant_name, str) and tenant_name.strip() else current.tenant_name
         next_ai_enabled = current.ai_enabled if ai_enabled is None else bool(ai_enabled)
         next_flow_editing_enabled = current.flow_editing_enabled if flow_editing_enabled is None else bool(flow_editing_enabled)
@@ -129,13 +151,15 @@ class TenantSettingsService:
             self.database.execute(
                 """
                 INSERT INTO tenant_settings (
-                    tenant_id, ai_enabled, ai_provider, local_ai_enabled, flow_editing_enabled, debug_mode,
-                    gemini_model, fallback_models, available_models
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    tenant_id, ai_enabled, ai_provider, local_ai_enabled, auto_reply_mode, auto_reply_allowlist,
+                    flow_editing_enabled, debug_mode, gemini_model, fallback_models, available_models
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     ai_enabled = VALUES(ai_enabled),
                     ai_provider = VALUES(ai_provider),
                     local_ai_enabled = VALUES(local_ai_enabled),
+                    auto_reply_mode = VALUES(auto_reply_mode),
+                    auto_reply_allowlist = VALUES(auto_reply_allowlist),
                     flow_editing_enabled = VALUES(flow_editing_enabled),
                     debug_mode = VALUES(debug_mode),
                     gemini_model = VALUES(gemini_model),
@@ -148,6 +172,8 @@ class TenantSettingsService:
                     1 if next_ai_enabled else 0,
                     next_ai_provider,
                     1 if next_local_ai_enabled else 0,
+                    next_auto_reply_mode,
+                    json.dumps(next_auto_reply_allowlist) if next_auto_reply_allowlist else None,
                     1 if next_flow_editing_enabled else 0,
                     1 if next_debug_mode else 0,
                     next_gemini_model,
@@ -162,6 +188,17 @@ class TenantSettingsService:
     async def get_ai_metadata(self, tenant_id: str) -> Dict[str, object]:
         settings = await self.get_or_create(tenant_id)
         return settings.as_ai_metadata()
+
+    @staticmethod
+    def _sender_list(raw_value: object) -> List[str]:
+        if isinstance(raw_value, str) and raw_value.strip():
+            try:
+                raw_value = json.loads(raw_value)
+            except json.JSONDecodeError:
+                return []
+        if not isinstance(raw_value, list):
+            return []
+        return [digits for digits in (normalize_sender(item) for item in raw_value) if digits]
 
     def _json_list(self, raw_value: object) -> List[str]:
         if isinstance(raw_value, list):
