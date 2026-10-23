@@ -70,6 +70,8 @@ async def respond(req: RespondRequest, request: Request, principal: Principal = 
               prompt_tokens=result.usage.prompt_tokens, completion_tokens=result.usage.completion_tokens,
               retrieval_count=result.retrieval.documents_used, queue_ms=result.timings.queue_ms,
               retrieval_ms=result.timings.retrieval_ms, generation_ms=result.timings.generation_ms,
+              prompt_eval_ms=result.timings.prompt_eval_ms, eval_ms=result.timings.eval_ms,
+              load_ms=result.timings.load_ms, first_token_ms=result.timings.first_token_ms,
               guard=result.guard, cached=cached or None, deadline_ms=req.options.deadline_ms)
     return result
 

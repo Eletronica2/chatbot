@@ -178,7 +178,8 @@ class Responder:
             model=gen.model,
             usage=Usage(prompt_tokens=gen.prompt_tokens, completion_tokens=gen.completion_tokens),
             timings=Timings(queue_ms=queue_ms, retrieval_ms=retrieval_ms, load_ms=gen.load_ms,
-                            first_token_ms=gen.first_token_ms, generation_ms=gen.total_ms, tokens_per_s=gen.tokens_per_s),
+                            first_token_ms=gen.first_token_ms, generation_ms=gen.total_ms, tokens_per_s=gen.tokens_per_s,
+                            prompt_eval_ms=gen.prompt_eval_ms, eval_ms=gen.eval_ms),
             retrieval=RetrievalInfo(documents_used=len(docs), mode=mode, chunks=[
                 {"chunk_id": d["chunk_id"], "document_id": d["document_id"], "section": d["section"], "score": d["score"]}
                 for d in docs]),

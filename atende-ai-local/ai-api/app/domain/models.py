@@ -43,6 +43,8 @@ class Timings(BaseModel):
     first_token_ms: int | None = None
     generation_ms: int = 0
     tokens_per_s: float | None = None
+    prompt_eval_ms: int = 0
+    eval_ms: int = 0
 
 
 class RetrievalInfo(BaseModel):

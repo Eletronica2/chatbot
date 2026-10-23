@@ -10,7 +10,7 @@ _ALLOWED = {
     "request_id", "tenant_id", "key_id", "status", "error_code", "reason", "level", "model", "latency_ms",
     "prompt_tokens", "completion_tokens", "retrieval_count", "queue_ms", "guard", "documents", "chunks",
     "chunks_removed", "mode", "detail", "path", "method", "provider", "deadline_ms", "results", "cached",
-    "generation_ms", "retrieval_ms", "auth",
+    "generation_ms", "retrieval_ms", "auth", "prompt_eval_ms", "eval_ms", "load_ms", "first_token_ms",
 }
 
 
