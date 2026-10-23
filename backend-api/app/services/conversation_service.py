@@ -440,6 +440,7 @@ class ConversationService:
                     flow_name = self._resolve_flow_name(flow_metadata, session)
                     state_name = str(flow_metadata.get("state") or session.current_state or "greeting")
                     self._append_message(session, role="assistant", content=reply)
+                    self._clear_transient_ai_handoff(session)
                     session = await self._persist_session_update(
                         ctx,
                         session,
@@ -879,12 +880,35 @@ class ConversationService:
             return ai_reply
         if not ai_reply:
             return flow_msg
+        # A complete answer stands alone: appending the state message re-sent the greeting and the whole menu
+        # after every free-form question. Only a reply cut off mid-markup is completed with the canonical body.
+        if not ConversationService._looks_truncated(ai_reply):
+            return ai_reply
         if ConversationService._flow_content_in_reply(ai_reply, flow_msg):
             return ai_reply
         intro = ConversationService._extract_fallback_intro(ai_reply, flow_msg)
         if intro:
             return f"{intro}\n\n{flow_msg}"
         return flow_msg
+
+    @staticmethod
+    def _looks_truncated(ai_reply: str) -> bool:
+        tail = ai_reply.rstrip()
+        return bool(re.search(r"(?:[*:_~`,\-–—]|[🗓📍🛵⏰])\s*$", tail, flags=re.UNICODE))
+
+    _TRANSIENT_HANDOFF_PREFIXES = ("local_ai_", "gemini_", "openai_", "ai_")
+
+    @classmethod
+    def _clear_transient_ai_handoff(cls, session) -> None:
+        """A successful AI reply resolves a handoff that only an AI failure had raised."""
+        if str(getattr(session, "assignment_mode", "") or "ai").lower() != "ai" or getattr(session, "assigned_user_id", None):
+            return
+        context = dict(session.context or {})
+        reason = str(context.get("human_handoff_reason") or "")
+        if context.get("human_handoff_pending") and reason.startswith(cls._TRANSIENT_HANDOFF_PREFIXES):
+            for key in ("human_handoff_pending", "human_handoff_reason", "human_handoff_at"):
+                context.pop(key, None)
+            session.context = context
 
     @staticmethod
     def _flow_content_in_reply(ai_reply: str, flow_msg: str) -> bool:
