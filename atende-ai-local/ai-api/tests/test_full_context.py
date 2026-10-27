@@ -267,6 +267,23 @@ def test_consecutive_full_context_prompts_share_the_previous_prompt_as_prefix():
     asyncio.run(scenario())
 
 
+def test_prompt_is_a_strict_prefix_of_the_next_turn_when_history_repeats_the_current_message():
+    async def scenario():
+        store, llm = _store(), LLM()
+        responder = _responder(store, llm, _cache(store))
+        prompts = []
+        for n in range(1, 4):
+            history = _turns(n - 1) + [{"role": "user", "content": f"pergunta {n}"}]
+            req = RespondRequest(request_id=f"r-test-{n:04d}", tenant_id=BELLA, conversation_id="conv-2",
+                                 message=f"pergunta {n}", recent_history=history)
+            await responder.respond(req, BELLA, FULL)
+            prompts.append(llm.messages)
+        assert prompts[0][-1] == {"role": "user", "content": "pergunta 1"} and len(prompts[0]) == 2
+        for previous, current in zip(prompts, prompts[1:]):
+            assert current[: len(previous)] == previous
+    asyncio.run(scenario())
+
+
 def test_guards_still_apply_with_full_context():
     async def scenario():
         store = _store()

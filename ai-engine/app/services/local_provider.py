@@ -14,7 +14,9 @@ from app.domain.message import AIReply, AIRequestPayload, AIResponsePayload
 
 logger = logging.getLogger(__name__)
 
-MAX_HISTORY = 6
+# The local API trims history itself; a wider window lets it keep a per-conversation append-only window (prefix
+# cache reuse) instead of seeing a different first message every turn.
+MAX_HISTORY = 12
 MAX_BUSINESS_CONTEXT_BYTES = 20_000
 
 

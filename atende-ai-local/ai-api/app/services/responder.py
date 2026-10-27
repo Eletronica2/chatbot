@@ -205,6 +205,10 @@ class Responder:
 
         raw_history = [m.model_dump() for m in req.recent_history]
         if mode == "full_context":
+            # Callers often include the current message as the last history item; it is sent as the final user turn
+            # anyway, and dropping the copy makes this prompt a strict prefix of the next turn's prompt.
+            if raw_history and raw_history[-1]["role"] == "user" and raw_history[-1]["content"].strip() == message.strip():
+                raw_history = raw_history[:-1]
             history = self.sticky_history.select(req.conversation_id, raw_history, self.s.history_max_messages,
                                                  self.s.history_max_chars)
         else:
