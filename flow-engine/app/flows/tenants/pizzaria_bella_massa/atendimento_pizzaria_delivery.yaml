@@ -2,6 +2,9 @@ name: atendimento_pizzaria_delivery
 description: "Atendimento humanizado e conversacional para a Pizzaria Bella Massa — delivery e retirada"
 start_state: boas_vindas
 fallback_ai: true
+# Perguntas específicas ("quanto custa a calabresa?") vão para a IA em vez da tela genérica do cardápio;
+# navegação ("quero ver o cardápio"), atendente humano e coleta de pedido continuam determinísticos.
+prefer_ai_for_specific_questions: true
 
 business_hours:
   timezone: America/Sao_Paulo
@@ -242,6 +245,11 @@ states:
         target_state: bebidas
       - condition: "contains:refrigerante"
         target_state: bebidas
+      # "Quero ver o cardápio" mostra o cardápio de novo em vez de abrir um pedido pelo "quero".
+      - condition: "contains:cardapio"
+        target_state: cardapio_principal
+      - condition: "contains:menu"
+        target_state: cardapio_principal
       - condition: "contains:pedido"
         target_state: iniciar_pedido
       - condition: "contains:quero"
