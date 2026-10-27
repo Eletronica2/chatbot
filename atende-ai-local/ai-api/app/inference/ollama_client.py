@@ -52,6 +52,12 @@ class OllamaClient:
         r.raise_for_status()
         return [m["name"] for m in r.json().get("models", [])]
 
+    async def loaded_models(self) -> list[str]:
+        """Models resident in memory right now (/api/ps); an unloaded model also means an empty KV cache."""
+        r = await self._client.get("/api/ps", timeout=2.0)
+        r.raise_for_status()
+        return [m.get("name") or m.get("model") for m in r.json().get("models", [])]
+
     async def show(self, model: str) -> dict:
         r = await self._client.post("/api/show", json={"model": model})
         r.raise_for_status()

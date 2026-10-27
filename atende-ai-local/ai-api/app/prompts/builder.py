@@ -21,6 +21,24 @@ Regras obrigatórias:
 9. Não use saudações longas nem repita a pergunta do cliente. Não use markdown, listas longas ou emojis em excesso."""
 
 
+# Per-tenant answer style ("response_style" in tenants.json). Stable text right after the tenant header, so it is
+# part of the cached prefix. Examples use placeholders: a concrete price here would be copied into other tenants.
+RESPONSE_STYLES = {
+    "standard": "",
+    "concise": """ESTILO DE RESPOSTA:
+- Pergunta simples (um preço, um tamanho, um horário, se aceita ou se tem algo): responda em até duas frases curtas, só com o que foi perguntado. Exemplo: "Quanto custa o item X grande?" → "O item X grande custa R$ <preço>."
+- Se o cliente não disser o tamanho ou a variação, informe todas as opções em uma frase. Exemplo: "Quanto custa o item X?" → "O item X custa R$ <preço> no pequeno, R$ <preço> no médio e R$ <preço> no grande."
+- Não ofereça produtos, sabores, combos, bebidas ou promoções que o cliente não pediu e não termine com pergunta de venda.
+- Não repita saudação, apresentação nem o cardápio.
+- Se o cliente pedir lista, comparação ou várias informações, responda completo e organizado, sem cortar dados importantes.
+- Evite emojis.""",
+}
+
+
+def style_rules_for(tenant: dict) -> str:
+    return RESPONSE_STYLES.get(str(tenant.get("response_style") or "standard").lower(), "")
+
+
 @dataclass
 class PromptParts:
     tenant_name: str
@@ -34,6 +52,7 @@ class PromptParts:
     # Full-context tenants: the whole base is stable, so it goes before request-supplied data to extend the
     # cacheable prefix (and to match exactly what the startup warm-up precomputes).
     documents_first: bool = False
+    style_rules: str = ""
 
 
 def _clip(text: str, limit: int) -> str:
@@ -129,6 +148,8 @@ def build_messages(parts: PromptParts) -> list[dict]:
     system = [GLOBAL_POLICY, f"\nEMPRESA ATUAL: {parts.tenant_name}"]
     if parts.tenant_profile:
         system.append(f"Perfil da empresa: {parts.tenant_profile}")
+    if parts.style_rules:
+        system.append(f"\n{parts.style_rules}")
     blocks = []
     if parts.structured:
         blocks.append(f"\nDADOS OFICIAIS DA EMPRESA (fonte prioritária):\n{parts.structured}")

@@ -43,13 +43,17 @@ def only_prices(allowed):
 CASES = [
     ("Quanto custa a pizza de calabresa grande?", has("62,90")),
     ("Vocês têm pizza grande?", any_of("45", "grande")),
-    ("Qual o preço da calabresa?", only_prices({"42,90", "52,90", "62,90"})),
+    # No size given: all three sizes must be in the answer.
+    ("Qual o preço da calabresa?", lambda t: only_prices({"42,90", "52,90", "62,90"})(t) and has("42,90", "52,90", "62,90")(t)),
     ("Quanto custa uma pizza de frango?", only_prices({"46,90", "56,90", "66,90"})),
     ("Vocês oferecem Wi-Fi?", has(UNKNOWN)),
     ("Quanto custa a pizza de pepperoni?", lambda t: "pepperoni" not in t.lower() or t == UNKNOWN),
     ("Qual o horário de domingo?", has("22")),
     ("Aceita PIX?", has("pix")),
     ("Quem ganhou o jogo do Flamengo ontem?", has("Posso ajudar apenas")),
+    # Long answers: the concise style must not cut what was asked for.
+    ("Quais são os sabores de pizza doce?", has("chocolate", "banana", "prest", "nutella", "romeu")),
+    ("Quais as formas de pagamento?", has("pix", "cart", "dinheiro")),
 ]
 
 
@@ -60,8 +64,12 @@ async def ask(responder, tenant_cfg, question, n, tenant=TENANT):
     return res, int((time.perf_counter() - started) * 1000)
 
 
+_OFFER_TAIL = re.compile(r"(quer|gostaria|deseja|que tal|posso (te )?(sugerir|mostrar|oferecer))[^.!?]*\?\W*$", re.I)
+
+
 def row(mode, phase, question, res, wall, ok=None):
     return {"mode": mode, "phase": phase, "question": question, "ok": ok, "wall_ms": wall,
+            "offer_tail": bool(_OFFER_TAIL.search(res.text)) and "encaminhar" not in res.text,
             "retrieval": res.retrieval.mode, "fallback_reason": res.retrieval.fallback_reason,
             "docs": res.retrieval.documents_used, "prompt_tokens": res.usage.prompt_tokens,
             "prompt_eval_ms": res.timings.prompt_eval_ms, "eval_ms": res.timings.eval_ms,
@@ -78,14 +86,15 @@ async def main(modes):
                              max_chunks=s.full_context_max_chunks, chars_per_token=s.full_context_chars_per_token)
     llm = OllamaClient(s.ollama_url, s.llm_timeout_s)
     responder = Responder(s, encoder, store, llm, InferenceGate(1, 1, 300, 1), full_context=cache)
-    base = dict(tenants.get(TENANT) or {})
+    base = {k: v for k, v in (tenants.get(TENANT) or {}).items() if k not in ("context_mode", "response_style")}
     other = dict(tenants.get(OTHER) or {}, context_mode="rag")
     ctx = await cache.get(TENANT)
     print(json.dumps({"tenant": TENANT, "full_context_eligible": ctx.eligible, "reason": ctx.reason,
                       "estimated_tokens": ctx.estimated_tokens, "chunks": len(ctx.documents)}))
     n = 0
     for mode in modes:
-        cfg = dict(base, context_mode=mode)
+        context_mode, _, style = mode.partition(":")
+        cfg = dict(base, context_mode=context_mode, response_style=style or "standard")
         for i, (question, check) in enumerate(CASES):
             n += 1
             res, wall = await ask(responder, cfg, question, n)
@@ -100,4 +109,4 @@ async def main(modes):
     await store.client.close()
 
 
-asyncio.run(main([m for m in sys.argv[1:] if m in ("rag", "full")] or ["rag", "full"]))
+asyncio.run(main([m for m in sys.argv[1:] if m.partition(":")[0] in ("rag", "full")] or ["rag", "full"]))

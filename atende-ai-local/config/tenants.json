@@ -4,7 +4,8 @@
       "tenant_id": "pizzaria_bella_massa",
       "display_name": "Pizzaria Bella Massa",
       "profile": "Pizzaria de bairro, atendimento descontraído e objetivo.",
-      "context_mode": "full"
+      "context_mode": "full",
+      "response_style": "concise"
     },
     {
       "tenant_id": "pastelaria_do_ze",

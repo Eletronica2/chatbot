@@ -65,12 +65,46 @@ async def lifespan(app: FastAPI):
     await store.client.close()
 
 
+async def _staged_warmup(responder: Responder, tenants: TenantRegistry, served: list[str], attempts: int,
+                         delay_s: float) -> None:
+    """1) load the model + 2) prompt head (policy + tenant + style, ~600 tokens, every prompt starts with it) for each
+    served tenant, full-context tenants last so their head stays resident; 3) full knowledge prefix as a cancellable
+    background re-warm. A customer message during 1-2 waits seconds and then reuses the head; during 3 it pre-empts."""
+    ordered = sorted(served, key=lambda t: str((tenants.get(t) or {}).get("context_mode") or "rag") == "full")
+    if not ordered:
+        return
+    for index, tenant_id in enumerate(ordered):
+        tenant = tenants.get(tenant_id) or {}
+        for attempt in range(1, (attempts if index == 0 else 1) + 1):
+            try:
+                result = await responder.warm_prefix(tenant_id, tenant, stage="head")
+                log_event("warmup", tenant_id=tenant_id, mode="head", detail=(
+                    f"attempt={attempt} prompt_tokens={result['prompt_tokens']} load_ms={result['load_ms']} "
+                    f"total_ms={result['total_ms']}"))
+                break
+            except Exception as exc:
+                log_event("warmup", tenant_id=tenant_id, mode="head", detail=f"pending attempt={attempt}: {str(exc)[:100]}")
+                if index == 0 and attempt < attempts:
+                    await asyncio.sleep(delay_s)
+        else:
+            if index == 0:
+                return
+    for tenant_id in ordered:
+        tenant = tenants.get(tenant_id) or {}
+        if str(tenant.get("context_mode") or "rag").lower() == "full":
+            responder.request_rewarm(tenant_id, tenant)
+            log_event("warmup", tenant_id=tenant_id, mode="full_context", detail="prefix scheduled (cancellable)")
+
+
 async def _warm_model(readiness: Readiness, llm: OllamaClient, gate: InferenceGate, s, tenants: TenantRegistry,
                       served: list[str], responder: Responder | None = None, attempts: int = 10,
                       delay_s: float = 15.0) -> None:
     # After a reboot the model is not resident and the stable prompt prefix is not in the KV cache; on CPU the
     # first customer request would pay both (~40 s) and can exceed the caller's deadline. Ollama may still be
     # starting, hence the retries.
+    if responder is not None:
+        await _staged_warmup(responder, tenants, served, attempts, delay_s)
+        return
     for attempt in range(1, attempts + 1):
         report = await readiness.check()
         detail = report["checks"].get("inference", {}).get("detail")
