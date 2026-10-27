@@ -53,7 +53,13 @@ def ungrounded_names(text: str, context_texts: list[str]) -> list[str]:
     ctx |= {w.strip(".,;:!?()\"'*_") for w in list(ctx)}
     ctx |= {_singular(w) for w in list(ctx)}
     names = []
-    for m in _PROPER_NOUN_RE.finditer(text.strip()):
+    stripped = text.strip()
+    for m in _PROPER_NOUN_RE.finditer(stripped):
+        # Sentence and line starts are not names, also when Markdown puts spaces or a bullet before the word
+        # ("…62,90.  \nPreço: …", "- Tamanho: …"); only mid-sentence capitals are checked.
+        before = stripped[: m.start()].rstrip(" \t*-•–—")
+        if not before or before[-1] in ".!?:\n":
+            continue
         parts = strip_accents(m.group(1).lower()).split("-")
         if not all(p in ctx or _singular(p) in ctx for p in parts if p):
             names.append(m.group(1))
@@ -86,6 +92,7 @@ class Responder:
         # is; a cold prefix costs ~1 min of CPU prefill, so a request that cannot afford it uses RAG and the prefix is
         # rebuilt in the background while idle. This is a prediction, never a correctness assumption.
         self._kv_key: str | None = None
+        self._kv_tenant: tuple[str, dict] | None = None
         self._rewarm: asyncio.Task | None = None
         self._rewarm_target: tuple[str, dict] | None = None
         self.last_success_at = 0.0
@@ -116,7 +123,23 @@ class Responder:
                                       num_ctx=self.s.llm_num_ctx, temperature=0.0, max_tokens=1,
                                       keep_alive=self.s.llm_keep_alive)
             self._kv_key = self.prefix_key(self.s.llm_model, tenant_id, docs, tenant) if docs else None
+            self._kv_tenant = (tenant_id, tenant) if docs else None
+            self.last_success_at = time.monotonic()
         return {"mode": mode, "documents": len(docs), "prompt_tokens": gen.prompt_tokens, "total_ms": gen.total_ms}
+
+    async def keepalive_probe(self) -> str | None:
+        """Readiness inference that re-uses (and keeps) the resident full-context prefix instead of evicting it."""
+        if self._kv_key is None or self._kv_tenant is None:
+            return None
+        tenant_id, tenant = self._kv_tenant
+        result = await self.warm_prefix(tenant_id, tenant)
+        return f"prefix_probe tenant={tenant_id} prompt_tokens={result['prompt_tokens']} total_ms={result['total_ms']}"
+
+    def request_rewarm(self, tenant_id: str, tenant: dict) -> asyncio.Task | None:
+        """Background, cancellable prefix warm-up (customer requests always pre-empt it)."""
+        self._rewarm_target = (tenant_id, tenant)
+        self._schedule_rewarm()
+        return self._rewarm
 
     def _schedule_rewarm(self) -> None:
         if self._rewarm_target is None or (self._rewarm is not None and not self._rewarm.done()):
@@ -253,6 +276,7 @@ class Responder:
             finally:
                 self._schedule_rewarm()
             self._kv_key = kv_key
+            self._kv_tenant = (tenant_id, tenant) if kv_key else None
             self.last_success_at = time.monotonic()
 
         text, guard = gen.text, None
@@ -263,21 +287,31 @@ class Responder:
         # Customer wording, conversation history and collected flow fields are not business evidence.
         allowed_prices = biz.known_prices() | {c for t in context_texts for c in price_cents_in(t)}
         allowed_numbers = {n for t in context_texts for n in numbers_in(t)}
+        # guard_detail names only the offending business term (price/number/entity), never message text.
+        guard_detail = None
         if not text:
             text, guard = FALLBACK_TEXT, "empty_generation"
         elif price_cents_in(text) - allowed_prices:
+            guard_detail = sorted(price_cents_in(text) - allowed_prices)[:3]
             text, guard = FALLBACK_TEXT, "price_not_in_context"
         elif numbers_in(text) - allowed_numbers:
+            guard_detail = sorted(numbers_in(text) - allowed_numbers)[:3]
             text, guard = FALLBACK_TEXT, "number_not_in_context"
         elif unsupported_claims(text, context_texts):
+            guard_detail = unsupported_claims(text, context_texts)[:3]
             text, guard = FALLBACK_TEXT, "claim_not_in_context"
         elif unsupported_existence_claims(text, context_texts, closed_payment_list=bool(biz.payment_methods)):
             text, guard = FALLBACK_TEXT, "existence_not_in_context"
         elif ungrounded_names(text, context_texts):
+            guard_detail = [n[:30] for n in ungrounded_names(text, context_texts)[:3]]
             text, guard = OFF_TOPIC_TEXT.format(name=tenant.get("display_name", "empresa")), "entity_not_in_context"
         if is_offtopic_deflection(text) and asks_about_offering(message):
             # "Do you have/offer X?" is about the business; unknown X must get the standard unknown answer.
+            guard_detail = guard_detail or ([guard] if guard else ["model_deflected"])
             text, guard = FALLBACK_TEXT, "offering_question_without_data"
+        if guard:
+            log_event("guard", request_id=req.request_id, tenant_id=tenant_id, guard=guard, mode=mode,
+                      detail=str(guard_detail)[:120] if guard_detail else None)
 
         return done(
             text, "rag" if docs else "llm",

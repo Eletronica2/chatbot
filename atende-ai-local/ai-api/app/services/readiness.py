@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Callable
+from typing import Awaitable, Callable
 
 from app.config.settings import Settings
 from app.embeddings.encoder import Encoder
@@ -13,7 +13,8 @@ class Readiness:
 
     def __init__(self, settings: Settings, encoder: Encoder | None, store: KnowledgeStore, llm: OllamaClient,
                  registry=None, recent_success: Callable[[], float] | None = None,
-                 on_probe: Callable[[], None] | None = None):
+                 on_probe: Callable[[], None] | None = None,
+                 prefix_probe: Callable[[], Awaitable[str | None]] | None = None):
         self.s = settings
         self.encoder = encoder
         self.store = store
@@ -22,6 +23,7 @@ class Readiness:
         # A real inference within the TTL already proves the model works; probing would only evict the KV cache.
         self.recent_success = recent_success
         self.on_probe = on_probe
+        self.prefix_probe = prefix_probe
         self._probe_at = 0.0
         self._probe_ok = False
         self._probe_detail = "not_run"
@@ -36,6 +38,15 @@ class Readiness:
                 self._probe_ok, self._probe_at = True, time.monotonic()
                 self._probe_detail = f"recent_inference age_s={int(time.monotonic() - last)}"
                 return
+            if self.prefix_probe:
+                try:
+                    detail = await self.prefix_probe()
+                except Exception as exc:
+                    detail = None
+                    self._probe_detail = f"prefix_probe error: {str(exc)[:80]}"
+                if detail:
+                    self._probe_ok, self._probe_at, self._probe_detail = True, time.monotonic(), detail
+                    return
             if self.on_probe:
                 self.on_probe()
             try:

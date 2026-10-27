@@ -53,7 +53,8 @@ async def lifespan(app: FastAPI):
     app.state.knowledge = KnowledgeService(encoder, store, app.state.registry, on_change=app.state.full_context.invalidate)
     app.state.readiness = Readiness(s, encoder, store, llm, app.state.registry,
                                     recent_success=lambda: app.state.responder.last_success_at,
-                                    on_probe=lambda: app.state.responder.note_kv(None))
+                                    on_probe=lambda: app.state.responder.note_kv(None),
+                                    prefix_probe=app.state.responder.keepalive_probe)
     log_event("startup", detail=f"ready_in_ms={int((time.perf_counter() - started) * 1000)}")
     served = sorted({t for key in service_keys.values() for t in key.tenants if app.state.tenants.get(t)})
     warmup = asyncio.create_task(_warm_model(app.state.readiness, llm, gate, s, app.state.tenants, served,
@@ -87,6 +88,12 @@ async def _warm_model(readiness: Readiness, llm: OllamaClient, gate: InferenceGa
     for tenant_id in ordered:
         tenant = tenants.get(tenant_id) or {}
         try:
+            if responder is not None and str(tenant.get("context_mode") or "rag").lower() == "full":
+                # ~1 min of CPU prefill on a cold cache: run it as a cancellable background re-warm so a customer
+                # message arriving meanwhile is answered (RAG) instead of waiting behind it.
+                responder.request_rewarm(tenant_id, tenant)
+                log_event("warmup", tenant_id=tenant_id, mode="full_context", detail="prefix scheduled (cancellable)")
+                continue
             if responder is not None:
                 result = await responder.warm_prefix(tenant_id, tenant)
             else:

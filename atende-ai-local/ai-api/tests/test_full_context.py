@@ -232,6 +232,26 @@ def test_readiness_does_not_probe_after_a_recent_real_inference():
     asyncio.run(scenario())
 
 
+def test_readiness_probe_reuses_the_resident_full_context_prefix():
+    from app.services.readiness import Readiness
+
+    async def scenario():
+        store, llm, evicted = _store(), LLM(), []
+        responder = _responder(store, llm, _cache(store))
+        readiness = Readiness(Settings(), None, None, llm, recent_success=lambda: 0.0,
+                              on_probe=lambda: evicted.append(True), prefix_probe=responder.keepalive_probe)
+        await readiness._probe_inference()  # nothing resident yet: generic probe, cache marked unknown
+        assert evicted and readiness._probe_ok
+        await responder.warm_prefix(BELLA, FULL)
+        key = responder._kv_key
+        evicted.clear()
+        readiness._probe_at = 0.0
+        await readiness._probe_inference()
+        assert not evicted and readiness._probe_detail.startswith("prefix_probe")
+        assert responder._kv_key == key
+    asyncio.run(scenario())
+
+
 def _turns(n):
     out = []
     for i in range(1, n + 1):
@@ -282,6 +302,15 @@ def test_prompt_is_a_strict_prefix_of_the_next_turn_when_history_repeats_the_cur
         for previous, current in zip(prompts, prompts[1:]):
             assert current[: len(previous)] == previous
     asyncio.run(scenario())
+
+
+def test_entity_guard_ignores_markdown_line_starts_but_still_flags_mid_sentence_names():
+    from app.services.responder import ungrounded_names
+    ctx = ["Calabresa grande R$ 62,90."]
+    assert ungrounded_names("Sim! A grande de calabresa sai por R$ 62,90.  \nPreço: R$ 62,90", ctx) == []
+    assert ungrounded_names("Tamanhos:\n- Grande: 45 cm\n- Preço: R$ 62,90", ctx) == []
+    assert ungrounded_names("Temos também a pizza de Margherita.", ctx) == ["Margherita"]
+    assert ungrounded_names("Entregamos no centro e no Morumbi.  \nPreço: R$ 62,90", ctx) == ["Morumbi"]
 
 
 def test_guards_still_apply_with_full_context():
