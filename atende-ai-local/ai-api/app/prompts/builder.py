@@ -4,6 +4,8 @@ Static layers come first so Ollama can reuse the KV cache of the common prefix.
 Documents and business data are wrapped as reference data, never as instructions.
 """
 
+import hashlib
+from collections import OrderedDict
 from dataclasses import dataclass
 
 GLOBAL_POLICY = """Você é um assistente comercial brasileiro que atende clientes pelo WhatsApp.
@@ -80,6 +82,46 @@ def trim_history(history: list[dict], max_messages: int, max_chars: int) -> list
         out.append({"role": msg["role"], "content": content})
         total += len(content)
     return list(reversed(out))
+
+
+class StickyHistory:
+    """Per-conversation history window that only grows between requests, so consecutive prompts share a prefix.
+
+    A sliding window (last N messages) changes its first message every turn, which defeats Ollama's prefix cache
+    right after the stable system prompt. Here the window keeps its first message (the anchor) until it exceeds
+    `factor` times the normal limits, then restarts from the recent tail. Bounded LRU, in memory only: losing it
+    just costs one cache miss.
+    """
+
+    def __init__(self, max_conversations: int = 500, factor: int = 2):
+        self.max_conversations = max_conversations
+        self.factor = factor
+        self._anchors: "OrderedDict[str, str]" = OrderedDict()
+
+    @staticmethod
+    def _key(msg: dict) -> str:
+        return hashlib.sha256(f"{msg['role']}|{msg['content']}".encode()).hexdigest()
+
+    def select(self, conversation_id: str | None, history: list[dict], max_messages: int, max_chars: int) -> list[dict]:
+        if not conversation_id:
+            return trim_history(history, max_messages, max_chars)
+        clipped = [{"role": m["role"], "content": _clip(m["content"], 400)} for m in history]
+        keys = [self._key(m) for m in clipped]
+        anchor = self._anchors.get(conversation_id)
+        window: list[dict] | None = None
+        if anchor in keys:
+            candidate = clipped[keys.index(anchor):]
+            if (len(candidate) <= max_messages * self.factor
+                    and sum(len(m["content"]) for m in candidate) <= max_chars * self.factor):
+                window = candidate
+        if window is None:
+            window = trim_history(history, max_messages, max_chars)
+        if window:
+            self._anchors[conversation_id] = self._key(window[0])
+            self._anchors.move_to_end(conversation_id)
+            while len(self._anchors) > self.max_conversations:
+                self._anchors.popitem(last=False)
+        return window
 
 
 def build_messages(parts: PromptParts) -> list[dict]:

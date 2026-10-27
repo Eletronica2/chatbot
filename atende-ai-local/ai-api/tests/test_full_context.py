@@ -232,6 +232,41 @@ def test_readiness_does_not_probe_after_a_recent_real_inference():
     asyncio.run(scenario())
 
 
+def _turns(n):
+    out = []
+    for i in range(1, n + 1):
+        out += [{"role": "user", "content": f"pergunta {i}"}, {"role": "assistant", "content": f"resposta {i}"}]
+    return out
+
+
+def test_sticky_history_grows_append_only_and_resets_after_twice_the_limit():
+    from app.prompts.builder import StickyHistory
+    sticky = StickyHistory()
+    assert sticky.select("c1", _turns(1), 2, 700) == _turns(1)
+    assert sticky.select("c1", _turns(2), 2, 700) == _turns(2)  # keeps its first message: shared prefix
+    reset = sticky.select("c1", _turns(3), 2, 700)  # 6 messages > 2 x 2: restart from the tail
+    assert reset == _turns(3)[-2:]
+    assert sticky.select("c1", _turns(4), 2, 700) == _turns(4)[-4:]
+    assert sticky.select("outra", _turns(4), 2, 700) == _turns(4)[-2:]  # conversations never share anchors
+    assert StickyHistory().select(None, _turns(4), 2, 700) == _turns(4)[-2:]
+
+
+def test_consecutive_full_context_prompts_share_the_previous_prompt_as_prefix():
+    async def scenario():
+        store, llm = _store(), LLM()
+        responder = _responder(store, llm, _cache(store))
+        prompts = []
+        for n in range(1, 4):
+            history = _turns(n - 1)
+            req = RespondRequest(request_id=f"r-test-{n:04d}", tenant_id=BELLA, conversation_id="conv-1",
+                                 message=f"pergunta {n}", recent_history=history)
+            await responder.respond(req, BELLA, FULL)
+            prompts.append(llm.messages)
+        for previous, current in zip(prompts, prompts[1:]):
+            assert current[: len(previous) - 1] == previous[:-1]
+    asyncio.run(scenario())
+
+
 def test_guards_still_apply_with_full_context():
     async def scenario():
         store = _store()

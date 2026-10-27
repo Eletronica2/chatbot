@@ -9,7 +9,7 @@ from app.embeddings.encoder import Encoder
 from app.inference.gate import InferenceGate
 from app.inference.ollama_client import OllamaClient
 from app.logging import log_event
-from app.prompts.builder import PromptParts, build_messages, render_flow_state, trim_history
+from app.prompts.builder import PromptParts, StickyHistory, build_messages, render_flow_state, trim_history
 from app.retrieval.store import KnowledgeStore
 from app.retrieval.text import strip_accents
 from app.services.full_context import FullContextCache
@@ -89,6 +89,7 @@ class Responder:
         self._rewarm: asyncio.Task | None = None
         self._rewarm_target: tuple[str, dict] | None = None
         self.last_success_at = 0.0
+        self.sticky_history = StickyHistory()
 
     def note_kv(self, key: str | None) -> None:
         self._kv_key = key
@@ -202,7 +203,12 @@ class Responder:
                 mode, fallback_reason, kv_key = opts.retrieval_mode or self.s.retrieval_mode, "kv_cold", None
         retrieval_ms = int((time.perf_counter() - t0) * 1000)
 
-        history = trim_history([m.model_dump() for m in req.recent_history], self.s.history_max_messages, self.s.history_max_chars)
+        raw_history = [m.model_dump() for m in req.recent_history]
+        if mode == "full_context":
+            history = self.sticky_history.select(req.conversation_id, raw_history, self.s.history_max_messages,
+                                                 self.s.history_max_chars)
+        else:
+            history = trim_history(raw_history, self.s.history_max_messages, self.s.history_max_chars)
         messages = build_messages(PromptParts(
             tenant_name=tenant.get("display_name", tenant_id),
             tenant_profile=tenant.get("profile", ""),
