@@ -1,0 +1,29 @@
+tenant settings: {'ai_provider_sent': 'local', 'auto_reply_mode': 'allowlist'}
+
+[1] cliente: Boa noite
+    caminho: flow(boas_vindas) determinístico | sem IA | total_ms=76
+    resposta: Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊 ⏎  ⏎ Sou o assistente virtual da pizzaria e fico feliz em te atender! ⏎  ⏎ Me fala o que você precisa — posso mostrar nosso cardápio, te contar sobre as promoções de hoje, ajudar com um pedido ou informar nossos horários 😄 ⏎ 
+
+[2] cliente: Quanto custa a pizza de calabresa?
+    caminho: flow(cardapio_principal) determinístico | sem IA | total_ms=13
+    resposta: Aqui está nosso cardápio! 😍🍕 ⏎  ⏎ 🍕 *Tradicionais* — a partir de R$ 39,90 ⏎ Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry... ⏎  ⏎ ⭐ *Especiais* — a partir de R$ 59,90 ⏎ Camaão, Parma c/ Rúcula, Quatro Queijos, Costela BBQ... ⏎  ⏎ 🍫 *Doces* — a partir de R$ 42,90 ⏎ Chocolate c/ Morango, Banana c/ Canela, Nutella... ⏎  ⏎ 🥤 *Bebidas* — a partir de R$ 4,00 ⏎ Refrigerantes, Sucos, Água... ⏎  ⏎ Quer ver os sabores d
+
+[3] cliente: Vocês têm pizza grande?
+    caminho: flow(cardapio_principal) -> AI fallback | provider=local model=qwen3:4b-instruct-2507-q4_K_M tokens_in=2268 tokens_out=79 ai_latency_ms=27575 level=rag guard=None | total_ms=27612
+    resposta: Sim, temos pizza grande (45cm) em todos os sabores!   ⏎ Tradicionais: a partir de R$ 59,90   ⏎ Especiais: a partir de R$ 87,90   ⏎ Doces: a partir de R$ 63,90   ⏎  ⏎ Quer saber o preço de um sabor específico? 😊
+
+[4] cliente: Qual o preço da calabresa?
+    caminho: flow(cardapio_principal) -> AI fallback | provider=local model=qwen3:4b-instruct-2507-q4_K_M tokens_in=2345 tokens_out=18 ai_latency_ms=14238 level=rag guard=None | total_ms=14269
+    resposta: Pizza Calabresa Grande: R$ 62,90 🍕
+
+[5] cliente: Quanto custa uma pizza de frango?
+    caminho: flow(cardapio_principal) -> AI fallback | provider=local model=qwen3:4b-instruct-2507-q4_K_M tokens_in=2201 tokens_out=21 ai_latency_ms=9298 level=rag guard=None | total_ms=9324
+    resposta: Pizza Frango com Catupiry Grande: R$ 66,90 🍕
+
+[6] cliente: Vocês oferecem Wi-Fi?
+    caminho: flow(cardapio_principal) -> AI fallback | provider=local model=qwen3:4b-instruct-2507-q4_K_M tokens_in=2145 tokens_out=22 ai_latency_ms=7549 level=rag guard=None | total_ms=7575
+    resposta: Não tenho essa informação confirmada no momento. Posso encaminhar sua dúvida para a equipe?
+
+[7] cliente: Quero ver o cardápio.
+    caminho: flow(iniciar_pedido) determinístico | sem IA | total_ms=13
+    resposta: Ótimo, vamos lá! 😄🍕 ⏎  ⏎ Pra começar: qual é o seu nome? ⏎ 

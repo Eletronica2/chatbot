@@ -5,6 +5,7 @@ Run inside the ai-engine container (reads the operational credential from its en
 """
 import asyncio
 import base64
+import sys
 import time
 
 from app.clients.local_ai_client import LocalAIClient, LocalAIError
@@ -31,7 +32,8 @@ async def main():
     network = (probe.get("status") or {}).get("network") or {}
     print("probe:", {k: probe.get(k) for k in ("reachable", "ready", "latency_ms")},
           "vpn_peer_ok:", network.get("vpn_peer_ok"), "wifi_signal_dbm:", network.get("wifi_signal_dbm"))
-    for i, question in enumerate(QUESTIONS, 1):
+    questions = [a for a in sys.argv[1:] if a.strip()] or QUESTIONS
+    for i, question in enumerate(questions, 1):
         started = time.monotonic()
         rid = f"ia03-smoke-{int(time.time())}-{i}"
         data, stats = await c.respond(TENANT, rid, body(rid, TENANT, question))

@@ -1,0 +1,16 @@
+--- guards
+--- respond
+{'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1201, 'prompt_eval_ms': 34282, 'eval_ms': 2715, 'completion_tokens': 19, 'latency_ms': 43615, 'guard': None}
+{'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 892, 'prompt_eval_ms': 10359, 'eval_ms': 2845, 'completion_tokens': 21, 'latency_ms': 29129, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 1961, 'prompt_eval_ms': 1369, 'eval_ms': 3102, 'completion_tokens': 19, 'latency_ms': 4523, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 1953, 'prompt_eval_ms': 824, 'eval_ms': 3455, 'completion_tokens': 21, 'latency_ms': 4333, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2140, 'prompt_eval_ms': 7226, 'eval_ms': 10971, 'completion_tokens': 60, 'latency_ms': 18282, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2213, 'prompt_eval_ms': 2177, 'eval_ms': 7608, 'completion_tokens': 41, 'latency_ms': 9841, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2271, 'prompt_eval_ms': 2244, 'eval_ms': 5599, 'completion_tokens': 29, 'latency_ms': 7914, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2319, 'prompt_eval_ms': 2594, 'eval_ms': 5368, 'completion_tokens': 28, 'latency_ms': 8077, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2141, 'prompt_eval_ms': 3786, 'eval_ms': 3853, 'completion_tokens': 22, 'latency_ms': 7757, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2136, 'prompt_eval_ms': 3682, 'eval_ms': 15429, 'completion_tokens': 84, 'latency_ms': 19181, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2229, 'prompt_eval_ms': 3266, 'eval_ms': 12885, 'completion_tokens': 67, 'latency_ms': 16196, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2307, 'prompt_eval_ms': 2220, 'eval_ms': 11203, 'completion_tokens': 57, 'latency_ms': 13484, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2379, 'prompt_eval_ms': 2099, 'eval_ms': 11063, 'completion_tokens': 56, 'latency_ms': 13207, 'guard': None}
+{'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2186, 'prompt_eval_ms': 5562, 'eval_ms': 4386, 'completion_tokens': 24, 'latency_ms': 10030, 'guard': None}
