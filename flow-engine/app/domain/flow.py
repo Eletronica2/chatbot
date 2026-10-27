@@ -53,6 +53,9 @@ class FlowDefinition(BaseModel):
     global_transitions: List[GlobalTransition] = Field(default_factory=list)
     intent_aliases: Dict[str, List[str]] = Field(default_factory=dict)
     fallback_ai: bool = False  # Enable AI fallback for the entire flow
+    # Opt-in: specific questions ("quanto custa a calabresa?") skip keyword transitions and go to the AI fallback.
+    prefer_ai_for_specific_questions: bool = False
+    specific_question_generic_terms: List[str] = Field(default_factory=list)
 
     def get_state(self, state_name: str) -> Optional[FlowState]:
         return self.states.get(state_name)

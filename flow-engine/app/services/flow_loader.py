@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
@@ -120,6 +121,9 @@ class FlowLoader:
             data.get("global_transitions"), states
         )
         fallback_ai = bool(data.get("fallback_ai", False))
+        generic_terms = data.get("specific_question_generic_terms") or []
+        if not isinstance(generic_terms, list):
+            raise FlowValidationError("'specific_question_generic_terms' must be a list if provided")
 
         return FlowDefinition(
             name=str(data.get("name") or source_path.stem),
@@ -130,7 +134,14 @@ class FlowLoader:
             intent_aliases=intent_aliases,
             global_transitions=global_transitions,
             fallback_ai=fallback_ai,
+            prefer_ai_for_specific_questions=bool(data.get("prefer_ai_for_specific_questions", False)),
+            specific_question_generic_terms=[self._normalize_term(t) for t in generic_terms if isinstance(t, str)],
         )
+
+    @staticmethod
+    def _normalize_term(term: str) -> str:
+        normalized = unicodedata.normalize("NFKD", term.strip().lower())
+        return "".join(ch for ch in normalized if not unicodedata.combining(ch))
 
     def _parse_state(self, state_name: str, payload: dict) -> FlowState:
         if not isinstance(payload, dict):

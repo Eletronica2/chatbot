@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 from app.domain.flow import FlowDefinition, FlowExecutionRequest, FlowExecutionResponse, FlowState
 from app.services.business_hours import apply_contextual_cta
+from app.services.question_router import is_specific_question
 
 
 class FlowRunner:
@@ -40,6 +41,24 @@ class FlowRunner:
             field_key = current_state_for_collect.collect
             collected_data[field_key] = text_candidates[0]
             session_state["collected_data"] = collected_data
+
+        # Opt-in per flow: a specific question goes to the AI instead of a keyword screen (generic menu). Handoff
+        # transitions stay deterministic; collect states (orders in progress) are never bypassed.
+        if self._prefers_ai(definition, current_state_for_collect, text_candidates):
+            handoff_state = self._matching_handoff_transition(
+                definition, current_state_for_collect, text_candidates, session_state
+            )
+            if handoff_state:
+                return self._build_response(
+                    definition,
+                    handoff_state,
+                    session_state,
+                    detected_intent=detected_intent,
+                    resolution_reason="transition_match",
+                    collected_data=collected_data,
+                )
+            return self._ai_fallback_response(definition, current_state_for_collect, session_state, detected_intent,
+                                              collected_data, reason="specific_question")
 
         intent_state = self._find_state_by_intent(
             definition=definition,
@@ -128,24 +147,8 @@ class FlowRunner:
 
         # 3. Check if current state or flow has fallback_ai enabled
         if current_state.fallback_ai or definition.fallback_ai:
-            bh = (definition.metadata or {}).get("business_hours")
-            flow_msg = apply_contextual_cta(current_state.message or "", bh)
-            resp = FlowExecutionResponse(
-                handled=True,
-                reply_text=None,  # AI will fill this
-                detected_intent=detected_intent,
-                session_state=session_state,
-                metadata={
-                    "flow": definition.name,
-                    "state": current_state.state,
-                    "resolution_reason": "fallback_ai",
-                    "options": [o.model_dump() for o in current_state.options],
-                    "flow_state_message": flow_msg,
-                },
-                collected_data=collected_data,
-                requires_ai_fallback=True,
-            )
-            return resp
+            return self._ai_fallback_response(definition, current_state, session_state, detected_intent,
+                                              collected_data)
 
         return FlowExecutionResponse(
             handled=False,
@@ -269,6 +272,63 @@ class FlowRunner:
                 if next_state:
                     return next_state
         return None
+
+    def _prefers_ai(
+        self,
+        definition: FlowDefinition,
+        state: Optional[FlowState],
+        text_candidates: List[str],
+    ) -> bool:
+        if not definition.prefer_ai_for_specific_questions or state is None or state.collect:
+            return False
+        if not (state.fallback_ai or definition.fallback_ai) or not text_candidates:
+            return False
+        return is_specific_question(text_candidates[0], definition.specific_question_generic_terms)
+
+    def _matching_handoff_transition(
+        self,
+        definition: FlowDefinition,
+        state: FlowState,
+        text_candidates: List[str],
+        session_state: Dict[str, Any],
+    ) -> Optional[FlowState]:
+        for condition, target in [*((t.condition, t.target_state) for t in state.transitions),
+                                  *((g.condition, g.target_state) for g in definition.global_transitions)]:
+            target_state = definition.get_state(target)
+            if target_state and target_state.requires_handoff and self._condition_matches(
+                condition, text_candidates, session_state
+            ):
+                return target_state
+        return None
+
+    def _ai_fallback_response(
+        self,
+        definition: FlowDefinition,
+        state: FlowState,
+        session_state: Dict[str, Any],
+        detected_intent: Optional[str],
+        collected_data: Dict[str, Any],
+        *,
+        reason: str = "fallback_ai",
+    ) -> FlowExecutionResponse:
+        bh = (definition.metadata or {}).get("business_hours")
+        flow_msg = apply_contextual_cta(state.message or "", bh)
+        return FlowExecutionResponse(
+            handled=True,
+            reply_text=None,  # AI will fill this
+            detected_intent=detected_intent,
+            session_state=session_state,
+            metadata={
+                "flow": definition.name,
+                "state": state.state,
+                "resolution_reason": "fallback_ai",
+                "routing": reason,
+                "options": [o.model_dump() for o in state.options],
+                "flow_state_message": flow_msg,
+            },
+            collected_data=collected_data,
+            requires_ai_fallback=True,
+        )
 
     def _check_global_transitions(
         self,
