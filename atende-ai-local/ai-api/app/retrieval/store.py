@@ -114,6 +114,28 @@ class KnowledgeStore:
         await self.client.delete(self.collection, points_selector=models.FilterSelector(filter=flt), wait=True)
         return n
 
+    async def all_chunks(self, tenant_id: str, limit: int) -> list[dict]:
+        """Every chunk of one tenant in a stable order (document_id, chunk_index); at most `limit` + 1 are read."""
+        flt = tenant_filter(tenant_id)
+        out: list[dict] = []
+        offset = None
+        while len(out) <= limit:
+            points, offset = await self.client.scroll(self.collection, scroll_filter=flt, limit=min(64, limit + 1),
+                                                      offset=offset, with_payload=True, with_vectors=False)
+            for p in points:
+                if p.payload.get("tenant_id") != tenant_id:
+                    raise TenantScopeError("resultado fora do tenant autorizado")
+                out.append({"score": 1.0, **{k: p.payload[k] for k in (
+                    "tenant_id", "document_id", "document_version", "section", "chunk_id", "text", "source")},
+                    "chunk_index": int(p.payload.get("chunk_index", 0))})
+            if offset is None:
+                break
+        out.sort(key=lambda d: (d["document_id"], d["chunk_index"]))
+        return out
+
+    async def tenant_count(self, tenant_id: str) -> int:
+        return await self.count(tenant_filter(tenant_id))
+
     async def count(self, flt: models.Filter) -> int:
         return (await self.client.count(self.collection, count_filter=flt, exact=True)).count
 

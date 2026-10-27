@@ -20,6 +20,7 @@ from app.security.service_auth import ServiceVerifier, parse_keys
 from app.services.idempotency import IdempotencyCache
 from app.services.knowledge import KnowledgeService
 from app.services.registry import DocumentRegistry
+from app.services.full_context import FullContextCache
 from app.services.readiness import Readiness
 from app.services.responder import Responder
 
@@ -45,12 +46,18 @@ async def lifespan(app: FastAPI):
     app.state.idempotency = IdempotencyCache(s.idempotency_ttl_s)
     app.state.encoder = encoder
     app.state.gate = gate
-    app.state.responder = Responder(s, encoder, store, llm, gate)
-    app.state.knowledge = KnowledgeService(encoder, store, app.state.registry)
-    app.state.readiness = Readiness(s, encoder, store, llm, app.state.registry)
+    app.state.full_context = FullContextCache(store, app.state.registry, max_tokens=s.full_context_max_tokens,
+                                              max_chunks=s.full_context_max_chunks,
+                                              chars_per_token=s.full_context_chars_per_token)
+    app.state.responder = Responder(s, encoder, store, llm, gate, full_context=app.state.full_context)
+    app.state.knowledge = KnowledgeService(encoder, store, app.state.registry, on_change=app.state.full_context.invalidate)
+    app.state.readiness = Readiness(s, encoder, store, llm, app.state.registry,
+                                    recent_success=lambda: app.state.responder.last_success_at,
+                                    on_probe=lambda: app.state.responder.note_kv(None))
     log_event("startup", detail=f"ready_in_ms={int((time.perf_counter() - started) * 1000)}")
     served = sorted({t for key in service_keys.values() for t in key.tenants if app.state.tenants.get(t)})
-    warmup = asyncio.create_task(_warm_model(app.state.readiness, llm, gate, s, app.state.tenants, served))
+    warmup = asyncio.create_task(_warm_model(app.state.readiness, llm, gate, s, app.state.tenants, served,
+                                             app.state.responder))
     yield
     warmup.cancel()
     await llm.close()
@@ -58,7 +65,8 @@ async def lifespan(app: FastAPI):
 
 
 async def _warm_model(readiness: Readiness, llm: OllamaClient, gate: InferenceGate, s, tenants: TenantRegistry,
-                      served: list[str], attempts: int = 10, delay_s: float = 15.0) -> None:
+                      served: list[str], responder: Responder | None = None, attempts: int = 10,
+                      delay_s: float = 15.0) -> None:
     # After a reboot the model is not resident and the stable prompt prefix is not in the KV cache; on CPU the
     # first customer request would pay both (~40 s) and can exceed the caller's deadline. Ollama may still be
     # starting, hence the retries.
@@ -72,17 +80,25 @@ async def _warm_model(readiness: Readiness, llm: OllamaClient, gate: InferenceGa
         await asyncio.sleep(delay_s)
     else:
         return
-    for tenant_id in served:
+    # With one inference slot Ollama keeps a single KV cache, so only the last warmed tenant stays hot; the prompt is
+    # complete either way, a cold cache only costs time.
+    # Full-context tenants last: the final warm prefix is the one that stays in the single KV slot.
+    ordered = sorted(served, key=lambda t: str((tenants.get(t) or {}).get("context_mode") or "rag") == "full")
+    for tenant_id in ordered:
         tenant = tenants.get(tenant_id) or {}
-        messages = build_messages(PromptParts(
-            tenant_name=tenant.get("display_name", tenant_id), tenant_profile=tenant.get("profile", ""),
-            flow_state="", structured="", documents=[], history=[], summary="", message="ok"))
         try:
-            async with gate.slot(tenant_id, timeout_s=s.llm_timeout_s) as _:
-                gen = await llm.chat(s.llm_model, messages, num_ctx=s.llm_num_ctx, temperature=0.0, max_tokens=1,
-                                     keep_alive=s.llm_keep_alive)
-            log_event("warmup", tenant_id=tenant_id, detail=f"prefix prompt_tokens={gen.prompt_tokens} "
-                                                            f"total_ms={gen.total_ms}")
+            if responder is not None:
+                result = await responder.warm_prefix(tenant_id, tenant)
+            else:
+                messages = build_messages(PromptParts(
+                    tenant_name=tenant.get("display_name", tenant_id), tenant_profile=tenant.get("profile", ""),
+                    flow_state="", structured="", documents=[], history=[], summary="", message="ok"))
+                async with gate.slot(tenant_id, timeout_s=s.llm_timeout_s) as _:
+                    gen = await llm.chat(s.llm_model, messages, num_ctx=s.llm_num_ctx, temperature=0.0, max_tokens=1,
+                                         keep_alive=s.llm_keep_alive)
+                result = {"mode": "rag", "documents": 0, "prompt_tokens": gen.prompt_tokens, "total_ms": gen.total_ms}
+            log_event("warmup", tenant_id=tenant_id, mode=result["mode"], documents=result["documents"],
+                      detail=f"prefix prompt_tokens={result['prompt_tokens']} total_ms={result['total_ms']}")
         except Exception as exc:
             log_event("warmup", tenant_id=tenant_id, detail=f"prefix error: {str(exc)[:120]}")
 
@@ -122,5 +138,7 @@ async def status(request: Request):
         "queue": state.gate.snapshot(),
         "embedding_model": state.encoder.model_name,
         "idempotency_hits": state.idempotency.hits,
+        "full_context": {"hits": state.full_context.hits, "rebuilds": state.full_context.rebuilds,
+                         "last_build_ms": state.full_context.last_build_ms},
         "network": _network_status(state.settings.netwatch_file),
     }

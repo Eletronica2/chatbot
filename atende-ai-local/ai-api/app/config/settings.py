@@ -42,6 +42,17 @@ class Settings(BaseSettings):
     retrieval_min_score: float = 0.0
     retrieval_mode: str = "hybrid"
 
+    # Tenants with "context_mode": "full" in tenants.json get the whole knowledge base in the stable prompt prefix
+    # (KV-cache friendly) while it fits these bounds; larger bases fall back to RAG. The estimate is deliberately
+    # pessimistic (pt-BR runs ~3.5-4 chars/token on Qwen) and num_ctx must also hold policy, history and output.
+    full_context_max_tokens: int = Field(1800, ge=200, le=3000)
+    full_context_max_chunks: int = Field(40, ge=1, le=200)
+    full_context_chars_per_token: float = Field(3.0, ge=2.0, le=6.0)
+    # Measured CPU prefill rate with an empty KV cache (i7-4790: ~30-38 tok/s); used to predict whether a cold
+    # full-context prompt fits the caller's deadline.
+    cold_prefill_tokens_per_s: float = Field(30.0, ge=5.0, le=2000.0)
+    full_context_rewarm_delay_s: float = Field(3.0, ge=0.0, le=60.0)
+
     history_max_messages: int = 6
     history_max_chars: int = 1500
     message_max_chars: int = 1000

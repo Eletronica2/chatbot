@@ -51,6 +51,7 @@ class RetrievalInfo(BaseModel):
     documents_used: int = 0
     chunks: list[dict[str, Any]] = Field(default_factory=list)
     mode: str | None = None
+    fallback_reason: str | None = None
 
 
 class Action(BaseModel):

@@ -1,5 +1,6 @@
 import asyncio
 import time
+from typing import Callable
 
 from app.config.settings import Settings
 from app.embeddings.encoder import Encoder
@@ -11,12 +12,16 @@ class Readiness:
     """Cheap checks on every call; the inference probe (1 token) is cached for ready_inference_ttl_s."""
 
     def __init__(self, settings: Settings, encoder: Encoder | None, store: KnowledgeStore, llm: OllamaClient,
-                 registry=None):
+                 registry=None, recent_success: Callable[[], float] | None = None,
+                 on_probe: Callable[[], None] | None = None):
         self.s = settings
         self.encoder = encoder
         self.store = store
         self.llm = llm
         self.registry = registry
+        # A real inference within the TTL already proves the model works; probing would only evict the KV cache.
+        self.recent_success = recent_success
+        self.on_probe = on_probe
         self._probe_at = 0.0
         self._probe_ok = False
         self._probe_detail = "not_run"
@@ -26,6 +31,13 @@ class Readiness:
         async with self._lock:
             if time.monotonic() - self._probe_at < self.s.ready_inference_ttl_s and self._probe_ok:
                 return
+            last = self.recent_success() if self.recent_success else 0.0
+            if last and time.monotonic() - last < self.s.ready_inference_ttl_s:
+                self._probe_ok, self._probe_at = True, time.monotonic()
+                self._probe_detail = f"recent_inference age_s={int(time.monotonic() - last)}"
+                return
+            if self.on_probe:
+                self.on_probe()
             try:
                 # Same num_ctx as real requests: a different context size forces Ollama to reload the model.
                 gen = await self.llm.chat(self.s.llm_model, [{"role": "user", "content": "Responda apenas: ok"}],

@@ -1,6 +1,7 @@
 import asyncio
 import hashlib
 from collections import defaultdict
+from typing import Callable
 
 from app.domain.models import KnowledgeDocument, SyncOperation
 from app.embeddings.encoder import Encoder
@@ -15,13 +16,25 @@ def content_sha256(content: str) -> str:
 
 
 class KnowledgeService:
-    def __init__(self, encoder: Encoder, store: KnowledgeStore, registry: DocumentRegistry | None = None):
+    def __init__(self, encoder: Encoder, store: KnowledgeStore, registry: DocumentRegistry | None = None,
+                 on_change: Callable[[str], None] | None = None):
         self.encoder = encoder
         self.store = store
         self.registry = registry
+        self.on_change = on_change
         self._locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
+    def _changed(self, tenant_id: str) -> None:
+        if self.on_change is not None:
+            self.on_change(tenant_id)
+
     async def upsert(self, tenant_id: str, doc: KnowledgeDocument) -> dict:
+        try:
+            return await self._upsert(tenant_id, doc)
+        finally:
+            self._changed(tenant_id)
+
+    async def _upsert(self, tenant_id: str, doc: KnowledgeDocument) -> dict:
         content, removed = strip_instructions(doc.content)
         chunks = chunk_document(doc.title, content, doc.content_type, max_chars=600)
         if not chunks:
@@ -34,7 +47,10 @@ class KnowledgeService:
         return {**result, "instruction_lines_removed": removed}
 
     async def delete(self, tenant_id: str, document_ids: list[str]) -> int:
-        return await self.store.delete_documents(tenant_id, document_ids)
+        try:
+            return await self.store.delete_documents(tenant_id, document_ids)
+        finally:
+            self._changed(tenant_id)
 
     async def sync(self, tenant_id: str, op: SyncOperation) -> dict:
         """Apply one versioned operation. Safe to repeat: same version+hash is a no-op, older versions are ignored."""
@@ -55,6 +71,7 @@ class KnowledgeService:
             if is_delete:
                 removed = await self.store.delete_documents(tenant_id, [op.document_id])
                 self.registry.put(tenant_id, op.document_id, op.version, op.content_hash or "", "deleted", op.updated_at, 0)
+                self._changed(tenant_id)
                 return {**base, "result": "deleted", "chunks_removed": removed}
 
             if not op.content or not op.title or not op.content_hash:
@@ -69,5 +86,6 @@ class KnowledgeService:
             if chunks == 0:
                 await self.store.delete_documents(tenant_id, [op.document_id])
             self.registry.put(tenant_id, op.document_id, op.version, op.content_hash, "active", op.updated_at, chunks)
+            self._changed(tenant_id)
             return {**base, "result": "upserted", "chunks": chunks,
                     "instruction_lines_removed": outcome.get("instruction_lines_removed", 0)}
