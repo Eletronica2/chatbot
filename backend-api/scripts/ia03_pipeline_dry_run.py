@@ -2,9 +2,11 @@
 same metadata and reply composition as ConversationService, but session kept in memory.
 
 Nothing is persisted, no billing reservation is made and nothing is sent to WhatsApp.
-Run inside the backend-api container:  python - < scripts/ia03_pipeline_dry_run.py
+Run inside the backend-api container:  python - [message ...] < scripts/ia03_pipeline_dry_run.py
+(each argument is one customer message, in order; without arguments the built-in conversation is used)
 """
 import asyncio
+import sys
 import time
 from datetime import datetime
 
@@ -37,7 +39,8 @@ async def main() -> None:
     flows = FlowService(settings.FLOW_ENGINE_URL, settings.FLOW_ENGINE_TIMEOUT)
     ai = AIService(settings.AI_ENGINE_URL, settings.AI_ENGINE_TIMEOUT)
     session = ConversationSession(tenant_id=TENANT, phone_number="dry-run")
-    for n, text in enumerate(CONVERSATION, 1):
+    conversation = [a for a in sys.argv[1:] if a.strip()] or CONVERSATION
+    for n, text in enumerate(conversation, 1):
         started = time.monotonic()
         msg = message(text, n)
         session.append_history(role="user", content=text, limit=10)
