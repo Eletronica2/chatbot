@@ -302,8 +302,12 @@ class Responder:
         if kv_key is not None and opts.deadline_ms and await self._model_unloaded(model):
             self.note_kv(None)  # Ollama restarted or keep_alive expired behind our back: the cache is empty
         if kv_key is not None and kv_key != self._kv_key and opts.deadline_ms:
+            # A cold full prefix is never the faster path (measured: ~32-52 s vs ~15 s for RAG on top of the cached
+            # head), so a customer request with a deadline always takes RAG while the prefix is rebuilt when idle.
+            # cold_prefill_s stays as the fit check for callers without a deadline policy of their own.
             cold_s = self.cold_prefill_s(tenant_id, docs)
-            if cold_s + COLD_MARGIN_S > (opts.deadline_ms / 1000) - (time.perf_counter() - started):
+            if self.s.full_context_cold_policy == "rag" or \
+                    cold_s + COLD_MARGIN_S > (opts.deadline_ms / 1000) - (time.perf_counter() - started):
                 self._rewarm_target = (tenant_id, tenant)
                 # Without even the prompt head cached the whole RAG prompt is prefilled: keep it smaller.
                 top_k = self.s.retrieval_top_k if self._kv_head == tenant_id else min(COLD_RAG_TOP_K, self.s.retrieval_top_k)

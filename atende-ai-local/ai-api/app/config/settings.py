@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # full-context prompt fits the caller's deadline.
     cold_prefill_tokens_per_s: float = Field(30.0, ge=5.0, le=2000.0)
     full_context_rewarm_delay_s: float = Field(3.0, ge=0.0, le=60.0)
+    # "rag": a cold full prefix always falls back to RAG for requests with a deadline (fastest first answer);
+    # "fit": only when the predicted cold prefill would not fit the deadline.
+    full_context_cold_policy: str = Field("rag", pattern="^(rag|fit)$")
 
     history_max_messages: int = 6
     history_max_chars: int = 1500

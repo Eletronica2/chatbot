@@ -194,10 +194,15 @@ def test_cold_prefix_that_does_not_fit_the_deadline_uses_rag_and_rewarms_in_back
         await responder._rewarm
         second = await responder.respond(_deadline_req(2), BELLA, FULL)
         assert second.retrieval.mode == "full_context" and second.retrieval.fallback_reason is None
-        # A generous deadline can afford the cold prefill, so no RAG detour is needed.
+        # Default policy: a cold prefix always takes RAG, even with a generous deadline.
         responder.note_kv(None)
         roomy = await responder.respond(_deadline_req(3, deadline_ms=180000), BELLA, FULL)
-        assert roomy.retrieval.mode == "full_context"
+        assert roomy.retrieval.mode == "hybrid" and roomy.retrieval.fallback_reason == "kv_cold"
+        await responder._cancel_rewarm()
+        # "fit" policy: a deadline that can afford the cold prefill keeps the full context.
+        fit = Responder(Settings(full_context_rewarm_delay_s=0, full_context_cold_policy="fit"), Encoder(), store, LLM(),
+                        InferenceGate(1, 1, 5, 1), full_context=_cache(store))
+        assert (await fit.respond(_deadline_req(4, deadline_ms=180000), BELLA, FULL)).retrieval.mode == "full_context"
     asyncio.run(scenario())
 
 
