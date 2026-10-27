@@ -139,6 +139,34 @@ def test_unloaded_model_means_cold_cache_even_if_the_prefix_was_recorded_warm():
     asyncio.run(scenario())
 
 
+def test_every_chat_call_sends_the_same_num_batch():
+    import json
+
+    import httpx
+
+    from app.inference.ollama_client import OllamaClient
+
+    seen = []
+
+    def handler(request):
+        if request.url.path != "/api/chat":
+            return httpx.Response(200, json={"capabilities": ["completion"]})
+        seen.append(json.loads(request.content)["options"].get("num_batch"))
+        body = json.dumps({"message": {"content": "ok"}, "done": True, "prompt_eval_count": 1, "eval_count": 1}) + "\n"
+        return httpx.Response(200, content=body.encode())
+
+    async def scenario():
+        client = OllamaClient("http://ollama:11434", 5, num_batch=128)
+        client._client = httpx.AsyncClient(base_url="http://ollama:11434", transport=httpx.MockTransport(handler))
+        for max_tokens in (1, 192):
+            await client.chat("m", [{"role": "user", "content": "oi"}], num_ctx=4096, temperature=0.0,
+                              max_tokens=max_tokens, keep_alive="24h")
+        await client.close()
+    asyncio.run(scenario())
+    assert seen == [128, 128]
+    assert Settings().llm_num_batch == 128
+
+
 def test_staged_warmup_leaves_the_head_resident_and_schedules_the_full_prefix():
     from app.main import _staged_warmup
     from app.security.auth import TenantRegistry

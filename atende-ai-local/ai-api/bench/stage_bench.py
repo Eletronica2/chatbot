@@ -51,7 +51,8 @@ async def main(threads: list[int]) -> None:
     tenant = TenantRegistry.load(s.tenants_file).get(TENANT) or {}
     encoder = await asyncio.to_thread(Encoder, s.embedding_model, s.embedding_threads, s.embedding_dim)
     store = KnowledgeStore(s.qdrant_url, s.qdrant_api_key, s.qdrant_collection, encoder.dim, encoder.model_name)
-    responder = Responder(s, encoder, store, OllamaClient(s.ollama_url, s.llm_timeout_s), InferenceGate(1, 1, 1, 1))
+    responder = Responder(s, encoder, store, OllamaClient(s.ollama_url, s.llm_timeout_s, num_batch=s.llm_num_batch),
+                          InferenceGate(1, 1, 1, 1))
 
     prompts = []
     for q in QUESTIONS:

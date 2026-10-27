@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
     log_event("startup", detail=f"embedding={encoder.model_name} dim={encoder.dim} load_ms={encoder.load_ms}")
     store = KnowledgeStore(s.qdrant_url, s.qdrant_api_key, s.qdrant_collection, encoder.dim, encoder.model_name)
     await store.ensure_collection()
-    llm = OllamaClient(s.ollama_url, s.llm_timeout_s)
+    llm = OllamaClient(s.ollama_url, s.llm_timeout_s, num_batch=s.llm_num_batch)
     gate = InferenceGate(s.llm_concurrency, s.llm_max_queue, s.llm_queue_timeout_s, s.llm_max_per_tenant)
     service_keys = parse_keys(s.service_keys_json)
     app.state.service_verifier = ServiceVerifier(service_keys, s.service_max_skew_s)

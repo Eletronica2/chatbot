@@ -84,7 +84,7 @@ async def main(modes):
     store = KnowledgeStore(s.qdrant_url, s.qdrant_api_key, s.qdrant_collection, encoder.dim, encoder.model_name)
     cache = FullContextCache(store, DocumentRegistry(s.registry_path), max_tokens=s.full_context_max_tokens,
                              max_chunks=s.full_context_max_chunks, chars_per_token=s.full_context_chars_per_token)
-    llm = OllamaClient(s.ollama_url, s.llm_timeout_s)
+    llm = OllamaClient(s.ollama_url, s.llm_timeout_s, num_batch=s.llm_num_batch)
     responder = Responder(s, encoder, store, llm, InferenceGate(1, 1, 300, 1), full_context=cache)
     base = {k: v for k, v in (tenants.get(TENANT) or {}).items() if k not in ("context_mode", "response_style")}
     other = dict(tenants.get(OTHER) or {}, context_mode="rag")

@@ -39,10 +39,12 @@ class OllamaError(Exception):
 
 
 class OllamaClient:
-    def __init__(self, base_url: str, timeout_s: float):
+    def __init__(self, base_url: str, timeout_s: float, num_batch: int | None = None):
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(base_url=self.base_url, timeout=httpx.Timeout(timeout_s, connect=5.0))
         self._capabilities: dict[str, set[str]] = {}
+        # A runner option: every call must send the same value, or Ollama reloads the model (and drops the KV cache).
+        self.num_batch = num_batch
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -93,6 +95,8 @@ class OllamaClient:
                 "repeat_penalty": 1.05,
             },
         }
+        if self.num_batch:
+            payload["options"]["num_batch"] = self.num_batch
         if "thinking" in await self.capabilities(model):
             payload["think"] = False
 

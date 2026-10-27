@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 192
     llm_keep_alive: str = "30m"
     llm_timeout_s: float = 120.0
+    # Prompt batch size. Ollama only notices a cancelled prefill between batches: 512 took ~13 s to yield on this CPU,
+    # 128 takes <1 s for ~9% less prefill throughput (bench/batch_bench.py). Applied to every call by OllamaClient.
+    llm_num_batch: int = Field(128, ge=32, le=2048)
 
     llm_concurrency: int = Field(1, ge=1, le=4)
     llm_max_queue: int = Field(3, ge=0, le=32)
