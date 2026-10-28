@@ -1,0 +1,38 @@
+errors since start: 0
+tables: ['catalog_categories', 'catalog_products', 'order_items', 'order_status_history', 'orders']
+tenants with orders_enabled=1: 0
+catalog products: 21 available: 21
+> quero 2 calabresas grandes e uma coca lata
+< 'Anotado:\n• 2x Calabresa (Grande)\n• 1x Refrigerante Lata (Coca-Cola)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> não
+< 'O pedido é para *entrega* ou *retirada* na loja?'
+> retirada
+< 'Em qual nome fica o pedido?'
+> Teste
+< 'Confira seu pedido:\n• 2x Calabresa (Grande) — R$ 125,80\n• 1x Refrigerante Lata (Coca-Cola) — R$ 7,00\n\nTotal: R$ 132,80\nRetirada na loja\nNome: Teste\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.'
+> sim
+< '(Simulação) Pedido confirmado — nenhum pedido foi registrado.'
+> quero fazer um pedido
+< 'Claro! O que você gostaria de pedir?\n\n*Pizzas Tradicionais:* Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry, Palmito, Napolitana\n*Pizzas Especiais:* Camarão Especial, Parma com Rúcula, Quatro Queijos Premium, Costela BBQ, Salmão Defumado\n*Pizzas Doces:* Chocolate c/ Morango, Banana c/ Canela, Prestígio, Nutella c/ Leite Ninho, Romeu e Julieta\n*Bebidas:* Refrigerante Lata, Refrigerante 2L, Suco Natural, Água Mineral, Água com Gás\n\nPode mandar tudo de uma vez, com quantidade e opção (tamanho, sabor).'
+> uma portuguesa média e um suco de laranja
+< 'Anotado:\n• 1x Portuguesa (Média)\n• 1x Suco Natural (Laranja)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> entrega
+< 'Qual é o endereço completo para entrega? (rua, número, bairro e complemento)'
+> Rua Teste, 100, Centro
+< 'Em qual nome fica o pedido?'
+> Teste
+< 'Confira seu pedido:\n• 1x Portuguesa (Média) — R$ 55,90\n• 1x Suco Natural (Laranja) — R$ 10,00\n\nTotal: R$ 65,90\nEntrega em: Rua Teste, 100, Centro\n(Taxa de entrega, se houver, é confirmada pela loja.)\nNome: Teste\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.'
+> não
+< 'Tudo bem, não registrei o pedido. Se quiser recomeçar, é só dizer "quero fazer um pedido".'
+orders in DB for tenant: 0
+knowledge: bella-flow-pizzas-tradicionais v1 unchanged
+knowledge: bella-flow-pizzas-especiais v1 unchanged
+knowledge: bella-flow-pizzas-doces v1 unchanged
+knowledge: bella-flow-bebidas v1 unchanged
+knowledge: bella-flow-promocoes v1 unchanged
+knowledge: bella-flow-horarios v1 unchanged
+knowledge: bella-flow-tamanhos v1 unchanged
+knowledge: bella-flow-entrega-pagamento v1 unchanged
+knowledge retire: cardapio deleted
+knowledge retire: regras deleted
+knowledge retire: entrega deleted
