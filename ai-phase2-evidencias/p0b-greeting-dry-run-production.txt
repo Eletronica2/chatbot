@@ -1,0 +1,162 @@
+backend errors since start: 0
+flow errors since start: 0
+
+=== Pedidos DESATIVADO ===
+  A) Boa noite -> Cardápio -> Tradicionais
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+  PASS A lista tradicionais
+  B) Cardápio -> Quero ver as tradicionais
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Quero ver as tradicionais'                flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+  PASS B lista tradicionais sem iniciar pedido
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Especiais'                                flow               pizzas_especiais       Nossas Pizzas Especiais ⭐🍕
+  PASS B Especiais
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Bebidas'                                  flow               bebidas                Nossas bebidas 🥤
+  PASS B Bebidas
+  C) Quanto custa a calabresa?
+    > 'Quanto custa a calabresa?'                catalog_price                             *Calabresa*: Broto R$ 42,90 · Média R$ 52,90 · Grande R$ 62,90
+  PASS C preço do cadastro
+  Conversa real de 27/10 (fluxo legado)
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Quero ver as tradicionais'                flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Arthur'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Grande'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Calabresa'                                ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Só a pizza'                               ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Vou retirar'                              ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Vou retirar no local'                     ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Cartão'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+  PASS nenhuma etapa/confirmação legada enviada
+  D/E/F) Quero duas pizzas grandes de calabresa
+    > 'Quero duas pizzas grandes de calabresa'   flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'não'                                      ai_fallback        cardapio_principal     (IA simulada) resposta
+    > 'retirada'                                 ai_fallback        cardapio_principal     (IA simulada) resposta
+    > 'Teste'                                    ai_fallback        cardapio_principal     (IA simulada) resposta
+  PASS D sem módulo: nada de pedido
+  PASS D sem fluxo legado
+    > 'sim'                                      ai_fallback        cardapio_principal     (IA simulada) resposta
+  PASS F/E sem módulo: nenhum pedido
+
+=== Pedidos ATIVADO ===
+  A) Boa noite -> Cardápio -> Tradicionais
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+  PASS A lista tradicionais
+  B) Cardápio -> Quero ver as tradicionais
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Quero ver as tradicionais'                flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+  PASS B lista tradicionais sem iniciar pedido
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Especiais'                                flow               pizzas_especiais       Nossas Pizzas Especiais ⭐🍕
+  PASS B Especiais
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Bebidas'                                  flow               bebidas                Nossas bebidas 🥤
+  PASS B Bebidas
+  C) Quanto custa a calabresa?
+    > 'Quanto custa a calabresa?'                catalog_price                             *Calabresa*: Broto R$ 42,90 · Média R$ 52,90 · Grande R$ 62,90
+  PASS C preço do cadastro
+  Conversa real de 27/10 (fluxo legado)
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Quero ver as tradicionais'                flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Arthur'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Grande'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Calabresa'                                ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Só a pizza'                               ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Vou retirar'                              ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Vou retirar no local'                     ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+    > 'Cartão'                                   ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+  PASS nenhuma etapa/confirmação legada enviada
+  D/E/F) Quero duas pizzas grandes de calabresa
+    > 'Quero duas pizzas grandes de calabresa'   order_assistant                           Anotado:
+    > 'não'                                      order_assistant                           O pedido é para *entrega* ou *retirada* na loja?
+    > 'retirada'                                 order_assistant                           Em qual nome fica o pedido?
+    > 'Teste'                                    order_assistant                           Confira seu pedido:
+  PASS D resumo com total, aguardando SIM
+  PASS E sem confirmação: nenhum pedido
+    > 'sim'                                      order_assistant                           Faz um tempo desde o resumo. Confira se está tudo certo:
+  PASS E 'sim' após 20 min reapresenta resumo
+    > 'sim'                                      order_assistant                           Pedido #1 registrado! ✅
+  PASS F confirmação explícita = 1 pedido
+    > 'sim'                                      duplicate                                 (sem resposta)
+  PASS G webhook repetido não duplica
+    > 'sim'                                      flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS G 'sim' extra não cria
+    > 'Quero duas pizzas grandes de calabresa'   order_assistant                           Anotado:
+    > 'não'                                      order_assistant                           O pedido é para *entrega* ou *retirada* na loja?
+    > 'retirada'                                 order_assistant                           Em qual nome fica o pedido?
+    > 'Teste'                                    order_assistant                           Confira seu pedido:
+    > 'sim'                                      order_assistant                           Pedido #2 registrado! ✅
+    > 'sim, confirmo'                            flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS G mensagens simultâneas: 1 pedido, 1 confirmação
+    > 'Quero duas pizzas grandes de calabresa'   order_assistant                           Anotado:
+    > 'não'                                      order_assistant                           O pedido é para *entrega* ou *retirada* na loja?
+    > 'retirada'                                 order_assistant                           Em qual nome fica o pedido?
+    > 'Teste'                                    order_assistant                           Confira seu pedido:
+order_create_failed tenant=pizzaria_bella_massa draft=ed9e20a0-162d-46fe-9772-20a43cc178df
+            ^^^^^^^^^^^^^^^^^^^^^^^^^
+    > 'sim'                                      order_assistant                           Não consegui registrar seu pedido agora, então ele *não* foi confirmad
+  PASS H falha não confirma
+
+=== Saudações (Pedidos DESATIVADO) ===
+  Saudação após conversa antiga com pedido legado (estado 27/10)
+    > 'oi'                                       flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS saudação sem pedido inventado
+  PASS novo atendimento: saudação oficial do fluxo
+  PASS IA não recebe histórico/dados antigos
+  PASS dados legados descartados do estado
+  PASS histórico preservado
+  Mensagens consecutivas: Cardápio -> Tradicionais -> Boa noite
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Boa noite'                                ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+  PASS sem contaminação entre mensagens
+  PASS IA só vê o atendimento atual
+
+=== Saudações (Pedidos ATIVADO) ===
+  Saudação após conversa antiga com pedido legado (estado 27/10)
+    > 'oi'                                       flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS saudação sem pedido inventado
+  PASS novo atendimento: saudação oficial do fluxo
+  PASS IA não recebe histórico/dados antigos
+  PASS dados legados descartados do estado
+  PASS histórico preservado
+  Mensagens consecutivas: Cardápio -> Tradicionais -> Boa noite
+    > 'Cardápio'                                 flow               cardapio_principal     Aqui está nosso cardápio! 😍🍕
+    > 'Tradicionais'                             flow               pizzas_tradicionais    Nossas Pizzas Tradicionais 🍕
+    > 'Boa noite'                                ai_fallback        pizzas_tradicionais    (IA simulada) resposta
+  PASS sem contaminação entre mensagens
+  PASS IA só vê o atendimento atual
+  Novo atendimento após pedido concluído
+    > 'Quero duas pizzas grandes de calabresa'   order_assistant                           Anotado:
+    > 'não'                                      order_assistant                           O pedido é para *entrega* ou *retirada* na loja?
+    > 'retirada'                                 order_assistant                           Em qual nome fica o pedido?
+    > 'Teste'                                    order_assistant                           Confira seu pedido:
+    > 'sim'                                      order_assistant                           Pedido #1 registrado! ✅
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS mesmo atendimento: saudação limpa
+  PASS IA não vê turnos do pedido
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS novo atendimento começa na saudação
+  Novo atendimento após pedido cancelado
+    > 'Quero duas pizzas grandes de calabresa'   order_assistant                           Anotado:
+    > 'cancelar'                                 order_assistant                           Tudo bem, cancelei este pedido. Se quiser recomeçar, é só dizer "quero
+    > 'Boa noite'                                flow               boas_vindas            Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊
+  PASS após cancelamento começa na saudação
+
+=== Qwen3 dry-run (sem envio) ===
+  antes (payload de 23:46): handled=True -> 'Boa noite! 😊'
+  depois (corrigido): handled=True -> 'Boa noite! Como posso ajudar você hoje?'
+  PASS Qwen3 saudação corrigida sem pedido
+
+RESULT: ALL PASS

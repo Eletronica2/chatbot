@@ -1,0 +1,7 @@
+
+=== Qwen3 dry-run (sem envio) ===
+  antes (payload de 23:46): handled=True -> 'Boa noite! Obrigado por escolher a Pizzaria Bella Massa. 😊'
+  depois (corrigido): handled=True -> 'Boa noite! Como posso ajudar você hoje?'
+  PASS Qwen3 saudação corrigida sem pedido
+
+RESULT: ALL PASS
