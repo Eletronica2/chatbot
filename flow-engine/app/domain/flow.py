@@ -41,6 +41,10 @@ class FlowState(BaseModel):
     silent: bool = False  # True = change state without sending a message
     collect: Optional[str] = None  # Save user input to collected_data[this_key]
     fallback_ai: bool = False  # Trigger AI fallback for this specific state
+    # State only reachable when the tenant has this module enabled (e.g. "orders"); never otherwise.
+    requires_module: Optional[str] = None
+    # Per disabled module: {line substring: replacement line ("" drops the line)} applied to the message.
+    lines_without_module: Dict[str, Dict[str, str]] = Field(default_factory=dict)
 
 
 class FlowDefinition(BaseModel):
@@ -78,6 +82,8 @@ class FlowExecutionRequest(BaseModel):
     session_id: Optional[str] = None
     message: Dict[str, Any]
     session_state: Dict[str, Any] = Field(default_factory=dict)
+    # Tenant modules enabled by the backend (e.g. ["orders"]). Missing = none: module-gated states stay closed.
+    enabled_modules: List[str] = Field(default_factory=list)
 
     @classmethod
     def from_execute_payload(cls, payload: FlowExecutePayload) -> "FlowExecutionRequest":

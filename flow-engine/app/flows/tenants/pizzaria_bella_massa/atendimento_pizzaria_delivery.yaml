@@ -147,6 +147,16 @@ global_transitions:
   - condition:
       contains: "combo"
     target_state: promocoes_do_dia
+  # Categorias acessíveis de qualquer etapa ("quero ver as especiais" estando nas tradicionais).
+  - condition:
+      contains: "tradicional"
+    target_state: pizzas_tradicionais
+  - condition:
+      contains: "especial"
+    target_state: pizzas_especiais
+  - condition:
+      contains: "doce"
+    target_state: pizzas_doces
   - condition:
       contains: "refrigerante"
     target_state: bebidas
@@ -188,6 +198,9 @@ states:
 
       Me fala o que você precisa — posso mostrar nosso cardápio, te contar sobre as promoções de hoje, ajudar com um pedido ou informar nossos horários 😄
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "ajudar com um pedido": "Me fala o que você precisa — posso mostrar nosso cardápio, te contar sobre as promoções de hoje ou informar nossos horários 😄"
     options:
       - label: "Ver cardápio 🍕"
         value: "cardapio"
@@ -205,8 +218,6 @@ states:
       - condition: "contains:pizza"
         target_state: cardapio_principal
       - condition: "contains:pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:quero"
         target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
@@ -252,6 +263,9 @@ states:
 
       Quer ver os sabores de uma categoria específica ou já quer fazer seu pedido? 😊
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "já quer fazer seu pedido": "Quer ver os sabores de uma categoria específica? 😊"
     options:
       - label: "Tradicionais 🍕"
         value: "tradicionais"
@@ -285,8 +299,6 @@ states:
         target_state: cardapio_principal
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:quero"
-        target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
 
@@ -306,6 +318,9 @@ states:
 
       Quer pedir alguma dessas? Posso te ajudar! 😄
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "Quer pedir alguma dessas": "Quer ver outra categoria? Especiais, doces ou bebidas 😄"
     options:
       - label: "Fazer pedido 🛵"
         value: "pedido"
@@ -315,8 +330,6 @@ states:
         value: "doces"
     transitions:
       - condition: "contains:pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:quero"
         target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
@@ -340,6 +353,9 @@ states:
 
       São incríveis! Quer montar seu pedido? 😍
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "Quer montar seu pedido": "São incríveis! Quer ver outra categoria? 😍"
     options:
       - label: "Fazer pedido 🛵"
         value: "pedido"
@@ -349,8 +365,6 @@ states:
         value: "doces"
     transitions:
       - condition: "contains:pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:quero"
         target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
@@ -374,6 +388,9 @@ states:
 
       Bateu a vontade? Posso montar seu pedido! 🍕
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "Posso montar seu pedido": "Bateu a vontade? Quer ver outra categoria? 🍕"
     options:
       - label: "Fazer pedido 🛵"
         value: "pedido"
@@ -383,8 +400,6 @@ states:
         value: "especiais"
     transitions:
       - condition: "contains:pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:quero"
         target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
@@ -411,6 +426,9 @@ states:
     intent_triggers:
       - bebidas
     fallback_ai: true
+    lines_without_module:
+      orders:
+        "Posso adicionar ao seu pedido": "Quer ver o cardápio de pizzas? 😊"
     options:
       - label: "Fazer pedido 🛵"
         value: "pedido"
@@ -418,8 +436,6 @@ states:
         value: "cardapio"
     transitions:
       - condition: "contains:pedido"
-        target_state: iniciar_pedido
-      - condition: "contains:quero"
         target_state: iniciar_pedido
       - condition: "contains:pedir"
         target_state: iniciar_pedido
@@ -459,8 +475,6 @@ states:
     transitions:
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:quero"
-        target_state: iniciar_pedido
       - condition: "contains:combo"
         target_state: iniciar_pedido
       - condition: "contains:cardapio"
@@ -490,8 +504,6 @@ states:
     transitions:
       - condition: "contains:pedido"
         target_state: iniciar_pedido
-      - condition: "contains:quero"
-        target_state: iniciar_pedido
       - condition: "contains:cardapio"
         target_state: cardapio_principal
       - condition: "contains:menu"
@@ -499,6 +511,8 @@ states:
 
   # ── FLUXO DE PEDIDO ─────────────────────────────────────────────
   iniciar_pedido:
+    # Só com o módulo Pedidos ativo: o assistente de pedidos do backend assume (hook start_order).
+    requires_module: orders
     message: |
       Ótimo, vamos lá! 😄🍕
 
@@ -522,6 +536,8 @@ states:
         target_state: pedido_tamanho
 
   pedido_tamanho:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Que prazer! 😊
 
@@ -551,6 +567,8 @@ states:
         target_state: pedido_sabores
 
   pedido_sabores:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Boa escolha! 🍕✨
 
@@ -588,6 +606,8 @@ states:
         target_state: pedido_bebida
 
   pedido_bebida:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Perfeito! 😍
 
@@ -618,6 +638,8 @@ states:
         target_state: pedido_tipo_entrega
 
   pedido_tipo_entrega:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Ótimo! 🛵
 
@@ -651,6 +673,8 @@ states:
         target_state: pedido_endereco
 
   pedido_endereco:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Perfeito! 📍
 
@@ -679,6 +703,8 @@ states:
         target_state: pedido_pagamento
 
   pedido_pagamento:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Quase lá! 💳
 
@@ -714,6 +740,8 @@ states:
         target_state: pedido_confirmacao
 
   pedido_confirmacao:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       🎉 Pedido recebido com sucesso!
 
@@ -735,6 +763,8 @@ states:
 
   # ── CONSULTAR PEDIDO ────────────────────────────────────────────
   consultar_pedido:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Claro! Vou verificar seu pedido 🔍
 
@@ -756,6 +786,8 @@ states:
       action: "consultar_status_pedido"
 
   consultar_pedido_resultado:
+    # Fluxo legado (não grava pedido): nunca executa; mantido só como fonte do conhecimento da IA.
+    requires_module: legacy_orders
     message: |
       Estou verificando o status do seu pedido agora... 📦
 

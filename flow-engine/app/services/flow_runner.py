@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from app.domain.flow import FlowDefinition, FlowExecutionRequest, FlowExecutionResponse, FlowState
 from app.services.business_hours import apply_contextual_cta
@@ -22,11 +22,16 @@ class FlowRunner:
         request: FlowExecutionRequest,
     ) -> FlowExecutionResponse:
         session_state = dict(request.session_state or {})
+        enabled = set(request.enabled_modules or [])
         current_state_name = (
             session_state.get("current_state")
             or session_state.get("last_state")
             or definition.start_state
         )
+        # A session parked in a state of a disabled module (e.g. a legacy order step) restarts from the flow start.
+        if not self._allowed(definition.get_state(current_state_name), enabled):
+            current_state_name = definition.start_state
+            session_state["current_state"] = session_state["last_state"] = current_state_name
         text_candidates = self._extract_text_candidates(request.message)
         detected_intent = self._extract_detected_intent(request.message)
 
@@ -46,24 +51,26 @@ class FlowRunner:
         # transitions stay deterministic; collect states (orders in progress) are never bypassed.
         if self._prefers_ai(definition, current_state_for_collect, text_candidates):
             handoff_state = self._matching_handoff_transition(
-                definition, current_state_for_collect, text_candidates, session_state
+                definition, current_state_for_collect, text_candidates, session_state, enabled
             )
             if handoff_state:
                 return self._build_response(
                     definition,
                     handoff_state,
                     session_state,
+                    enabled,
                     detected_intent=detected_intent,
                     resolution_reason="transition_match",
                     collected_data=collected_data,
                 )
             return self._ai_fallback_response(definition, current_state_for_collect, session_state, detected_intent,
-                                              collected_data, reason="specific_question")
+                                              collected_data, enabled, reason="specific_question")
 
         intent_state = self._find_state_by_intent(
             definition=definition,
             detected_intent=detected_intent,
             text_candidates=text_candidates,
+            enabled=enabled,
         )
 
         has_previous_state = bool(
@@ -76,6 +83,7 @@ class FlowRunner:
                 definition,
                 intent_state,
                 session_state,
+                enabled,
                 detected_intent=detected_intent,
                 resolution_reason="intent_match",
                 collected_data=collected_data,
@@ -100,12 +108,14 @@ class FlowRunner:
             definition,
             request,
             text_candidates=text_candidates,
+            enabled=enabled,
         )
         if next_state:
             return self._build_response(
                 definition,
                 next_state,
                 session_state,
+                enabled,
                 detected_intent=detected_intent,
                 resolution_reason="transition_match",
                 collected_data=collected_data,
@@ -116,6 +126,7 @@ class FlowRunner:
             definition,
             text_candidates,
             session_state,
+            enabled,
         )
         if global_next:
             # Smart reentry: save current state so the flow can resume
@@ -127,6 +138,7 @@ class FlowRunner:
                 definition,
                 global_next,
                 session_state,
+                enabled,
                 detected_intent=detected_intent,
                 resolution_reason="global_transition",
                 collected_data=collected_data,
@@ -140,6 +152,7 @@ class FlowRunner:
                 definition,
                 current_state,
                 session_state,
+                enabled,
                 detected_intent=detected_intent,
                 resolution_reason="flow_start",
                 collected_data=collected_data,
@@ -148,7 +161,7 @@ class FlowRunner:
         # 3. Check if current state or flow has fallback_ai enabled
         if current_state.fallback_ai or definition.fallback_ai:
             return self._ai_fallback_response(definition, current_state, session_state, detected_intent,
-                                              collected_data)
+                                              collected_data, enabled)
 
         return FlowExecutionResponse(
             handled=False,
@@ -167,6 +180,7 @@ class FlowRunner:
         definition: FlowDefinition,
         state: FlowState,
         session_state: Dict[str, Any],
+        enabled: Set[str],
         *,
         detected_intent: str | None = None,
         resolution_reason: str | None = None,
@@ -184,11 +198,12 @@ class FlowRunner:
         # Handle silent states: change state, follow default transition, no message
         if state.silent and _silent_hops < self._MAX_SILENT_HOPS:
             next_state = self._resolve_default_transition(state, definition)
-            if next_state:
+            if next_state and self._allowed(next_state, enabled):
                 return self._build_response(
                     definition,
                     next_state,
                     session_state,
+                    enabled,
                     detected_intent=detected_intent,
                     resolution_reason=resolution_reason,
                     collected_data=collected_data,
@@ -207,10 +222,8 @@ class FlowRunner:
                 collected_data=collected_data or {},
             )
 
-        options = [option.model_dump() for option in state.options]
-        raw_message = state.message or ""
-        business_hours = (definition.metadata or {}).get("business_hours")
-        personalized = apply_contextual_cta(raw_message, business_hours)
+        options = self._visible_options(definition, state, enabled)
+        personalized = self._render_message(definition, state, enabled)
         metadata: Dict[str, Any] = {
             "flow": definition.name,
             "state": state.state,
@@ -260,6 +273,7 @@ class FlowRunner:
         request: FlowExecutionRequest,
         *,
         text_candidates: Optional[List[str]] = None,
+        enabled: Optional[Set[str]] = None,
     ) -> Optional[FlowState]:
         if not state.transitions:
             return None
@@ -269,9 +283,44 @@ class FlowRunner:
         for transition in state.transitions:
             if self._condition_matches(transition.condition, text_candidates, request.session_state):
                 next_state = definition.get_state(transition.target_state)
-                if next_state:
+                if next_state and self._allowed(next_state, enabled or set()):
                     return next_state
         return None
+
+    @staticmethod
+    def _allowed(state: Optional[FlowState], enabled: Set[str]) -> bool:
+        return state is None or not state.requires_module or state.requires_module in enabled
+
+    def _visible_options(self, definition: FlowDefinition, state: FlowState, enabled: Set[str]) -> List[Dict[str, Any]]:
+        """Hide options that lead into a state of a disabled module (e.g. "Fazer pedido" without Pedidos)."""
+        visible = []
+        for option in state.options:
+            required = (option.metadata or {}).get("requires_module")
+            if required and required not in enabled:
+                continue
+            value = [self._normalize_text(option.value)]
+            target = next((definition.get_state(t.target_state) for t in state.transitions
+                           if self._condition_matches(t.condition, value, {})), None)
+            if target is not None and not self._allowed(target, enabled):
+                continue
+            visible.append(option.model_dump())
+        return visible
+
+    def _render_message(self, definition: FlowDefinition, state: FlowState, enabled: Set[str]) -> str:
+        message = state.message or ""
+        for module, replacements in (state.lines_without_module or {}).items():
+            if module in enabled:
+                continue
+            lines = []
+            for line in message.splitlines():
+                key = next((k for k in replacements if k and k in line), None)
+                if key is None:
+                    lines.append(line)
+                elif replacements[key]:
+                    lines.append(replacements[key])
+            message = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)) + ("\n" if message.endswith("\n") else "")
+        business_hours = (definition.metadata or {}).get("business_hours")
+        return apply_contextual_cta(message, business_hours, ordering="orders" in enabled)
 
     def _prefers_ai(
         self,
@@ -291,11 +340,12 @@ class FlowRunner:
         state: FlowState,
         text_candidates: List[str],
         session_state: Dict[str, Any],
+        enabled: Set[str],
     ) -> Optional[FlowState]:
         for condition, target in [*((t.condition, t.target_state) for t in state.transitions),
                                   *((g.condition, g.target_state) for g in definition.global_transitions)]:
             target_state = definition.get_state(target)
-            if target_state and target_state.requires_handoff and self._condition_matches(
+            if target_state and target_state.requires_handoff and self._allowed(target_state, enabled) and self._condition_matches(
                 condition, text_candidates, session_state
             ):
                 return target_state
@@ -308,11 +358,11 @@ class FlowRunner:
         session_state: Dict[str, Any],
         detected_intent: Optional[str],
         collected_data: Dict[str, Any],
+        enabled: Set[str],
         *,
         reason: str = "fallback_ai",
     ) -> FlowExecutionResponse:
-        bh = (definition.metadata or {}).get("business_hours")
-        flow_msg = apply_contextual_cta(state.message or "", bh)
+        flow_msg = self._render_message(definition, state, enabled)
         return FlowExecutionResponse(
             handled=True,
             reply_text=None,  # AI will fill this
@@ -323,7 +373,7 @@ class FlowRunner:
                 "state": state.state,
                 "resolution_reason": "fallback_ai",
                 "routing": reason,
-                "options": [o.model_dump() for o in state.options],
+                "options": self._visible_options(definition, state, enabled),
                 "flow_state_message": flow_msg,
             },
             collected_data=collected_data,
@@ -335,11 +385,14 @@ class FlowRunner:
         definition: FlowDefinition,
         text_candidates: List[str],
         session_state: Dict[str, Any],
+        enabled: Optional[Set[str]] = None,
     ) -> Optional[FlowState]:
         """Check global transitions — evaluated when no local transition matches."""
         for gt in definition.global_transitions:
             if self._condition_matches(gt.condition, text_candidates, session_state):
-                return definition.get_state(gt.target_state)
+                target = definition.get_state(gt.target_state)
+                if target and self._allowed(target, enabled or set()):
+                    return target
         return None
 
     def _extract_text_candidates(self, message: Dict[str, Any]) -> List[str]:
@@ -387,7 +440,16 @@ class FlowRunner:
             return False
         if haystack == needle:
             return True
-        pattern = r"(^|[^a-z0-9])" + re.escape(needle) + r"([^a-z0-9]|$)"
+        # Whole words, tolerant to the plural of the last word ("tradicional" ~ "tradicionais", "doce" ~ "doces").
+        head, _, last = needle.rpartition(" ")
+        forms = {last, last + "s", last + "es"}
+        if last.endswith("l"):
+            forms.add(last[:-1] + "is")
+        if last.endswith("m"):
+            forms.add(last[:-1] + "ns")
+        prefix = re.escape(head + " ") if head else ""
+        alternatives = "|".join(re.escape(form) for form in sorted(forms, key=len, reverse=True))
+        pattern = r"(^|[^a-z0-9])" + prefix + "(?:" + alternatives + r")([^a-z0-9]|$)"
         return re.search(pattern, haystack) is not None
 
     def _extract_detected_intent(self, message: Dict[str, Any]) -> Optional[str]:
@@ -412,6 +474,7 @@ class FlowRunner:
         definition: FlowDefinition,
         detected_intent: Optional[str],
         text_candidates: List[str],
+        enabled: Optional[Set[str]] = None,
     ) -> Optional[FlowState]:
         if not detected_intent and not text_candidates:
             return None
@@ -436,7 +499,7 @@ class FlowRunner:
             effective_intents.add(resolved_from_text)
 
         for state in definition.states.values():
-            if not state.intent_triggers:
+            if not state.intent_triggers or not self._allowed(state, enabled or set()):
                 continue
             for trigger in state.intent_triggers:
                 normalized_trigger = (trigger or "").strip().lower()

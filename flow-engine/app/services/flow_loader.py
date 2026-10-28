@@ -161,6 +161,17 @@ class FlowLoader:
         if collect_key is not None and not isinstance(collect_key, str):
             raise FlowValidationError(f"State '{state_name}' collect must be a string key")
         fallback_ai = bool(payload.get("fallback_ai", False))
+        requires_module = payload.get("requires_module")
+        if requires_module is not None and not isinstance(requires_module, str):
+            raise FlowValidationError(f"State '{state_name}' requires_module must be a string")
+        lines_without_module = payload.get("lines_without_module") or {}
+        if not isinstance(lines_without_module, dict) or not all(
+            isinstance(v, dict) and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items())
+            for v in lines_without_module.values()
+        ):
+            raise FlowValidationError(
+                f"State '{state_name}' lines_without_module must map module -> {{line substring: replacement}}"
+            )
 
         return FlowState(
             state=state_name,
@@ -176,6 +187,8 @@ class FlowLoader:
             silent=silent,
             collect=collect_key,
             fallback_ai=fallback_ai,
+            requires_module=requires_module,
+            lines_without_module=lines_without_module,
         )
 
     def _parse_intent_triggers(self, state_name: str, payload) -> List[str]:

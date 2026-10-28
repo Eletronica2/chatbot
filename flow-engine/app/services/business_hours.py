@@ -128,14 +128,15 @@ def apply_contextual_cta(
     business_hours: Dict[str, Any] | None,
     *,
     now: datetime | None = None,
+    ordering: bool = True,
 ) -> str:
-    """Replace {cta_pedido} with open/closed appropriate copy."""
+    """Replace {cta_pedido} with open/closed appropriate copy (no order offer when ordering is disabled)."""
     if not message or "{cta_pedido}" not in message:
         return message
 
     is_open, next_hint = open_status(business_hours, now=now)
     if is_open:
-        cta = "Quer fazer um pedido ou ver o cardápio? 😊"
+        cta = "Quer fazer um pedido ou ver o cardápio? 😊" if ordering else "Quer ver o cardápio ou as promoções? 😊"
     else:
         hint = next_hint or "em breve"
         cta = (
