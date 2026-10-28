@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     GATEWAY_API_URL: str = "http://whatsapp-gateway:40000"
     GATEWAY_API_TIMEOUT: int = 15
 
+    # Approved UTILITY template used for order status outside the 24h window (body vars: number, status).
+    ORDER_STATUS_TEMPLATE_NAME: str = "atende_pedido_status"
+    ORDER_STATUS_TEMPLATE_LANGUAGE: str = "pt_BR"
+
     META_APP_ID: str = ""
     META_APP_SECRET: str = ""
     META_EMBEDDED_CONFIG_ID: str = ""

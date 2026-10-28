@@ -6,7 +6,7 @@ from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.api.access import assert_superadmin, resolve_tenant_scope
+from app.api.access import assert_superadmin, assert_tenant_admin, is_superadmin, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
 from app.domain.tenant import TenantSettings
 from app.services.dependencies import admin_audit_service_dependency, authenticated_user_dependency, tenant_settings_service_dependency
@@ -27,6 +27,7 @@ class TenantSettingsPatchPayload(BaseModel):
     fallback_models: Optional[List[str]] = None
     auto_reply_mode: Optional[Literal["on", "off", "allowlist"]] = None
     auto_reply_allowlist: Optional[List[str]] = Field(default=None, max_length=20)
+    orders_enabled: Optional[bool] = None
 
 
 class TenantSettingsResponse(BaseModel):
@@ -42,6 +43,7 @@ class TenantSettingsResponse(BaseModel):
     local_ai_enabled: bool = False
     auto_reply_mode: str = "on"
     auto_reply_allowlist_count: int = 0
+    orders_enabled: bool = False
 
     @classmethod
     def from_domain(cls, item: TenantSettings) -> "TenantSettingsResponse":
@@ -57,6 +59,8 @@ def assert_tenant_settings_patch_access(
             or payload.ai_provider is not None or payload.local_ai_enabled is not None
             or payload.auto_reply_mode is not None or payload.auto_reply_allowlist is not None):
         assert_superadmin(user)
+    if payload.orders_enabled is not None and not is_superadmin(user):
+        assert_tenant_admin(user)
 
 
 @router.get("/{tenant_id}/settings", response_model=TenantSettingsResponse)
@@ -95,6 +99,7 @@ async def patch_tenant_settings(
             fallback_models=payload.fallback_models,
             auto_reply_mode=payload.auto_reply_mode,
             auto_reply_allowlist=payload.auto_reply_allowlist,
+            orders_enabled=payload.orders_enabled,
         )
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -111,5 +116,23 @@ async def patch_tenant_settings(
             entity_key=target_tenant_id, summary="Provider de IA do tenant atualizado", actor=user,
             metadata={"ai_provider": updated.ai_provider, "local_ai_enabled": updated.local_ai_enabled},
         )
+    if payload.orders_enabled is not None:
+        await audit_service.append(
+            tenant_id=target_tenant_id, action="tenant.orders.update", entity_type="tenant_settings",
+            entity_key=target_tenant_id, summary="Módulo Pedidos " + ("ativado" if updated.orders_enabled else "desativado"),
+            actor=user, metadata={"orders_enabled": updated.orders_enabled},
+        )
+        await _resync_catalog_knowledge(target_tenant_id, service, audit_service)
     return TenantSettingsResponse.from_domain(updated)
+
+
+async def _resync_catalog_knowledge(tenant_id: str, service: TenantSettingsService, audit: AdminAuditService) -> None:
+    from app.api.routes.catalog import resync_catalog_knowledge
+    from app.services.dependencies import catalog_service_dependency, knowledge_sync_service_dependency
+
+    try:
+        catalog, knowledge = catalog_service_dependency(), knowledge_sync_service_dependency()
+    except RuntimeError:
+        return
+    await resync_catalog_knowledge(tenant_id, catalog, service, knowledge, audit)
 

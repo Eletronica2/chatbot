@@ -18,11 +18,35 @@ from app.services.dependencies import (
     flow_catalog_service_dependency,
     flow_service_dependency,
     flow_snapshot_repository_dependency,
+    knowledge_sync_service_dependency,
 )
 from app.services.flow_catalog_service import FlowCatalogService
+from app.services.flow_knowledge import FlowKnowledgeError, build_documents
 from app.services.flow_service import FlowService
 
 router = APIRouter(prefix="/api/v1/flows", tags=["Flow Admin"])
+
+
+def schedule_flow_knowledge_sync(tenant_id: str, flow_name: str, yaml_content: str, audit: AdminAuditService) -> str:
+    """Publishing a flow refreshes the local AI knowledge declared in its ``knowledge`` section (background)."""
+    try:
+        knowledge = knowledge_sync_service_dependency()
+        documents, retired = build_documents(yaml_content)
+    except RuntimeError:
+        return "unavailable"
+    except FlowKnowledgeError as exc:
+        return f"invalid: {str(exc)[:120]}"
+    if not documents and not retired:
+        return "not_declared"
+
+    async def _record(result: Dict[str, Any]) -> None:
+        await audit.append(tenant_id=tenant_id, action="knowledge.sync", entity_type="flow", entity_key=flow_name,
+                           summary=f"Conhecimento do fluxo {flow_name} sincronizado com a IA local",
+                           metadata={k: result.get(k) for k in ("status", "reason", "unchanged", "results", "error")})
+
+    knowledge.schedule(knowledge.sync_flow(tenant_id, yaml_content), label=f"flow:{tenant_id}:{flow_name}",
+                       on_done=_record)
+    return "scheduled"
 
 
 class FlowUpsertPayload(BaseModel):
@@ -161,7 +185,8 @@ async def upsert_flow_yaml(
             actor=user,
             metadata={"flow_name": flow_name},
         )
-        return result
+        knowledge_sync = schedule_flow_knowledge_sync(target_tenant_id, flow_name, payload.yaml_content, audit_service)
+        return {**result, "knowledge_sync": knowledge_sync} if isinstance(result, dict) else result
     except httpx.HTTPStatusError as exc:
         raise HTTPException(status_code=exc.response.status_code, detail=exc.response.text) from exc
     except Exception as exc:
@@ -292,6 +317,7 @@ async def restore_flow_to_base(
         actor=user,
         metadata={"flow_name": flow_name},
     )
+    schedule_flow_knowledge_sync(target_tenant_id, flow_name, yaml_content, audit_service)
     return {
         "flow_name": flow_name,
         "yaml_content": yaml_content,

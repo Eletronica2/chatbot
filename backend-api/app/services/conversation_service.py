@@ -17,6 +17,7 @@ from app.services.ai_service import AIService, IntentDetectionResult
 from app.services.conversation_log_service import ConversationLogService
 from app.services.flow_service import FlowService
 from app.services.message_service import MessageService
+from app.services.order_assistant import START_ACTION as START_ORDER_ACTION
 from app.services.session_service import SessionService
 from app.services.subscription_service import SubscriptionService
 from app.services.tenant_settings_service import TenantSettingsService
@@ -38,6 +39,7 @@ class ConversationService:
         message_service: MessageService,
         billing_gate: Any | None = None,
         ai_usage_service: Any | None = None,
+        order_assistant: Any | None = None,
     ):
         self.session_service = session_service
         self.flow_service = flow_service
@@ -48,6 +50,7 @@ class ConversationService:
         self.message_service = message_service
         self.billing_gate = billing_gate
         self.ai_usage_service = ai_usage_service
+        self.order_assistant = order_assistant
 
     def _billing_v2_active(self) -> bool:
         return self.billing_gate is not None and bool(self.billing_gate.enabled)
@@ -379,6 +382,10 @@ class ConversationService:
             phone_number_id=message.phone_number_id,
         )
 
+        order_action = await self._maybe_order_assistant(message, session, ctx, started_at)
+        if order_action is not None:
+            return order_action
+
         intent_result = await self.ai_service.detect_intent(
             tenant_id=message.tenant_id,
             phone_number=message.phone_number,
@@ -490,6 +497,11 @@ class ConversationService:
 
         if flow_result.handled and flow_result.reply_text:
             logger.info("Flow engine resolved message %s with reply", message.message_id)
+            hook = (flow_result.metadata or {}).get("hook")
+            if isinstance(hook, dict) and hook.get("action") == START_ORDER_ACTION:
+                order_action = await self._maybe_order_assistant(message, session, ctx, started_at, trigger=hook)
+                if order_action is not None:
+                    return order_action
             if await self._should_suppress_auto_reply(message, ctx):
                 return self._suppressed_late_reply(message, session, source="flow")
             flow_metadata = flow_result.metadata or {}
@@ -719,6 +731,80 @@ class ConversationService:
         )
         return action
 
+
+    async def _maybe_order_assistant(
+        self,
+        message: NormalizedMessage,
+        session: ConversationSession,
+        ctx: ExecutionContext,
+        started_at: float,
+        trigger: Dict[str, Any] | None = None,
+    ) -> ConversationAction | None:
+        """Let the order assistant own the turn (active draft, purchase intent or flow hook) when Pedidos is on."""
+        assistant = getattr(self, "order_assistant", None)
+        if assistant is None:
+            return None
+        tenant_settings = await self.tenant_settings_service.get_or_create(message.tenant_id)
+        if not tenant_settings.orders_enabled:
+            return None
+        try:
+            result = await assistant.handle(
+                tenant_id=message.tenant_id,
+                text=message.content or "",
+                context=dict(session.context or {}),
+                customer_phone=message.phone_number,
+                phone_number_id=message.phone_number_id,
+                session_id=session.session_id if ctx.persist else None,
+                contact_name=message.contact_name,
+                trigger=trigger,
+                dry_run=ctx.is_test or not ctx.persist or not ctx.allow_external_side_effects,
+            )
+        except Exception:
+            logger.exception("order_assistant_failed tenant=%s message=%s", message.tenant_id, message.message_id)
+            return None
+        if result is None:
+            return None
+        context_updates: Dict[str, Any] = {"order_draft": result.draft}
+        if result.order:
+            context_updates["last_order_id"] = result.order["id"]
+        state_kwargs: Dict[str, Any] = {}
+        if result.return_state:
+            state_kwargs = {
+                "state_updates": {"current_state": result.return_state, "last_state": result.return_state},
+                "current_state": result.return_state,
+            }
+        if not result.reply:
+            await self._persist_session_update(ctx, session, context_updates=context_updates, **state_kwargs)
+            return None
+        if await self._should_suppress_auto_reply(message, ctx):
+            return self._suppressed_late_reply(message, session, source="order_assistant")
+
+        metadata: Dict[str, Any] = {"source": "order_assistant", **result.metadata}
+        if result.draft:
+            metadata["order_stage"] = result.draft.get("stage")
+        if ctx.is_test:
+            metadata["dry_run"] = True
+        self._append_message(session, role="assistant", content=result.reply)
+        session = await self._persist_session_update(
+            ctx, session, context_updates=context_updates,
+            phone_number_id=message.phone_number_id, display_phone_number=message.display_phone_number,
+            **state_kwargs,
+        )
+        await self._persist_message(
+            ctx, tenant_id=message.tenant_id, session_id=session.session_id, direction="outgoing",
+            role="assistant", content=result.reply, source="order_assistant", metadata=metadata,
+            phone_number_id=message.phone_number_id,
+        )
+        await self._log_interaction(
+            message=message, session_id=session.session_id, flow_used=session.active_flow,
+            state=session.current_state, user_message=message.content, bot_response=result.reply,
+            source="order_assistant", started_at=started_at, detected_intent="pedido", execution_context=ctx,
+        )
+        return ConversationAction(
+            source="order_assistant", reply_text=result.reply, tenant_id=message.tenant_id,
+            phone_number=message.phone_number, metadata=metadata,
+            session_state=session.conversation_state, requires_handoff=False,
+        )
 
     @staticmethod
     def _is_human_owned(session: ConversationSession) -> bool:

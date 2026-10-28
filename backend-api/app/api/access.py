@@ -115,6 +115,9 @@ def capabilities_for(user: AuthenticatedUser) -> dict[str, bool]:
             "canManageQuickReplies": True,
             "canViewOverview": True,
             "canAccessBackoffice": True,
+            "canViewOrders": True,
+            "canUpdateOrders": True,
+            "canManageCatalog": True,
         }
 
     admin = is_tenant_admin(user)
@@ -133,4 +136,7 @@ def capabilities_for(user: AuthenticatedUser) -> dict[str, bool]:
         "canManageQuickReplies": True,
         "canViewOverview": True,
         "canAccessBackoffice": False,
+        "canViewOrders": True,
+        "canUpdateOrders": True,
+        "canManageCatalog": admin,
     }

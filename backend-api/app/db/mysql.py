@@ -536,6 +536,9 @@ class MySQLDatabase:
         )
         self._ensure_product_hardening_schema(cursor)
         self._ensure_billing_v2_schema(cursor)
+        from app.db import orders_schema
+
+        orders_schema.apply(cursor, ensure_column=self._ensure_column)
 
     def _ensure_billing_v2_schema(self, cursor) -> None:
         from app.db import billing_v2_schema

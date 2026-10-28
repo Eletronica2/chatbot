@@ -1,7 +1,7 @@
 """Service container helpers."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 from fastapi import Depends, Request
 
@@ -568,3 +568,34 @@ def get_billing_catalog_service():
 def get_ai_usage_service():
     return _billing_v2_component("ai_usage")
 
+
+
+# ── Orders module ─────────────────────────────────────────────────────────────
+
+_orders_module: dict[str, Any] = {}
+
+
+def set_orders_module(*, catalog: Any, orders: Any, notifications: Any, knowledge_sync: Any) -> None:
+    _orders_module.update(catalog=catalog, orders=orders, notifications=notifications, knowledge_sync=knowledge_sync)
+
+
+def _orders_part(name: str) -> Any:
+    if name not in _orders_module:
+        raise RuntimeError("Orders module not configured")
+    return _orders_module[name]
+
+
+def catalog_service_dependency() -> Any:
+    return _orders_part("catalog")
+
+
+def order_service_dependency() -> Any:
+    return _orders_part("orders")
+
+
+def order_notification_service_dependency() -> Any:
+    return _orders_part("notifications")
+
+
+def knowledge_sync_service_dependency() -> Any:
+    return _orders_part("knowledge_sync")

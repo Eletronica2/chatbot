@@ -16,6 +16,8 @@ from app.api import flow as flow_routes
 from app.api.routes import (
     actions,
     admin_audit_logs,
+    catalog,
+    orders,
     admin_tenants,
     admin_users,
     auth,
@@ -89,7 +91,13 @@ from app.services.dependencies import (
     set_whatsapp_onboarding_service,
     set_whatsapp_template_service,
     set_meta_graph_service,
+    set_orders_module,
 )
+from app.services.catalog_service import CatalogService
+from app.services.knowledge_sync_service import KnowledgeSyncService
+from app.services.order_assistant import OrderAssistant
+from app.services.order_notification_service import OrderNotificationService
+from app.services.order_service import OrderService
 from app.services.admin_audit_service import AdminAuditService
 from app.services.tenant_admin_service import TenantAdminService
 from app.services.dashboard_service import DashboardService
@@ -213,6 +221,18 @@ async def lifespan(app: FastAPI):
         ai_usage=ai_usage_service,
         topup=billing_topup_service,
     )
+    catalog_service = CatalogService(database)
+    order_service = OrderService(database, catalog_service)
+    set_orders_module(
+        catalog=catalog_service,
+        orders=order_service,
+        notifications=OrderNotificationService(
+            database, order_service, whatsapp_template_service, message_service, session_service
+        ),
+        knowledge_sync=KnowledgeSyncService(
+            settings.AI_ENGINE_URL, settings.INTERNAL_API_KEY, tenant_settings_service
+        ),
+    )
     conversation_service = ConversationService(
         session_service=session_service,
         flow_service=flow_service,
@@ -223,6 +243,7 @@ async def lifespan(app: FastAPI):
         message_service=message_service,
         billing_gate=billing_gate,
         ai_usage_service=ai_usage_service,
+        order_assistant=OrderAssistant(catalog_service, order_service),
     )
     logger.info(
         "Billing V2 enabled=%s default_mode=%s",
@@ -387,6 +408,8 @@ app.include_router(actions.router)
 app.include_router(leads.router)
 app.include_router(proposals.router)
 app.include_router(billing_v2.router)
+app.include_router(catalog.router)
+app.include_router(orders.router)
 
 
 @app.exception_handler(RequestValidationError)

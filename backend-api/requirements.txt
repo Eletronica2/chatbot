@@ -10,3 +10,4 @@ cryptography==44.0.2
 pytest==8.3.5
 Pillow==10.3.0
 python-multipart==0.0.9
+PyYAML==6.0.3

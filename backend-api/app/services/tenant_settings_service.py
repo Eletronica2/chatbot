@@ -27,7 +27,7 @@ class TenantSettingsService:
             row = self.database.fetch_one(
                 """
                 SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
-                       ts.auto_reply_mode, ts.auto_reply_allowlist,
+                       ts.auto_reply_mode, ts.auto_reply_allowlist, ts.orders_enabled,
                        ts.gemini_model, ts.fallback_models, ts.available_models,
                        t.name AS tenant_name
                 FROM tenants t
@@ -56,7 +56,7 @@ class TenantSettingsService:
                 row = self.database.fetch_one(
                     """
                     SELECT ts.ai_enabled, ts.ai_provider, ts.local_ai_enabled, ts.flow_editing_enabled, ts.debug_mode,
-                       ts.auto_reply_mode, ts.auto_reply_allowlist,
+                       ts.auto_reply_mode, ts.auto_reply_allowlist, ts.orders_enabled,
                            ts.gemini_model, ts.fallback_models, ts.available_models,
                            t.name AS tenant_name
                     FROM tenants t
@@ -80,6 +80,7 @@ class TenantSettingsService:
                 local_ai_enabled=bool(row.get("local_ai_enabled", False)),
                 auto_reply_mode=str(row.get("auto_reply_mode") or "on"),
                 auto_reply_allowlist=self._sender_list(row.get("auto_reply_allowlist")),
+                orders_enabled=bool(row.get("orders_enabled") or False),
                 flow_editing_enabled=bool(row.get("flow_editing_enabled", True)),
                 debug_mode=bool(row.get("debug_mode", False)),
                 gemini_model=str(row.get("gemini_model") or DEFAULT_GEMINI_MODEL),
@@ -103,8 +104,10 @@ class TenantSettingsService:
         fallback_models: Optional[List[str]] = None,
         auto_reply_mode: Optional[str] = None,
         auto_reply_allowlist: Optional[List[str]] = None,
+        orders_enabled: Optional[bool] = None,
     ) -> TenantSettings:
         current = await self.get_or_create(tenant_id)
+        next_orders_enabled = current.orders_enabled if orders_enabled is None else bool(orders_enabled)
         next_auto_reply_mode = current.auto_reply_mode if auto_reply_mode is None else auto_reply_mode
         if next_auto_reply_mode not in AUTO_REPLY_MODES:
             raise ValueError("auto_reply_mode deve ser on, off ou allowlist")
@@ -152,9 +155,10 @@ class TenantSettingsService:
                 """
                 INSERT INTO tenant_settings (
                     tenant_id, ai_enabled, ai_provider, local_ai_enabled, auto_reply_mode, auto_reply_allowlist,
-                    flow_editing_enabled, debug_mode, gemini_model, fallback_models, available_models
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    orders_enabled, flow_editing_enabled, debug_mode, gemini_model, fallback_models, available_models
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
+                    orders_enabled = VALUES(orders_enabled),
                     ai_enabled = VALUES(ai_enabled),
                     ai_provider = VALUES(ai_provider),
                     local_ai_enabled = VALUES(local_ai_enabled),
@@ -174,6 +178,7 @@ class TenantSettingsService:
                     1 if next_local_ai_enabled else 0,
                     next_auto_reply_mode,
                     json.dumps(next_auto_reply_allowlist) if next_auto_reply_allowlist else None,
+                    1 if next_orders_enabled else 0,
                     1 if next_flow_editing_enabled else 0,
                     1 if next_debug_mode else 0,
                     next_gemini_model,

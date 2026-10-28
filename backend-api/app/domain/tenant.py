@@ -61,6 +61,7 @@ class TenantSettings(BaseModel):
     # "allowlist": automatic replies only for the listed E.164 senders.
     auto_reply_mode: str = "on"
     auto_reply_allowlist: List[str] = Field(default_factory=list)
+    orders_enabled: bool = False
     flow_editing_enabled: bool = True
     debug_mode: bool = False
     gemini_model: str = DEFAULT_GEMINI_MODEL
