@@ -20,6 +20,7 @@ import 'billing_hub_screen.dart';
 import 'billing_plan_screen.dart';
 import 'conversation_detail_screen.dart';
 import 'groups_screen.dart';
+import 'orders_screen.dart';
 import 'overview_screen.dart';
 import 'quick_replies_screen.dart';
 import 'settings_screen.dart';
@@ -49,6 +50,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navTeam = 'team';
   static const String _navGroups = 'groups';
   static const String _navQuickReplies = 'quick_replies';
+  static const String _navOrders = 'orders';
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late Future<List<Conversation>> _futureConversations;
   List<Conversation> _allConversations = <Conversation>[];
@@ -74,6 +76,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           helper: 'Atendimento, histórico e fila de resposta',
         ),
         const AppSidebarItem(
+          id: _navOrders,
+          label: 'Pedidos',
+          icon: Icons.receipt_long_rounded,
+          helper: 'Pedidos do WhatsApp da empresa selecionada',
+        ),
+        const AppSidebarItem(
           id: _navClients,
           label: 'Clientes',
           icon: Icons.business_rounded,
@@ -95,6 +103,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           label: 'Conversas',
           icon: Icons.chat_bubble_rounded,
           helper: 'Atendimento, histórico e fila de resposta',
+        ),
+        AppSidebarItem(
+          id: _navOrders,
+          label: 'Pedidos',
+          icon: Icons.receipt_long_rounded,
+          helper: 'Pedidos do WhatsApp e status',
+          visible: caps.canViewOrders,
         ),
         AppSidebarItem(
           id: _navQuickReplies,
@@ -136,6 +151,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         section: 'Automação',
         helper: 'Criar modelos Meta, ver status e disparar testes',
         visible: caps.canManageTemplates,
+      ),
+      AppSidebarItem(
+        id: _navOrders,
+        label: 'Pedidos',
+        icon: Icons.receipt_long_rounded,
+        section: 'Atendimento',
+        helper: 'Pedidos do WhatsApp, status e catálogo de produtos',
+        visible: caps.canViewOrders,
       ),
       AppSidebarItem(
         id: _navGroups,
@@ -451,6 +474,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Grupos';
       case _navQuickReplies:
         return 'Respostas rápidas';
+      case _navOrders:
+        return 'Pedidos';
       case _navClients:
         return 'Clientes';
       case _navBilling:
@@ -480,6 +505,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Organize filas de atendimento e associe membros da equipe.';
       case _navQuickReplies:
         return 'Crie atalhos pessoais para inserir texto no compositor (sem enviar).';
+      case _navOrders:
+        return 'Acompanhe os pedidos feitos pelo WhatsApp, atualize o status e mantenha o catálogo em dia.';
       case _navClients:
         return 'Acompanhe empresas, usuários, números de WhatsApp e o contexto ativo do SaaS.';
       case _navBilling:
@@ -529,6 +556,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return KeyedSubtree(
           key: ValueKey<String>('quick-replies-${authService.tenantId}'),
           child: const QuickRepliesScreen(),
+        );
+      case _navOrders:
+        return KeyedSubtree(
+          key: ValueKey<String>('orders-${authService.tenantId}'),
+          child: const OrdersScreen(),
         );
       case _navClients:
         return KeyedSubtree(

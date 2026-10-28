@@ -15,6 +15,9 @@ class UserCapabilities {
     required this.canAssumeConversations,
     required this.canTransferConversations,
     required this.canViewOverview,
+    this.canViewOrders = false,
+    this.canUpdateOrders = false,
+    this.canManageCatalog = false,
   });
 
   final bool canManageAutomations;
@@ -31,6 +34,9 @@ class UserCapabilities {
   final bool canAssumeConversations;
   final bool canTransferConversations;
   final bool canViewOverview;
+  final bool canViewOrders;
+  final bool canUpdateOrders;
+  final bool canManageCatalog;
 
   static const UserCapabilities guest = UserCapabilities(
     canManageAutomations: false,
@@ -90,6 +96,9 @@ class UserCapabilities {
         canAssumeConversations: true,
         canTransferConversations: true,
         canViewOverview: true,
+        canViewOrders: true,
+        canUpdateOrders: true,
+        canManageCatalog: true,
       );
     }
 
@@ -110,6 +119,9 @@ class UserCapabilities {
       canAssumeConversations: true,
       canTransferConversations: true,
       canViewOverview: true,
+      canViewOrders: true,
+      canUpdateOrders: true,
+      canManageCatalog: isTenantAdmin,
     );
   }
 
