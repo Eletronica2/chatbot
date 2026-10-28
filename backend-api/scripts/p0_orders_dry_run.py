@@ -16,17 +16,20 @@ from app.config.settings import settings
 from app.db.mysql import MySQLDatabase
 from app.domain.execution_context import ExecutionContext
 from app.domain.message import AIResponse, MessageType, NormalizedMessage
+from app.domain.session import SessionMessage
 from app.domain.tenant import TenantSettings
 from app.repositories.session_repository import InMemorySessionRepository
 from app.services.ai_service import IntentDetectionResult
 from app.services.catalog_service import CatalogService
 from app.services.conversation_service import ConversationService
 from app.services.flow_service import FlowService
-from app.services.order_assistant import OrderAssistant
+from app.services.order_assistant import OrderAssistant, claims_order_confirmation
 from app.services.order_service import price_items
 from app.services.session_service import SessionService
 
 TENANT = sys.argv[1]
+WITH_QWEN = "--qwen" in sys.argv
+AI_CALLS: list[dict] = []
 LEGACY_TEXTS = ("qual é o seu nome", "Pedido recebido", "Qual tamanho de pizza", "Como você vai pagar")
 FAILURES: list[str] = []
 
@@ -75,7 +78,9 @@ def build(orders_enabled: bool, fail: bool = False):
     async def detect_intent(**kwargs):
         return IntentDetectionResult(intent=None, confidence=0.0)
 
-    async def generate_response(*args, **kwargs):
+    async def generate_response(msg, ai_session, **kwargs):
+        AI_CALLS.append({"messages": [m.get("content") for m in (ai_session.context or {}).get("messages") or []],
+                         "collected": (msg.metadata or {}).get("collected_data") or {}})
         return AIResponse(reply_text="(IA simulada) resposta", handled=True, metadata={})
 
     async def nothing(*args, **kwargs):
@@ -189,9 +194,127 @@ async def scenarios(orders_enabled: bool):
         check(not orders.created, "F/E sem módulo: nenhum pedido")
 
 
+OLD_TURNS = [("user", "Vou retirar no local"), ("assistant", "Quase lá! Como você vai pagar?"), ("user", "Cartão"),
+             ("assistant", "🎉 Pedido recebido com sucesso! Nossa equipe já vai conferir tudo")]
+OLD_COLLECTED = {"payment_method": "cartao", "address": "vou retirar no local", "pizza_size": "grande",
+                 "customer_name": "arthur", "delivery_type": "vou retirar", "drink": "so a pizza"}
+
+
+async def age(service, phone, hours=1.0, legacy=False):
+    """Simulate the stored conversation of the 27/10 test (legacy order turns) and/or a long silence."""
+    session = await service.session_service.get_or_create_session(TENANT, phone)
+    then = datetime.utcnow() - timedelta(hours=hours)
+    if legacy:
+        session.conversation_history = [SessionMessage(role=r, content=c, created_at=then) for r, c in OLD_TURNS]
+        session.context = {**(session.context or {}), "messages": [
+            {"role": r, "content": c, "created_at": then.isoformat(), "source": None} for r, c in OLD_TURNS]}
+        session.conversation_state = {"current_state": "pedido_confirmacao", "last_state": "pedido_confirmacao",
+                                      "collected_data": dict(OLD_COLLECTED)}
+        session.current_state = "pedido_confirmacao"
+    else:
+        for turn in session.conversation_history:
+            turn.created_at = then
+        for item in (session.context or {}).get("messages") or []:
+            item["created_at"] = then.isoformat()
+    await service.session_service.repository.save_session(session)
+    session.last_interaction = then
+
+
+def clean_ai_input(call) -> bool:
+    joined = " ".join(call["messages"])
+    return not call["collected"] and "Cartão" not in joined and "Pedido recebido" not in joined
+
+
+async def greeting_scenarios(orders_enabled: bool):
+    print(f"\n=== Saudações (Pedidos {'ATIVADO' if orders_enabled else 'DESATIVADO'}) ===")
+    service, orders = build(orders_enabled)
+    phone = lambda: "550000" + uuid4().hex[:7]  # noqa: E731
+
+    print("  Saudação após conversa antiga com pedido legado (estado 27/10)")
+    p = phone()
+    await say(service, p, "oi")
+    await age(service, p, legacy=True)
+    AI_CALLS.clear()
+    action = await say(service, p, "Boa noite")
+    check(not claims_order_confirmation(action.reply_text or "") and "pedido com" not in (action.reply_text or ""),
+          "saudação sem pedido inventado")
+    check(action.source == "flow" and action.metadata.get("resolution_reason") == "flow_start",
+          "novo atendimento: saudação oficial do fluxo")
+    check(all(clean_ai_input(c) for c in AI_CALLS), "IA não recebe histórico/dados antigos")
+    session = await service.session_service.get_or_create_session(TENANT, p)
+    check(not (session.conversation_state.get("collected_data") or {}), "dados legados descartados do estado")
+    check(any("Pedido recebido" in m.content for m in session.conversation_history), "histórico preservado")
+
+    print("  Mensagens consecutivas: Cardápio -> Tradicionais -> Boa noite")
+    AI_CALLS.clear()
+    for text in ["Cardápio", "Tradicionais", "Boa noite"]:
+        action = await say(service, p, text)
+    check(not claims_order_confirmation(action.reply_text or ""), "sem contaminação entre mensagens")
+    check(all(clean_ai_input(c) for c in AI_CALLS), "IA só vê o atendimento atual")
+
+    if orders_enabled:
+        print("  Novo atendimento após pedido concluído")
+        p = phone()
+        for t in ["Quero duas pizzas grandes de calabresa", "não", "retirada", "Teste", "sim"]:
+            await say(service, p, t)
+        AI_CALLS.clear()
+        same_episode = await say(service, p, "Boa noite")
+        check(not claims_order_confirmation(same_episode.reply_text or ""), "mesmo atendimento: saudação limpa")
+        check(all("registrado" not in " ".join(c["messages"]) for c in AI_CALLS), "IA não vê turnos do pedido")
+        await age(service, p)
+        new = await say(service, p, "Boa noite")
+        check(new.metadata.get("state") == "boas_vindas" and not claims_order_confirmation(new.reply_text or ""),
+              "novo atendimento começa na saudação")
+        print("  Novo atendimento após pedido cancelado")
+        p = phone()
+        for t in ["Quero duas pizzas grandes de calabresa", "cancelar"]:
+            await say(service, p, t)
+        await age(service, p)
+        new = await say(service, p, "Boa noite")
+        check(new.metadata.get("state") == "boas_vindas" and not claims_order_confirmation(new.reply_text or ""),
+              "após cancelamento começa na saudação")
+
+
+async def qwen_dry_run():
+    """Real Qwen3 (local AI via ai-engine): the 23:46 payload vs the corrected one. Nothing is sent to WhatsApp."""
+    from app.domain.session import ConversationSession
+    from app.services.ai_service import AIService
+
+    print("\n=== Qwen3 dry-run (sem envio) ===")
+    ai = AIService(settings.AI_ENGINE_URL, settings.AI_ENGINE_TIMEOUT)
+    db = MySQLDatabase(settings.DATABASE_URL)
+    from app.services.tenant_settings_service import TenantSettingsService
+    overrides = (await TenantSettingsService(db).get_or_create(TENANT)).as_ai_metadata()
+    then = datetime.utcnow() - timedelta(hours=1)
+    old = [{"role": r, "content": c, "created_at": then.isoformat()} for r, c in OLD_TURNS]
+    flow_meta = {"flow_state_message": "Oi! Bem-vindo à Pizzaria Bella Massa!", "resolution_reason": "fallback_ai"}
+    cases = [
+        ("antes (payload de 23:46)", old + [{"role": "user", "content": "Boa noite"}], dict(OLD_COLLECTED)),
+        ("depois (corrigido)", [{"role": "user", "content": "Boa noite"}], {}),
+    ]
+    for label, messages, collected in cases:
+        session = ConversationSession(tenant_id=TENANT, phone_number="5500000000999", context={"messages": messages})
+        msg = message("Boa noite", "5500000000999")
+        msg = msg.model_copy(update={"metadata": {**flow_meta, "collected_data": collected}})
+        reply = await ai.generate_response(msg, session, metadata_overrides=overrides)
+        text = (reply.reply_text or "").replace("\n", " ")
+        print(f"  {label}: handled={reply.handled} -> {text[:160]!r}")
+        if label.startswith("depois"):
+            check(reply.handled and not claims_order_confirmation(text) and "pedido" not in text.lower(),
+                  "Qwen3 saudação corrigida sem pedido")
+
+
 async def main():
+    if "--qwen-only" in sys.argv:
+        await qwen_dry_run()
+        print(f"\nRESULT: {'ALL PASS' if not FAILURES else 'FAILURES: ' + '; '.join(FAILURES)}")
+        return
     await scenarios(False)
     await scenarios(True)
+    await greeting_scenarios(False)
+    await greeting_scenarios(True)
+    if WITH_QWEN:
+        await qwen_dry_run()
     print(f"\nRESULT: {'ALL PASS' if not FAILURES else 'FAILURES: ' + '; '.join(FAILURES)}")
 
 

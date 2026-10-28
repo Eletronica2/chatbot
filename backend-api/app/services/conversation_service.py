@@ -2,10 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import logging
 import re
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict
 
 from app.domain.conversation_log import ConversationLog
@@ -33,6 +34,10 @@ ORDERS_UNAVAILABLE_REPLY = (
     "as promoções ou os horários 😊"
 )
 ORDER_START_FAILED_REPLY = "Não consegui iniciar seu pedido agora. Um atendente da loja vai continuar com você."
+# After this much silence a message opens a new service episode: transient flow/order state starts over.
+EPISODE_IDLE = timedelta(minutes=30)
+# Turns handled by the order module: order facts come from the backend, never from the AI's memory of the chat.
+AI_HIDDEN_SOURCES = {"order_assistant", "order_blocked"}
 
 
 class ConversationService:
@@ -379,6 +384,7 @@ class ConversationService:
                 requires_handoff=True,
             )
 
+        self._begin_episode_if_idle(session, message)
         self._append_message(session, role="user", content=message.content)
         await self._persist_message(
             ctx,
@@ -434,7 +440,7 @@ class ConversationService:
                 )
                 ai_response = await self.ai_service.generate_response(
                     enriched_message_for_ai,
-                    session,
+                    self._ai_view(session),
                     metadata_overrides=tenant_settings.as_ai_metadata(),
                 )
                 await self._record_ai_usage(message, session, ai_response.metadata, ctx)
@@ -660,7 +666,7 @@ class ConversationService:
 
         ai_response = await self.ai_service.generate_response(
             enriched_message,
-            session,
+            self._ai_view(session),
             metadata_overrides=tenant_settings.as_ai_metadata(),
         )
         await self._record_ai_usage(message, session, ai_response.metadata, ctx)
@@ -912,7 +918,10 @@ class ConversationService:
         metadata = dict(metadata)
         if ctx.is_test:
             metadata["dry_run"] = True
-        self._append_message(session, role="assistant", content=reply)
+        history = getattr(session, "conversation_history", None) or []
+        if history and history[-1].role == "user" and not history[-1].source:
+            history[-1].source = source
+        self._append_message(session, role="assistant", content=reply, source=source)
         session = await self._persist_session_update(
             ctx, session, context_updates=context_updates or None,
             phone_number_id=message.phone_number_id, display_phone_number=message.display_phone_number,
@@ -1060,11 +1069,52 @@ class ConversationService:
             return
         await self.message_service.append(**kwargs)
 
-    def _append_message(self, session, role: str, content: str) -> None:
+    def _begin_episode_if_idle(self, session: ConversationSession, message: NormalizedMessage) -> bool:
+        """A message after a long silence is a new service: old flow steps, collected data and drafts are dropped.
+
+        The history stays (panel and audit) but the AI only sees turns from the current episode.
+        """
+        now = datetime.utcnow()
+        context = dict(session.context or {})
+        history = getattr(session, "conversation_history", None) or []
+        # Last real turn, not session.last_interaction: housekeeping saves refresh that on every message.
+        last = history[-1].created_at if history else None
+        if last is None:
+            context.setdefault("episode_started_at", now.isoformat())
+            session.context = context
+            return False
+        if now - last.replace(tzinfo=None) <= EPISODE_IDLE:
+            context.setdefault("episode_started_at", now.isoformat())
+            session.context = context
+            return False
+        logger.info("new_service_episode tenant=%s message=%s idle_s=%s", message.tenant_id, message.message_id,
+                    int((now - last.replace(tzinfo=None)).total_seconds()))
+        session.conversation_state = {}
+        session.current_state = None
+        context["order_draft"] = None
+        context["episode_started_at"] = now.isoformat()
+        session.context = context
+        return True
+
+    @staticmethod
+    def _ai_view(session: ConversationSession) -> ConversationSession:
+        """What the AI may read: turns of the current episode, without order-module turns."""
+        context = dict(getattr(session, "context", None) or {})
+        started = str(context.get("episode_started_at") or "")
+        context["messages"] = [
+            m for m in context.get("messages") or []
+            if isinstance(m, dict) and m.get("source") not in AI_HIDDEN_SOURCES
+            and (not started or str(m.get("created_at") or "") >= started)
+        ]
+        view = copy.copy(session)
+        view.context = context
+        return view
+
+    def _append_message(self, session, role: str, content: str, source: str | None = None) -> None:
         if not content:
             return
 
-        session.append_history(role=role, content=content, limit=10)
+        session.append_history(role=role, content=content, limit=10, source=source)
 
         context: Dict[str, Any] = session.context or {}
         messages = [
@@ -1073,6 +1123,7 @@ class ConversationService:
                 "role": item.role,
                 "content": item.content,
                 "created_at": item.created_at.isoformat(),
+                "source": item.source,
             }
             for index, item in enumerate(session.conversation_history, start=1)
         ]

@@ -38,8 +38,10 @@ _BUY_VERBS = re.compile(r"\b(quero|queria|gostaria|vou querer|manda|me ve|me da|
 _BROWSE = re.compile(r"\b(ver|veja|mostra|mostrar|mostre|conhecer|saber|olhar|cardapio|menu|opcoes|sabores)\b")
 _PRICE_QUESTION = re.compile(r"\b(quanto (custa|e|sai|fica|ta|esta)|qual (o|e o) (preco|valor)|preco d|valor d|precos? )")
 _ORDER_CLAIM = re.compile(
-    r"(\bpedido\b.{0,40}\b(recebido|confirmado|registrado|anotado|finalizado|realizado)\b"
-    r"|\b(recebemos|registramos|confirmamos|anotamos|anotei|registrei|confirmei) (o |seu |o seu )?pedido\b)"
+    r"(\bpedido\b.{0,60}\b(recebido|confirmado|registrado|anotado|finalizado|realizado|entregue|enviado|a caminho"
+    r"|em preparo|sendo preparado|pronto)\b"
+    r"|\b(recebemos|registramos|confirmamos|anotamos|anotei|registrei|confirmei|temos|ja temos) (o |seu |o seu )?pedido\b"
+    r"|\bpagamento\b.{0,30}\b(confirmado|aprovado|recebido)\b)"
 )
 _STATUS_QUERY = re.compile(r"\b(meu pedido|status do pedido|cade (o )?(meu )?pedido|andamento do pedido|"
                            r"pedido (#|n|numero )?\s*\d+)\b")

@@ -9,7 +9,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from app.api.access import assert_tenant_access, resolve_tenant_scope
+from app.api.access import assert_tenant_access, is_tenant_admin, resolve_tenant_scope
 from app.config.settings import settings
 from app.domain.auth import AuthenticatedUser
 from app.services.admin_audit_service import AdminAuditService
@@ -303,13 +303,14 @@ async def send_reply(
         await finalize_outbound(tenant_id, billing, provider_message_id=provider_message_id)
 
     context: Dict[str, Any] = dict(session.context or {})
-    session.append_history(role="assistant", content=text, limit=10)
+    session.append_history(role="assistant", content=text, limit=10, source="human")
     messages = [
         {
             "id": str(index),
             "role": item.role,
             "content": item.content,
             "created_at": item.created_at.isoformat(),
+            "source": item.source,
         }
         for index, item in enumerate(session.conversation_history, start=1)
     ]
@@ -495,6 +496,48 @@ async def return_conversation_to_ai(
 
     groups = await _group_lookup(group_service, tenant_id)
     return _serialize_conversation(session, group_name=groups.get(str(session.group_id or "")))
+
+
+@router.post("/{conversation_id}/reset-state")
+async def reset_conversation_state(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    session_service: SessionService = Depends(session_service_dependency),
+    audit: AdminAuditService = Depends(admin_audit_service_dependency),
+) -> Dict[str, Any]:
+    """Start the conversation over: flow step, collected data, order draft and pending handoff are cleared.
+
+    Messages and history are kept; the AI only reads turns after this point.
+    """
+    tenant_id, phone_number = _parse_conversation_id(conversation_id)
+    assert_tenant_access(user, tenant_id)
+    if not is_tenant_admin(user):
+        raise HTTPException(status_code=403, detail="Tenant admin access required")
+    session = await session_service.get_or_create_session(tenant_id, phone_number)
+    context = dict(session.context or {})
+    cleared = {
+        "current_state": session.current_state,
+        "collected_keys": sorted(((session.conversation_state or {}).get("collected_data") or {}).keys()),
+        "had_order_draft": bool(context.get("order_draft")),
+        "had_handoff_pending": bool(context.get("human_handoff_pending")),
+    }
+    session.conversation_state = {}
+    session.current_state = None
+    for key in ("order_draft", "human_handoff_pending", "human_handoff_reason", "human_handoff_at"):
+        context.pop(key, None)
+    context["episode_started_at"] = datetime.utcnow().isoformat()
+    session.context = context
+    await session_service.update_session(session)
+    await audit.append(
+        tenant_id=tenant_id,
+        action="conversation.reset_state",
+        entity_type="conversation",
+        entity_key=conversation_id,
+        summary="Estado transitório da conversa reiniciado (histórico preservado)",
+        actor=user,
+        metadata=cleared,
+    )
+    return {"ok": True, "cleared": cleared}
 
 
 @router.patch("/{conversation_id}/group")

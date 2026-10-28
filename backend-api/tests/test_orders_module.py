@@ -611,3 +611,152 @@ def test_category_navigation_reaches_the_flow_in_both_modes(enabled):
     action = _handle(service, "Quero ver as tradicionais")
     assert action.source == "flow" and action.reply_text == "Nossas Pizzas Tradicionais"
     assert not service.order_assistant.orders.created
+
+
+# ── P0 2026-10-27 23:46: greeting answered with an invented order (stale history/state) ──
+
+from app.domain.session import ConversationSession, SessionMessage  # noqa: E402
+
+OLD = datetime.utcnow() - timedelta(hours=1)
+LEGACY_TURNS = [("user", "Vou retirar no local"), ("assistant", "Quase lá! Como você vai pagar?"), ("user", "Cartão"),
+                ("assistant", "🎉 Pedido recebido com sucesso!")]
+LEGACY_COLLECTED = {"payment_method": "cartao", "address": "vou retirar no local", "pizza_size": "grande"}
+
+
+def _real_session(last_interaction, *, turns=LEGACY_TURNS, state="pizzas_tradicionais", collected=None):
+    session = ConversationSession(tenant_id="t", phone_number="5534999990000", current_state=state,
+                                  active_flow="f", last_interaction=last_interaction,
+                                  conversation_state={"current_state": state, "collected_data": dict(collected or {})})
+    for role, content in turns:
+        session.conversation_history.append(SessionMessage(role=role, content=content, created_at=last_interaction))
+    session.context = {"messages": [{"role": m.role, "content": m.content, "created_at": m.created_at.isoformat(),
+                                     "source": m.source} for m in session.conversation_history]}
+    return session
+
+
+def _greeting_pipeline(session, orders_enabled):
+    seen = {}
+    fallback = FlowExecutionResult(handled=True, reply_text=None, requires_ai_fallback=True,
+                                   metadata={"state": "boas_vindas"}, session_state={}, collected_data={})
+    service, _, _ = _core_pipeline(orders_enabled, fallback, ai_reply="Boa noite! Como posso ajudar?")
+
+    async def resolve(message, ctx):
+        return session
+
+    async def execute_flow(message, current, enabled_modules=None):
+        seen["flow_state"] = dict(current.conversation_state)
+        seen["flow_current"] = current.current_state
+        return fallback
+
+    async def generate_response(message, ai_session, **kwargs):
+        from app.domain.message import AIResponse
+        seen["ai_messages"] = [m["content"] for m in ai_session.context.get("messages") or []]
+        return AIResponse(reply_text="Boa noite! Como posso ajudar?", handled=True, metadata={})
+
+    async def persist_session_update(ctx, current, **kwargs):
+        return current
+
+    async def get_session(tenant_id, phone):
+        return session
+
+    service._resolve_session = resolve
+    service._persist_session_update = persist_session_update
+    service._append_message = ConversationService._append_message.__get__(service)
+    service.session_service = SimpleNamespace(repository=SimpleNamespace(get_session=get_session))
+    service.flow_service = SimpleNamespace(execute_flow=execute_flow)
+    service.ai_service = SimpleNamespace(detect_intent=service.ai_service.detect_intent,
+                                         generate_response=generate_response)
+    return service, seen
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_greeting_after_old_conversation_starts_a_clean_episode(enabled):
+    session = _real_session(OLD, collected=LEGACY_COLLECTED)
+    session.last_interaction = datetime.utcnow()  # housekeeping saves refresh this; the turns' dates decide
+    service, seen = _greeting_pipeline(session, enabled)
+    action = _handle(service, "Boa noite")
+    assert seen["flow_state"].get("collected_data") in (None, {}) and seen["flow_current"] is None
+    assert seen["ai_messages"] == ["Boa noite"]  # nothing from the old conversation reaches the AI
+    assert "pedido" not in action.reply_text.lower()
+    assert [m.content for m in session.conversation_history][:4] == [c for _, c in LEGACY_TURNS]  # history kept
+
+
+def test_consecutive_messages_keep_their_episode_context():
+    recent = datetime.utcnow() - timedelta(minutes=2)
+    session = _real_session(recent, turns=[("user", "Cardápio"), ("assistant", "Aqui está nosso cardápio")],
+                            state="cardapio_principal")
+    session.context["episode_started_at"] = (recent - timedelta(seconds=1)).isoformat()
+    service, seen = _greeting_pipeline(session, True)
+    _handle(service, "e as bebidas?")
+    assert seen["flow_current"] == "cardapio_principal"
+    assert seen["ai_messages"] == ["Cardápio", "Aqui está nosso cardápio", "e as bebidas?"]
+
+
+@pytest.mark.parametrize("finished", ["Pedido #1 registrado! ✅", "Tudo bem, cancelei este pedido."])
+def test_new_service_after_completed_or_cancelled_order_never_sees_order_turns(finished):
+    recent = datetime.utcnow() - timedelta(minutes=5)
+    session = _real_session(recent, turns=[], state="bebidas")
+    session.context["episode_started_at"] = (recent - timedelta(minutes=5)).isoformat()
+    for role, content, source in [("user", "Quero duas calabresas", "order_assistant"),
+                                  ("assistant", "Confira seu pedido", "order_assistant"),
+                                  ("user", "sim", "order_assistant"), ("assistant", finished, "order_assistant")]:
+        session.conversation_history.append(SessionMessage(role=role, content=content, created_at=recent, source=source))
+        session.context["messages"].append({"role": role, "content": content, "created_at": recent.isoformat(),
+                                            "source": source})
+    service, seen = _greeting_pipeline(session, True)
+    _handle(service, "Boa noite")
+    assert seen["ai_messages"] == ["Boa noite"]
+    old = _real_session(OLD, turns=[("assistant", finished)], state="bebidas")
+    service, seen = _greeting_pipeline(old, True)
+    _handle(service, "Boa noite")
+    assert seen["ai_messages"] == ["Boa noite"] and seen["flow_current"] is None
+
+
+def test_order_assistant_turns_are_tagged_and_hidden_from_the_ai():
+    service, calls, session = _pipeline(True)
+    real = ConversationSession(tenant_id="t", phone_number="5534999990000")
+    real.append_history(role="user", content="quero 2 calabresas grandes")
+    session.conversation_history = real.conversation_history
+    session.append_history = real.append_history
+    service._append_message = ConversationService._append_message.__get__(service)
+    _core(service, "quero 2 calabresas grandes")
+    assert [m.source for m in real.conversation_history] == ["order_assistant", "order_assistant"]
+    assert ConversationService._ai_view(session).context["messages"] == []
+
+
+def test_invented_order_greeting_is_detected():
+    assert claims_order_confirmation("Boa noite! 😊 Já temos seu pedido com cartão e será entregue em até 5km.")
+    assert claims_order_confirmation("Seu pedido está a caminho!")
+    assert claims_order_confirmation("Pagamento confirmado, obrigado!")
+    assert not claims_order_confirmation("Para pedidos acima de R$ 80,00 o frete é grátis em até 5km.")
+    assert not claims_order_confirmation("Quer fazer um pedido ou ver o cardápio?")
+
+
+def test_reset_state_endpoint_clears_only_transient_state_and_audits():
+    from app.api.routes.conversations import reset_conversation_state
+
+    session = _real_session(OLD, collected=LEGACY_COLLECTED)
+    session.context.update({"order_draft": {"id": "x"}, "human_handoff_pending": True})
+    audits = []
+
+    async def get_or_create_session(tenant_id, phone):
+        return session
+
+    async def update_session(current):
+        return current
+
+    async def append(**kwargs):
+        audits.append(kwargs)
+
+    owner = SimpleNamespace(role="owner", tenant_id="t", user_id="1", display_name="Dono")
+    result = _run(reset_conversation_state(
+        "t:5534999990000", user=owner,
+        session_service=SimpleNamespace(get_or_create_session=get_or_create_session, update_session=update_session),
+        audit=SimpleNamespace(append=append)))
+    assert result["cleared"]["collected_keys"] == sorted(LEGACY_COLLECTED)
+    assert session.conversation_state == {} and session.current_state is None
+    assert "order_draft" not in session.context and "human_handoff_pending" not in session.context
+    assert len(session.conversation_history) == 4 and audits[0]["action"] == "conversation.reset_state"
+    with pytest.raises(HTTPException):
+        _run(reset_conversation_state("t:5534999990000", user=SimpleNamespace(role="agent", tenant_id="t"),
+                                      session_service=None, audit=None))

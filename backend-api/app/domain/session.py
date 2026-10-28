@@ -12,6 +12,8 @@ class SessionMessage(BaseModel):
     role: str
     content: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    # Who produced/consumed the turn (e.g. "order_assistant"); order turns are kept for the panel, not for the AI.
+    source: Optional[str] = None
 
 
 class ConversationSession(BaseModel):
@@ -39,10 +41,10 @@ class ConversationSession(BaseModel):
     def key(self) -> str:
         return f"{self.tenant_id}:{self.phone_number}"
 
-    def append_history(self, role: str, content: str, limit: int = 10) -> None:
+    def append_history(self, role: str, content: str, limit: int = 10, source: Optional[str] = None) -> None:
         if not content:
             return
-        self.conversation_history.append(SessionMessage(role=role, content=content))
+        self.conversation_history.append(SessionMessage(role=role, content=content, source=source))
         if limit > 0:
             self.conversation_history = self.conversation_history[-limit:]
         self.last_interaction = datetime.utcnow()
