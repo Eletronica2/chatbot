@@ -103,6 +103,9 @@ class _ActionOption {
   final IconData icon;
 }
 
+/// Chaves de etapa mantidas ao salvar pelo editor visual (o módulo Pedidos depende delas).
+const List<String> _kPreservedStateKeys = <String>['requires_module', 'lines_without_module'];
+
 class _StateDraft {
   final TextEditingController nameCtrl;
   final TextEditingController msgCtrl;
@@ -113,6 +116,9 @@ class _StateDraft {
   bool humanTone;
   bool expanded;
   Offset position;
+
+  /// Chaves que o editor não exibe mas precisa regravar (ex.: `requires_module` do módulo Pedidos).
+  final Map<String, dynamic> preserved;
 
   /// Chave da acao selecionada no dropdown de Acoes.
   /// - `_kHandoffActionKey` => encaminha para atendente (default)
@@ -130,7 +136,9 @@ class _StateDraft {
     this.expanded = false,
     this.position = Offset.zero,
     String? selectedActionKey,
-  })  : nameCtrl = TextEditingController(text: name),
+    Map<String, dynamic>? preserved,
+  })  : preserved = preserved ?? <String, dynamic>{},
+        nameCtrl = TextEditingController(text: name),
         msgCtrl = TextEditingController(text: message),
         hookActionCtrl = TextEditingController(text: hookAction),
         options = options ?? <_OptionDraft>[],
@@ -363,6 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'business_hours',
         'intent_aliases',
         'global_transitions',
+        'knowledge',
       ]) {
         if (data.containsKey(key)) {
           preserved[key] = _yamlToPlain(data[key]);
@@ -462,6 +471,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               transitions: transitions,
               requiresHandoff: requiresHandoff,
               humanTone: humanTone,
+              preserved: <String, dynamic>{
+                for (final key in _kPreservedStateKeys)
+                  if (stateData.containsKey(key)) key: _yamlToPlain(stateData[key]),
+              },
             ),
           );
           idToDisplay[stateId] = userFacingName;
@@ -796,6 +809,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (state.message.isNotEmpty) {
         buffer.writeln('    message: "${_esc(state.message)}"');
       }
+      _dumpYamlValue(buffer, state.preserved, 4);
       // Acao selecionada via dropdown unico:
       // - 'handoff' (default)  -> escreve requires_handoff: true
       // - qualquer outra chave -> escreve hook.action: <chave>
