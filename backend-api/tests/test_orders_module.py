@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from datetime import datetime, timedelta
 
 import pytest
@@ -256,7 +257,8 @@ def _pipeline(orders_enabled: bool):
     settings = TenantSettings(tenant_id="t", orders_enabled=orders_enabled)
     calls = {"persisted": [], "updates": []}
     session = SimpleNamespace(session_id="s1", context={}, conversation_state={}, assignment_mode="ai",
-                              active_flow="f", current_state="boas_vindas", conversation_history=[])
+                              active_flow="f", current_state="boas_vindas", conversation_history=[],
+                              detected_intent=None, phone_number="5534999990000")
 
     async def get_or_create(tenant_id):
         return settings
@@ -279,7 +281,11 @@ def _pipeline(orders_enabled: bool):
     async def not_suppressed(*args, **kwargs):
         return False
 
+    async def get_session(tenant_id, phone):
+        return session
+
     service.tenant_settings_service = SimpleNamespace(get_or_create=get_or_create)
+    service.session_service = SimpleNamespace(repository=SimpleNamespace(get_session=get_session))
     service.order_assistant = OrderAssistant(FakeCatalog(), FakeOrders())
     service._resolve_session = resolve_session
     service._persist_message = persist_message
@@ -290,10 +296,10 @@ def _pipeline(orders_enabled: bool):
     return service, calls, session
 
 
-def _msg(text):
-    return NormalizedMessage(message_id=f"wamid.{abs(hash(text))}", tenant_id="t", phone_number="5534999990000",
-                             phone_number_id="pn", display_phone_number="55", message_type=MessageType.TEXT,
-                             content=text, timestamp=datetime.utcnow())
+def _msg(text, message_id=None, timestamp=None):
+    return NormalizedMessage(message_id=message_id or f"wamid.{uuid.uuid4().hex}", tenant_id="t",
+                             phone_number="5534999990000", phone_number_id="pn", display_phone_number="55",
+                             message_type=MessageType.TEXT, content=text, timestamp=timestamp or datetime.utcnow())
 
 
 def _core(service, text, ctx=None):
@@ -379,3 +385,229 @@ def test_catalog_document_lists_prices_and_unavailable():
     doc = catalog_document("Bella", PRODUCTS)
     assert "- Calabresa: Broto R$ 42,90, Média R$ 52,90, Grande R$ 62,90" in doc["content"]
     assert "Indisponíveis no momento: Portuguesa." in doc["content"]
+
+
+# ── P0 2026-10-27: no order without explicit, current confirmation ────────────
+
+from app.domain.message import FlowExecutionResult  # noqa: E402
+from app.services.order_assistant import claims_order_confirmation, price_reply  # noqa: E402
+
+SUMMARY_CHAT = ["quero duas pizzas grandes de calabresa", "não", "retirada", "Ana"]
+
+
+def _assistant_until_summary(orders=None):
+    assistant = OrderAssistant(FakeCatalog(), orders or FakeOrders())
+    context, result = {}, None
+    for text in SUMMARY_CHAT:
+        result = _run(assistant.handle(tenant_id="t", text=text, context=context, customer_phone="5534999990000",
+                                       phone_number_id="pn", session_id="s", message_id=f"m-{text}"))
+        context = {"order_draft": result.draft}
+    return assistant, context, result
+
+
+def _say(assistant, context, text, *, now=None, message_ts=None, message_id=None):
+    return _run(assistant.handle(tenant_id="t", text=text, context=context, customer_phone="5534999990000",
+                                 phone_number_id="pn", session_id="s", now=now, message_ts=message_ts,
+                                 message_id=message_id or f"m-{uuid.uuid4().hex}"))
+
+
+def test_scenario_d_purchase_intent_collects_data_and_waits_for_confirmation():
+    assistant, context, result = _assistant_until_summary()
+    assert "2x Calabresa (Grande)" in result.reply and "Total: R$ 125,80" in result.reply and "SIM" in result.reply
+    assert result.draft["stage"] == "confirm" and not assistant.orders.created
+
+
+def test_scenario_e_silence_never_creates_and_old_confirmation_is_rechecked():
+    assistant, context, _ = _assistant_until_summary()
+    later = datetime.utcnow() + timedelta(minutes=3)
+    assert not assistant.orders.created  # three minutes of silence: nothing runs on its own
+    reply = _say(assistant, context, "oi", now=later)
+    assert "SIM" in reply.reply and not assistant.orders.created
+    expired = _say(assistant, context, "sim", now=datetime.utcnow() + timedelta(minutes=20))
+    assert "Confira" in expired.reply and not assistant.orders.created
+    assert expired.draft["stage"] == "confirm"
+
+
+def test_scenario_f_explicit_confirmation_creates_exactly_one_order():
+    assistant, context, _ = _assistant_until_summary()
+    result = _say(assistant, context, "Sim, confirmo")
+    assert "Pedido #1 registrado" in result.reply and len(assistant.orders.created) == 1
+    assert result.draft is None
+
+
+@pytest.mark.parametrize("text", ["pode", "isso", "s", "ok", "sim, mas quero trocar a pizza", "talvez", "beleza"])
+def test_ambiguous_replies_never_confirm(text):
+    assistant, context, _ = _assistant_until_summary()
+    _say(assistant, context, text)
+    assert not assistant.orders.created
+
+
+def test_scenario_g_duplicate_webhook_and_late_events():
+    assistant, context, _ = _assistant_until_summary()
+    first = _say(assistant, context, "sim", message_id="wamid.dup")
+    assert len(assistant.orders.created) == 1
+    replay = _say(assistant, {"order_draft": {**context["order_draft"], "seen_message_ids": ["wamid.dup"]}}, "sim",
+                  message_id="wamid.dup")
+    assert replay.ignore and len(assistant.orders.created) == 1
+    assert _say(assistant, {"order_draft": first.draft}, "sim") is None  # no draft: a stray "sim" starts nothing
+    late_ts = datetime.utcnow() - timedelta(seconds=40)
+    assistant2, context2, _ = _assistant_until_summary()
+    stale = _say(assistant2, context2, "sim", message_ts=late_ts)
+    assert "anterior ao resumo" in stale.reply and not assistant2.orders.created
+
+
+def test_confirmation_is_bound_to_the_current_summary_prices():
+    assistant, context, _ = _assistant_until_summary()
+    PRODUCTS[0]["variants"][2]["price_cents"] = 6990
+    try:
+        changed = _say(assistant, context, "sim")
+    finally:
+        PRODUCTS[0]["variants"][2]["price_cents"] = 6290
+    assert "mudaram" in changed.reply and "R$ 139,80" in changed.reply and not assistant.orders.created
+
+
+class FailingOrders(FakeOrders):
+    async def create(self, tenant_key, **kwargs):
+        raise RuntimeError("database down")
+
+
+class RejectingOrders(FakeOrders):
+    async def create(self, tenant_key, **kwargs):
+        raise OrderError("o módulo Pedidos está desativado para esta empresa")
+
+
+@pytest.mark.parametrize("orders", [FailingOrders, RejectingOrders])
+def test_scenario_h_failed_persistence_never_reports_success(orders):
+    assistant, context, _ = _assistant_until_summary(orders())
+    result = _say(assistant, context, "sim")
+    assert "registrado!" not in result.reply and "não" in result.reply.lower()
+    assert not assistant.orders.created
+
+
+def test_browsing_and_price_questions_never_start_an_order():
+    matcher = _matcher()
+    for text in ["quero ver a calabresa", "quero ver as tradicionais", "Quanto custa a calabresa?",
+                 "quanto custa a calabresa grande", "quero saber o preço da calabresa"]:
+        assert not detect_start(text, matcher), text
+
+
+def test_scenario_c_price_comes_from_the_catalog():
+    reply = _run(price_reply(FakeCatalog(), "t", "Quanto custa a calabresa?"))
+    assert "Calabresa" in reply and "Grande R$ 62,90" in reply
+    assert _run(price_reply(FakeCatalog(), "t", "qual o horário?")) is None
+    assert _run(price_reply(FakeCatalog(), "t", "quanto custa a pizza de abacaxi?")) is None
+
+
+def test_order_claims_are_detected():
+    assert claims_order_confirmation("🎉 Pedido recebido com sucesso!")
+    assert claims_order_confirmation("Prontinho, seu pedido foi confirmado e já vai sair")
+    assert claims_order_confirmation("Anotei seu pedido!")
+    assert not claims_order_confirmation("Posso te ajudar a montar seu pedido?")
+    assert not claims_order_confirmation("A calabresa grande custa R$ 62,90")
+
+
+def _core_pipeline(orders_enabled, flow_result, ai_reply="Oi!"):
+    service, calls, session = _pipeline(orders_enabled)
+    seen = {}
+
+    async def detect_intent(**kwargs):
+        from app.services.ai_service import IntentDetectionResult
+        return IntentDetectionResult(intent=None, confidence=0.0)
+
+    async def execute_flow(message, current, enabled_modules=None):
+        seen["modules"] = enabled_modules
+        return flow_result
+
+    async def generate_response(*args, **kwargs):
+        from app.domain.message import AIResponse
+        return AIResponse(reply_text=ai_reply, handled=True, metadata={})
+
+    async def no(*args, **kwargs):
+        return False
+
+    async def same(current):
+        return current
+
+    async def no_usage(*args, **kwargs):
+        return None
+
+    service.billing_gate = SimpleNamespace(enabled=True)
+    service.message_service = SimpleNamespace(was_processed=no)
+    service.ai_service = SimpleNamespace(detect_intent=detect_intent, generate_response=generate_response)
+    service.flow_service = SimpleNamespace(execute_flow=execute_flow)
+    service._ensure_operational_defaults = same
+    service._record_ai_usage = no_usage
+    return service, calls, seen
+
+
+def _flow(state, hook=None, reply="Ótimo, vamos lá! Pra começar: qual é o seu nome?", **extra):
+    return FlowExecutionResult(handled=True, reply_text=reply, metadata={"state": state, "hook": hook or {}},
+                               session_state={"current_state": state}, **extra)
+
+
+def _handle(service, text):
+    return _run(service._handle_incoming_core(_msg(text), execution_context=ExecutionContext.production()))
+
+
+def test_orders_off_blocks_legacy_start_and_confirmation_even_from_old_flows():
+    for hook in ({"action": "start_order"}, {"action": "confirmar_pedido"}):
+        service, calls, seen = _core_pipeline(False, _flow("x", hook, reply="🎉 Pedido recebido com sucesso!"))
+        action = _handle(service, "Cartão")
+        assert seen["modules"] == []
+        assert action.source == "order_blocked" and "Pedido recebido" not in action.reply_text
+        assert not service.order_assistant.orders.created
+
+
+def test_orders_on_start_order_goes_to_the_assistant_never_the_legacy_text():
+    service, calls, seen = _core_pipeline(True, _flow("iniciar_pedido", {"action": "start_order"}))
+    action = _handle(service, "pedido")
+    assert seen["modules"] == ["orders"]
+    assert action.source == "order_assistant" and "qual é o seu nome" not in action.reply_text
+
+
+def test_orders_on_but_assistant_unavailable_sends_no_legacy_step():
+    service, calls, _ = _core_pipeline(True, _flow("iniciar_pedido", {"action": "start_order"}))
+    service.order_assistant = None
+    action = _handle(service, "quero fazer um pedido")
+    assert action.source == "order_blocked" and action.requires_handoff
+
+
+def test_orders_on_legacy_confirmation_is_still_blocked():
+    service, _, _ = _core_pipeline(True, _flow("pedido_confirmacao", {"action": "confirmar_pedido"},
+                                               reply="🎉 Pedido recebido com sucesso!"))
+    action = _handle(service, "Cartão")
+    assert action.source == "order_blocked" and not service.order_assistant.orders.created
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_flow_text_confirming_an_order_is_never_sent(enabled):
+    flow = _flow("etapa_editada_no_painel", reply="🎉 Pedido recebido com sucesso!\nNossa equipe já vai conferir tudo",
+                 requires_handoff=True)
+    service, _, _ = _core_pipeline(enabled, flow)
+    action = _handle(service, "Cartão")
+    assert action.source == "order_blocked" and "Pedido recebido" not in action.reply_text
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_ai_reply_claiming_an_order_is_replaced(enabled):
+    fallback = FlowExecutionResult(handled=True, reply_text=None, requires_ai_fallback=True,
+                                   metadata={"state": "cardapio_principal"}, session_state={})
+    service, _, _ = _core_pipeline(enabled, fallback, ai_reply="Seu pedido foi confirmado! Chega em 40 min.")
+    action = _handle(service, "pode mandar")
+    assert "confirmado" not in action.reply_text and not service.order_assistant.orders.created
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_price_question_answered_from_catalog_in_both_modes(enabled):
+    service, _, seen = _core_pipeline(enabled, _flow("cardapio_principal"))
+    action = _handle(service, "Quanto custa a calabresa?")
+    assert action.source == "catalog_price" and "R$ 62,90" in action.reply_text
+    assert "modules" not in seen and not service.order_assistant.orders.created
+
+
+@pytest.mark.parametrize("enabled", [True, False])
+def test_category_navigation_reaches_the_flow_in_both_modes(enabled):
+    service, _, seen = _core_pipeline(enabled, _flow("pizzas_tradicionais", reply="Nossas Pizzas Tradicionais"))
+    action = _handle(service, "Quero ver as tradicionais")
+    assert action.source == "flow" and action.reply_text == "Nossas Pizzas Tradicionais"
+    assert not service.order_assistant.orders.created

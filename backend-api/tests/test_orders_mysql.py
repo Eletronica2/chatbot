@@ -30,10 +30,12 @@ def db():
     return database
 
 
-def _tenant(db):
+def _tenant(db, orders_enabled=True):
     key = f"orders-{uuid.uuid4().hex[:10]}"
     db.insert("INSERT INTO tenants (external_key, name, email, plan, status) VALUES (%s, %s, %s, 'starter', 'active')",
               (key, f"Tenant {key}", f"{key}@example.com"))
+    if orders_enabled:
+        _run(TenantSettingsService(db).update(key, orders_enabled=True))
     return key
 
 
@@ -52,9 +54,15 @@ def _seed(catalog, tenant):
     return pizza, drink
 
 
-def test_orders_disabled_by_default(db):
-    tenant = _tenant(db)
+def test_orders_disabled_by_default_and_backend_refuses_to_create(db, services):
+    catalog, orders = services
+    tenant = _tenant(db, orders_enabled=False)
     assert _run(TenantSettingsService(db).get_or_create(tenant)).orders_enabled is False
+    _, drink = _seed(catalog, tenant)
+    with pytest.raises(OrderError):
+        _run(orders.create(tenant, customer_phone="5534999990000", fulfillment="retirada",
+                           items=[{"product_id": drink["id"], "quantity": 1}], idempotency_key="draft:off"))
+    assert _run(orders.list(tenant)) == []
     updated = _run(TenantSettingsService(db).update(tenant, orders_enabled=True))
     assert updated.orders_enabled is True
 
@@ -133,3 +141,24 @@ def test_concurrent_status_change_conflicts(db, services):
     orders._get = stale_get
     with pytest.raises(OrderConflict):
         _run(orders.update_status(tenant, order["id"], "confirmado"))
+
+
+def test_assistant_confirmation_persists_exactly_one_order_even_with_replays(db, services):
+    from app.services.order_assistant import OrderAssistant
+
+    catalog, orders = services
+    tenant = _tenant(db)
+    _seed(catalog, tenant)
+    assistant = OrderAssistant(catalog, orders)
+    context = {}
+    for index, text in enumerate(["quero duas calabresas grandes", "não", "retirada", "Ana", "sim", "sim"]):
+        result = _run(assistant.handle(tenant_id=tenant, text=text, context=context, customer_phone="5534999990000",
+                                       phone_number_id="pn", session_id=None, message_id=f"wamid.{index}"))
+        if result is not None:
+            context = {"order_draft": result.draft}
+    replay_context = {"order_draft": {"id": "x", "stage": "confirm", "items": [], "seen_message_ids": ["wamid.4"],
+                                      "updated_at": "2099-01-01T00:00:00"}}
+    _run(assistant.handle(tenant_id=tenant, text="sim", context=replay_context, customer_phone="5534999990000",
+                          phone_number_id="pn", session_id=None, message_id="wamid.4"))
+    rows = _run(orders.list(tenant))
+    assert len(rows) == 1 and rows[0]["total_cents"] == 2 * 6290 and rows[0]["status"] == "novo"

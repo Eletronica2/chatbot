@@ -141,6 +141,11 @@ class OrderService:
         if not key:
             raise OrderError("idempotency_key é obrigatório")
         tenant_pk = self.db.resolve_tenant_pk(tenant_key)
+        enabled = await self.db.fetch_one_async(
+            "SELECT orders_enabled FROM tenant_settings WHERE tenant_id = %s", (tenant_pk,)
+        )
+        if not enabled or not enabled.get("orders_enabled"):
+            raise OrderError("o módulo Pedidos está desativado para esta empresa")
         existing = await self._find_by_key(tenant_pk, key)
         if existing:
             return {**existing, "created": False}

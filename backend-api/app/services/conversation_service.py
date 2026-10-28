@@ -18,11 +18,21 @@ from app.services.conversation_log_service import ConversationLogService
 from app.services.flow_service import FlowService
 from app.services.message_service import MessageService
 from app.services.order_assistant import START_ACTION as START_ORDER_ACTION
+from app.services.order_assistant import claims_order_confirmation, price_reply
 from app.services.session_service import SessionService
 from app.services.subscription_service import SubscriptionService
 from app.services.tenant_settings_service import TenantSettingsService
+from app.utils.phone_utils import normalize_whatsapp_phone
 
 logger = logging.getLogger(__name__)
+
+# Hook actions of the legacy order flow (fixed texts, nothing persisted): never answered automatically.
+LEGACY_ORDER_ACTIONS = {"confirmar_pedido", "consultar_status_pedido", "verificar_status_pedido"}
+ORDERS_UNAVAILABLE_REPLY = (
+    "No momento não estou registrando pedidos por aqui. Posso te mostrar o cardápio, os preços, "
+    "as promoções ou os horários 😊"
+)
+ORDER_START_FAILED_REPLY = "Não consegui iniciar seu pedido agora. Um atendente da loja vai continuar com você."
 
 
 class ConversationService:
@@ -51,6 +61,7 @@ class ConversationService:
         self.billing_gate = billing_gate
         self.ai_usage_service = ai_usage_service
         self.order_assistant = order_assistant
+        self._order_locks: Dict[str, list] = {}
 
     def _billing_v2_active(self) -> bool:
         return self.billing_gate is not None and bool(self.billing_gate.enabled)
@@ -386,6 +397,11 @@ class ConversationService:
         if order_action is not None:
             return order_action
 
+        catalog_action = await self._maybe_catalog_price_answer(message, session, ctx, started_at)
+        if catalog_action is not None:
+            return catalog_action
+
+        tenant_modules = await self._enabled_modules(message.tenant_id)
         intent_result = await self.ai_service.detect_intent(
             tenant_id=message.tenant_id,
             phone_number=message.phone_number,
@@ -394,7 +410,7 @@ class ConversationService:
         )
         enriched_message = self._with_detected_intent(message, intent_result)
 
-        flow_result = await self.flow_service.execute_flow(enriched_message, session)
+        flow_result = await self.flow_service.execute_flow(enriched_message, session, enabled_modules=tenant_modules)
 
         # --- Case 1: Flow wants AI to complete the response (fallback_ai) ---
         if flow_result.requires_ai_fallback:
@@ -431,7 +447,7 @@ class ConversationService:
                         return self._suppressed_late_reply(message, session, source="ai_fallback")
                     flow_state_message = flow_metadata.get("flow_state_message")
                     reply = self._compose_ai_fallback_reply(
-                        ai_response.reply_text,
+                        self._without_order_claims(ai_response.reply_text, message),
                         flow_state_message if isinstance(flow_state_message, str) else None,
                     )
                     source = "ai_fallback"
@@ -498,10 +514,21 @@ class ConversationService:
         if flow_result.handled and flow_result.reply_text:
             logger.info("Flow engine resolved message %s with reply", message.message_id)
             hook = (flow_result.metadata or {}).get("hook")
-            if isinstance(hook, dict) and hook.get("action") == START_ORDER_ACTION:
-                order_action = await self._maybe_order_assistant(message, session, ctx, started_at, trigger=hook)
+            hook_action = hook.get("action") if isinstance(hook, dict) else None
+            if hook_action == START_ORDER_ACTION:
+                order_action = None
+                if "orders" in tenant_modules:
+                    order_action = await self._maybe_order_assistant(message, session, ctx, started_at, trigger=hook)
                 if order_action is not None:
                     return order_action
+                return await self._blocked_order_reply(
+                    message, session, ctx, started_at, reason="start_order_not_handled",
+                    handoff="orders" in tenant_modules,
+                )
+            if hook_action in LEGACY_ORDER_ACTIONS:
+                return await self._blocked_order_reply(message, session, ctx, started_at, reason=f"legacy:{hook_action}")
+            if claims_order_confirmation(flow_result.reply_text):
+                return await self._blocked_order_reply(message, session, ctx, started_at, reason="flow_order_claim")
             if await self._should_suppress_auto_reply(message, ctx):
                 return self._suppressed_late_reply(message, session, source="flow")
             flow_metadata = flow_result.metadata or {}
@@ -643,6 +670,7 @@ class ConversationService:
             )
         if await self._should_suppress_auto_reply(message, ctx):
             return self._suppressed_late_reply(message, session, source="ai")
+        ai_response.reply_text = self._without_order_claims(ai_response.reply_text, message)
         detected_intent = ai_response.detected_intent or intent_result.intent
         confidence = ai_response.confidence if ai_response.confidence is not None else intent_result.confidence
         persist_intent = detected_intent if detected_intent and confidence > 0.7 else session.detected_intent
@@ -732,6 +760,18 @@ class ConversationService:
         return action
 
 
+    async def _enabled_modules(self, tenant_id: str) -> list[str]:
+        tenant_settings = await self.tenant_settings_service.get_or_create(tenant_id)
+        return ["orders"] if getattr(tenant_settings, "orders_enabled", False) else []
+
+    @staticmethod
+    def _order_lock_key(message: NormalizedMessage) -> str:
+        return f"{message.tenant_id}:{normalize_whatsapp_phone(message.phone_number)}"
+
+    def _order_lock(self, message: NormalizedMessage) -> list:
+        locks = self.__dict__.setdefault("_order_locks", {})
+        return locks.setdefault(self._order_lock_key(message), [asyncio.Lock(), 0])
+
     async def _maybe_order_assistant(
         self,
         message: NormalizedMessage,
@@ -740,30 +780,66 @@ class ConversationService:
         started_at: float,
         trigger: Dict[str, Any] | None = None,
     ) -> ConversationAction | None:
-        """Let the order assistant own the turn (active draft, purchase intent or flow hook) when Pedidos is on."""
+        """Let the order assistant own the turn (active draft, purchase intent or flow hook) when Pedidos is on.
+
+        Turns of one conversation run one at a time and read the draft fresh, so a late or concurrent event
+        never advances a draft another turn already moved.
+        """
         assistant = getattr(self, "order_assistant", None)
         if assistant is None:
             return None
-        tenant_settings = await self.tenant_settings_service.get_or_create(message.tenant_id)
-        if not tenant_settings.orders_enabled:
+        if "orders" not in await self._enabled_modules(message.tenant_id):
+            if (session.context or {}).get("order_draft"):
+                await self._persist_session_update(ctx, session, context_updates={"order_draft": None})
             return None
+        entry = self._order_lock(message)
+        entry[1] += 1
+        try:
+            async with entry[0]:
+                return await self._order_turn(assistant, message, session, ctx, started_at, trigger)
+        finally:
+            entry[1] -= 1
+            if entry[1] == 0:
+                self.__dict__.get("_order_locks", {}).pop(self._order_lock_key(message), None)
+
+    async def _order_turn(
+        self, assistant: Any, message: NormalizedMessage, session: ConversationSession, ctx: ExecutionContext,
+        started_at: float, trigger: Dict[str, Any] | None,
+    ) -> ConversationAction | None:
+        context = dict(session.context or {})
+        if ctx.persist:
+            fresh = await self.session_service.repository.get_session(
+                message.tenant_id, session.phone_number or normalize_whatsapp_phone(message.phone_number)
+            )
+            if fresh is not None:
+                context["order_draft"] = (fresh.context or {}).get("order_draft")
+                session.context = {**(session.context or {}), "order_draft": context["order_draft"]}
         try:
             result = await assistant.handle(
                 tenant_id=message.tenant_id,
                 text=message.content or "",
-                context=dict(session.context or {}),
+                context=context,
                 customer_phone=message.phone_number,
                 phone_number_id=message.phone_number_id,
                 session_id=session.session_id if ctx.persist else None,
                 contact_name=message.contact_name,
                 trigger=trigger,
                 dry_run=ctx.is_test or not ctx.persist or not ctx.allow_external_side_effects,
+                message_id=message.message_id,
+                message_ts=message.timestamp,
             )
         except Exception:
             logger.exception("order_assistant_failed tenant=%s message=%s", message.tenant_id, message.message_id)
             return None
         if result is None:
             return None
+        if result.ignore:
+            logger.info("order_assistant_ignored_stale_or_duplicate message=%s", message.message_id)
+            return ConversationAction(
+                source="order_assistant_ignored", reply_text="", tenant_id=message.tenant_id,
+                phone_number=message.phone_number, metadata={"order_event_ignored": True},
+                session_state=session.conversation_state,
+            )
         context_updates: Dict[str, Any] = {"order_draft": result.draft}
         if result.order:
             context_updates["last_order_id"] = result.order["id"]
@@ -776,34 +852,86 @@ class ConversationService:
         if not result.reply:
             await self._persist_session_update(ctx, session, context_updates=context_updates, **state_kwargs)
             return None
-        if await self._should_suppress_auto_reply(message, ctx):
-            return self._suppressed_late_reply(message, session, source="order_assistant")
-
         metadata: Dict[str, Any] = {"source": "order_assistant", **result.metadata}
         if result.draft:
             metadata["order_stage"] = result.draft.get("stage")
+        return await self._respond(
+            message, session, ctx, started_at, result.reply, source="order_assistant", metadata=metadata,
+            context_updates=context_updates, state_kwargs=state_kwargs, detected_intent="pedido",
+        )
+
+    async def _maybe_catalog_price_answer(
+        self, message: NormalizedMessage, session: ConversationSession, ctx: ExecutionContext, started_at: float,
+    ) -> ConversationAction | None:
+        """"Quanto custa a calabresa?" is answered with the registered catalog price (read-only, never an order)."""
+        assistant = getattr(self, "order_assistant", None)
+        if assistant is None:
+            return None
+        try:
+            reply = await price_reply(assistant.catalog, message.tenant_id, message.content or "")
+        except Exception:
+            logger.exception("catalog_price_answer_failed tenant=%s", message.tenant_id)
+            return None
+        if not reply:
+            return None
+        return await self._respond(message, session, ctx, started_at, reply, source="catalog_price",
+                                   metadata={"source": "catalog_price"})
+
+    async def _blocked_order_reply(
+        self, message: NormalizedMessage, session: ConversationSession, ctx: ExecutionContext, started_at: float,
+        *, reason: str, handoff: bool = False,
+    ) -> ConversationAction:
+        """Never send an order step or an order confirmation that the backend did not produce itself."""
+        logger.warning("order_flow_blocked tenant=%s reason=%s message=%s", message.tenant_id, reason,
+                       message.message_id)
+        context_updates: Dict[str, Any] = {}
+        if handoff:
+            context_updates = {"human_handoff_pending": True, "human_handoff_reason": "order_start_failed",
+                               "human_handoff_at": datetime.utcnow().isoformat()}
+        return await self._respond(
+            message, session, ctx, started_at, ORDER_START_FAILED_REPLY if handoff else ORDERS_UNAVAILABLE_REPLY,
+            source="order_blocked", metadata={"source": "order_blocked", "blocked_reason": reason},
+            context_updates=context_updates, requires_handoff=handoff,
+        )
+
+    @staticmethod
+    def _without_order_claims(text: str, message: NormalizedMessage) -> str:
+        if text and claims_order_confirmation(text):
+            logger.warning("ai_order_claim_removed tenant=%s message=%s", message.tenant_id, message.message_id)
+            return "Posso te ajudar com o cardápio, os preços, as promoções ou os horários 😊"
+        return text
+
+    async def _respond(
+        self, message: NormalizedMessage, session: ConversationSession, ctx: ExecutionContext, started_at: float,
+        reply: str, *, source: str, metadata: Dict[str, Any], context_updates: Dict[str, Any] | None = None,
+        state_kwargs: Dict[str, Any] | None = None, detected_intent: str | None = None,
+        requires_handoff: bool = False,
+    ) -> ConversationAction:
+        if await self._should_suppress_auto_reply(message, ctx):
+            return self._suppressed_late_reply(message, session, source=source)
+        metadata = dict(metadata)
         if ctx.is_test:
             metadata["dry_run"] = True
-        self._append_message(session, role="assistant", content=result.reply)
+        self._append_message(session, role="assistant", content=reply)
         session = await self._persist_session_update(
-            ctx, session, context_updates=context_updates,
+            ctx, session, context_updates=context_updates or None,
             phone_number_id=message.phone_number_id, display_phone_number=message.display_phone_number,
-            **state_kwargs,
+            **(state_kwargs or {}),
         )
         await self._persist_message(
             ctx, tenant_id=message.tenant_id, session_id=session.session_id, direction="outgoing",
-            role="assistant", content=result.reply, source="order_assistant", metadata=metadata,
+            role="assistant", content=reply, source=source, metadata=metadata,
             phone_number_id=message.phone_number_id,
         )
         await self._log_interaction(
             message=message, session_id=session.session_id, flow_used=session.active_flow,
-            state=session.current_state, user_message=message.content, bot_response=result.reply,
-            source="order_assistant", started_at=started_at, detected_intent="pedido", execution_context=ctx,
+            state=session.current_state, user_message=message.content, bot_response=reply,
+            source=source, started_at=started_at, detected_intent=detected_intent or session.detected_intent,
+            execution_context=ctx,
         )
         return ConversationAction(
-            source="order_assistant", reply_text=result.reply, tenant_id=message.tenant_id,
-            phone_number=message.phone_number, metadata=metadata,
-            session_state=session.conversation_state, requires_handoff=False,
+            source=source, reply_text=reply, tenant_id=message.tenant_id, phone_number=message.phone_number,
+            metadata=metadata, session_state=session.conversation_state, requires_handoff=requires_handoff,
         )
 
     @staticmethod

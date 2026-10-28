@@ -22,7 +22,8 @@ class FlowService:
     async def execute_flow(
         self,
         message: NormalizedMessage,
-        session: ConversationSession
+        session: ConversationSession,
+        enabled_modules: list[str] | None = None,
     ) -> FlowExecutionResult:
         session_state: Dict[str, Any] = dict(session.conversation_state or {})
         if session.active_flow and "active_flow" not in session_state:
@@ -37,6 +38,7 @@ class FlowService:
             "phone_number": message.phone_number,
             "message": message.model_dump(mode="json"),
             "session_state": session_state,
+            "enabled_modules": list(enabled_modules or []),
         }
 
         try:
