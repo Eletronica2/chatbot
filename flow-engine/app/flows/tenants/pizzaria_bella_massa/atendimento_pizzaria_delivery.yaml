@@ -6,6 +6,39 @@ fallback_ai: true
 # navegação ("quero ver o cardápio"), atendente humano e coleta de pedido continuam determinísticos.
 prefer_ai_for_specific_questions: true
 
+# Conhecimento da IA local gerado a partir dos estados abaixo; publicar o fluxo sincroniza automaticamente.
+knowledge:
+  price_columns: [broto, média, grande]
+  retire: [cardapio, regras, entrega]
+  documents:
+    - id: bella-flow-pizzas-tradicionais
+      title: Pizzas tradicionais Bella Massa
+      states: [pizzas_tradicionais]
+      append: "Tamanhos: broto 25 cm, média 35 cm, grande 45 cm."
+    - id: bella-flow-pizzas-especiais
+      title: Pizzas especiais Bella Massa
+      states: [pizzas_especiais]
+      append: "Tamanhos: broto 25 cm, média 35 cm, grande 45 cm."
+    - id: bella-flow-pizzas-doces
+      title: Pizzas doces Bella Massa
+      states: [pizzas_doces]
+      append: "Tamanhos: broto 25 cm, média 35 cm, grande 45 cm."
+    - id: bella-flow-bebidas
+      title: Bebidas Bella Massa
+      states: [bebidas]
+    - id: bella-flow-promocoes
+      title: Promoções Bella Massa
+      states: [promocoes_do_dia]
+    - id: bella-flow-horarios
+      title: Horários Bella Massa
+      states: [horario_funcionamento]
+    - id: bella-flow-tamanhos
+      title: Tamanhos de pizza Bella Massa
+      states: [pedido_tamanho]
+    - id: bella-flow-entrega-pagamento
+      title: Entrega e pagamento Bella Massa
+      states: [pedido_tipo_entrega, pedido_pagamento]
+
 business_hours:
   timezone: America/Sao_Paulo
   schedule:
@@ -471,6 +504,10 @@ states:
 
       Pra começar: qual é o seu nome?
     collect: customer_name
+    # Com o módulo Pedidos ativo, o assistente de pedidos assume a partir daqui (catálogo + confirmação).
+    hook:
+      action: start_order
+      return_state: boas_vindas
     options:
       - label: "Preciso de ajuda"
         value: "atendente"
