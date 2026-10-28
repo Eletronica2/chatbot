@@ -125,6 +125,28 @@ def test_cta_placeholder_respects_ordering():
     assert "pedido" not in apply_contextual_cta("{cta_pedido}", always_open, ordering=False)
 
 
+LEGACY_COLLECTED = {"payment_method": "cartao", "address": "vou retirar no local", "pizza_size": "grande",
+                    "customer_name": "arthur", "delivery_type": "vou retirar", "drink": "so a pizza"}
+
+
+@pytest.mark.parametrize("modules", [ON, OFF])
+@pytest.mark.parametrize("state", ["boas_vindas", "bebidas", "pedido_confirmacao", "pedido_pagamento"])
+def test_legacy_collected_data_never_flows_back(modules, state):
+    session_state = {"current_state": state, "last_state": state, "collected_data": dict(LEGACY_COLLECTED)}
+    for text in ["Boa noite", "Cardápio", "oi, tudo bem?"]:
+        response = _run(FLOW, FlowExecutionRequest(tenant_id="pizzaria_bella_massa",
+                                                   message={"content": text, "text": text},
+                                                   session_state=dict(session_state), enabled_modules=modules))
+        assert response.collected_data == {}, (state, text)
+        assert response.session_state.get("collected_data") == {}  # overwrites what the backend stored
+
+
+def test_flow_text_spells_camarao_and_keeps_prices():
+    text = BELLA.read_text(encoding="utf-8")
+    assert "Camaão" not in text
+    assert "• *Camarão Especial* — R$ 69,90 / R$ 82,90 / R$ 99,90" in text
+
+
 def test_knowledge_section_still_loads():
     data = yaml.safe_load(BELLA.read_text(encoding="utf-8"))
     assert len(data["knowledge"]["documents"]) == 8

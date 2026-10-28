@@ -29,9 +29,16 @@ class FlowRunner:
             or definition.start_state
         )
         # A session parked in a state of a disabled module (e.g. a legacy order step) restarts from the flow start.
-        if not self._allowed(definition.get_state(current_state_name), enabled):
+        restarted = not self._allowed(definition.get_state(current_state_name), enabled)
+        if restarted:
             current_state_name = definition.start_state
             session_state["current_state"] = session_state["last_state"] = current_state_name
+        # Only data an enabled state collects survives; anything from a disabled module or an older flow version
+        # never flows back out (to the AI, to the next turns).
+        live_keys = {s.collect for s in definition.states.values() if s.collect and self._allowed(s, enabled)}
+        kept = {} if restarted else {k: v for k, v in dict(session_state.get("collected_data") or {}).items()
+                                     if k in live_keys}
+        session_state["collected_data"] = kept
         text_candidates = self._extract_text_candidates(request.message)
         detected_intent = self._extract_detected_intent(request.message)
 

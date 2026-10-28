@@ -253,7 +253,7 @@ states:
       Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry...
 
       ⭐ *Especiais* — a partir de R$ 59,90
-      Camaão, Parma c/ Rúcula, Quatro Queijos, Costela BBQ...
+      Camarão, Parma c/ Rúcula, Quatro Queijos, Costela BBQ...
 
       🍫 *Doces* — a partir de R$ 42,90
       Chocolate c/ Morango, Banana c/ Canela, Nutella...
@@ -343,7 +343,7 @@ states:
     message: |
       Nossas Pizzas Especiais ⭐🍕
 
-      • *Camaão Especial* — R$ 69,90 / R$ 82,90 / R$ 99,90
+      • *Camarão Especial* — R$ 69,90 / R$ 82,90 / R$ 99,90
       • *Parma com Rúcula* — R$ 64,90 / R$ 77,90 / R$ 92,90
       • *Quatro Queijos Premium* — R$ 59,90 / R$ 72,90 / R$ 87,90
       • *Costela BBQ* — R$ 72,90 / R$ 85,90 / R$ 102,90
@@ -517,7 +517,6 @@ states:
       Ótimo, vamos lá! 😄🍕
 
       Pra começar: qual é o seu nome?
-    collect: customer_name
     # Com o módulo Pedidos ativo, o assistente de pedidos assume a partir daqui (catálogo + confirmação).
     hook:
       action: start_order
