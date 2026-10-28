@@ -1,0 +1,19 @@
+{"ts": "2026-10-27T23:44:12.301+00:00", "event": "warmup", "tenant_id": "pizzaria_bella_massa", "mode": "head", "detail": "attempt=1 prompt_tokens=810 load_ms=3619 total_ms=24965"}
+{"ts": "2026-10-27T23:44:12.301+00:00", "event": "warmup", "tenant_id": "pizzaria_bella_massa", "mode": "full_context", "detail": "prefix scheduled (cancellable)"}
+{"ts": "2026-10-27T23:44:28.082+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "detail": "cancelled: customer request"}
+{"ts": "2026-10-27T23:45:32.288+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "detail": "cancelled: customer request"}
+{"ts": "2026-10-27T23:46:47.247+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "mode": "full_context", "documents": 8, "detail": "prompt_tokens=2184 total_ms=49180"}
+--- respond
+{'ts': '2026-10-27T23:44:27.875+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1179, 'prompt_eval_ms': 12220, 'eval_ms': 2662, 'load_ms': 5, 'queue_ms': 9965, 'latency_ms': 25711}
+{'ts': '2026-10-27T23:44:57.679+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1126, 'prompt_eval_ms': 10750, 'eval_ms': 2962, 'load_ms': 2, 'queue_ms': 0, 'latency_ms': 29597}
+{'ts': '2026-10-27T23:45:55.057+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1298, 'prompt_eval_ms': 16716, 'eval_ms': 2935, 'load_ms': 3, 'queue_ms': 0, 'latency_ms': 22769}
+{'ts': '2026-10-27T23:47:05.166+00:00', 'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2195, 'prompt_eval_ms': 1915, 'eval_ms': 3352, 'load_ms': 2, 'queue_ms': 0, 'latency_ms': 5323}
+{'ts': '2026-10-27T23:47:10.350+00:00', 'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2187, 'prompt_eval_ms': 1133, 'eval_ms': 3717, 'load_ms': 9, 'queue_ms': 0, 'latency_ms': 4977}
+--- memória
+atende-ai-local-ai-api-1 1.696GiB / 4GiB 42.39%
+atende-ai-local-ollama-1 3.319GiB / 7GiB 47.42%
+atende-ai-local-qdrant-1 45.53MiB / 1GiB 4.45%
+NAME                             ID              SIZE      PROCESSOR    CONTEXT    RUNNER      UNTIL          
+qwen3:4b-instruct-2507-q4_K_M    0edcdef34593    3.2 GB    100% CPU     4096       llamacpp    24 hours from n
+               total        used        free      shared  buff/cache   available
+Mem:            15Gi       5,8Gi       1,2Gi       2,3Mi       8,4Gi       9,3Gi

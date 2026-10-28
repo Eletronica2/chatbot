@@ -1,0 +1,41 @@
+=== conversa A
+[1] cliente: Boa noite
+    caminho: flow(boas_vindas) determinístico | sem IA | total_ms=36
+    resposta: Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊 ⏎  ⏎ Sou o assistente virtual da pizzaria e fico feliz em te atender! ⏎  ⏎ Me fala o que você precisa — posso mostrar nosso car
+[2] cliente: Quanto custa a pizza de calabresa?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2374 tokens_out=44 ai_latency_ms=16723 level=rag guard=None | total_ms=16749
+    resposta: A pizza de calabresa custa R$ 42,90 no broto, R$ 52,90 na média e R$ 62,90 no grande.
+[3] cliente: Vocês têm pizza grande?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2434 tokens_out=29 ai_latency_ms=8323 level=rag guard=None | total_ms=8353
+    resposta: Sim, temos pizza grande. Está disponível em todos os sabores, incluindo tradicionais, doces e especiais.
+[4] cliente: Qual o preço da calabresa?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2480 tokens_out=44 ai_latency_ms=12116 level=rag guard=None | total_ms=12142
+    resposta: A pizza de calabresa custa R$ 42,90 no broto, R$ 52,90 na média e R$ 62,90 no grande.
+[5] cliente: Quanto custa uma pizza de frango?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2543 tokens_out=43 ai_latency_ms=12481 level=rag guard=None | total_ms=12507
+    resposta: A pizza de frango custa R$ 46,90 no broto, R$ 56,90 na média e R$ 66,90 no grande.
+[6] cliente: Vocês oferecem Wi-Fi?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2405 tokens_out=22 ai_latency_ms=10484 level=rag guard=None | total_ms=10510
+    resposta: Não tenho essa informação confirmada no momento. Posso encaminhar sua dúvida para a equipe?
+[7] cliente: Quero ver o cardápio.
+    caminho: flow(cardapio_principal) determinístico | sem IA | total_ms=13
+    resposta: Aqui está nosso cardápio! 😍🍕 ⏎  ⏎ 🍕 *Tradicionais* — a partir de R$ 39,90 ⏎ Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry... ⏎  ⏎ ⭐ *Especiais* — a part
+=== conversa B
+[1] cliente: Boa noite
+    caminho: flow(boas_vindas) determinístico | sem IA | total_ms=36
+    resposta: Oi! Bem-vindo à Pizzaria Bella Massa! 🍕😊 ⏎  ⏎ Sou o assistente virtual da pizzaria e fico feliz em te atender! ⏎  ⏎ Me fala o que você precisa — posso mostrar nosso car
+[2] cliente: Vocês têm pizza grande?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2370 tokens_out=27 ai_latency_ms=9467 level=rag guard=None | total_ms=9494
+    resposta: Sim, temos pizza grande. O tamanho grande mede 45 cm e é ideal para 3-4 pessoas.
+[3] cliente: De calabresa
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2410 tokens_out=22 ai_latency_ms=6515 level=rag guard=None | total_ms=6545
+    resposta: Sim, a pizza calabresa no tamanho grande custa R$ 62,90.
+[4] cliente: Quanto custa?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2446 tokens_out=20 ai_latency_ms=6334 level=rag guard=None | total_ms=6360
+    resposta: A pizza calabresa no tamanho grande custa R$ 62,90.
+[5] cliente: E a de frango?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2481 tokens_out=23 ai_latency_ms=7192 level=rag guard=None | total_ms=7217
+    resposta: A pizza frango com catupiry no tamanho grande custa R$ 66,90.
+[6] cliente: Aceita PIX?
+    caminho: flow(boas_vindas) -> AI fallback | tokens_in=2350 tokens_out=21 ai_latency_ms=7772 level=rag guard=None | total_ms=7798
+    resposta: Sim, aceitamos PIX. Chave: pizzariabellamassa@pix.com

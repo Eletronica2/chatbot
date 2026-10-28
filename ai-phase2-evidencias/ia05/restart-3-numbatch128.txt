@@ -1,0 +1,15 @@
+{"ts": "2026-10-28T00:04:43.039+00:00", "event": "warmup", "tenant_id": "pizzaria_bella_massa", "mode": "head", "detail": "attempt=1 prompt_tokens=810 load_ms=3713 total_ms=26105"}
+{"ts": "2026-10-28T00:04:43.039+00:00", "event": "warmup", "tenant_id": "pizzaria_bella_massa", "mode": "full_context", "detail": "prefix scheduled (cancellable)"}
+{"ts": "2026-10-28T00:04:59.261+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "detail": "cancelled: customer request"}
+{"ts": "2026-10-28T00:05:51.180+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "detail": "cancelled: customer request"}
+{"ts": "2026-10-28T00:07:08.532+00:00", "event": "rewarm", "tenant_id": "pizzaria_bella_massa", "mode": "full_context", "documents": 8, "detail": "prompt_tokens=2184 total_ms=51106"}
+--- respond
+{'ts': '2026-10-28T00:04:59.032+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1179, 'prompt_eval_ms': 12635, 'eval_ms': 2660, 'load_ms': 2, 'queue_ms': 13406, 'latency_ms': 29569}
+{'ts': '2026-10-28T00:05:16.493+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1126, 'prompt_eval_ms': 10734, 'eval_ms': 2805, 'load_ms': 2, 'queue_ms': 0, 'latency_ms': 17232}
+{'ts': '2026-10-28T00:06:14.414+00:00', 'mode': 'hybrid', 'fallback_reason': 'kv_cold', 'prompt_tokens': 1298, 'prompt_eval_ms': 17094, 'eval_ms': 3001, 'load_ms': 3, 'queue_ms': 0, 'latency_ms': 23235}
+{'ts': '2026-10-28T00:07:24.905+00:00', 'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2195, 'prompt_eval_ms': 1993, 'eval_ms': 3358, 'load_ms': 3, 'queue_ms': 0, 'latency_ms': 5415}
+{'ts': '2026-10-28T00:07:30.165+00:00', 'mode': 'full_context', 'fallback_reason': None, 'prompt_tokens': 2187, 'prompt_eval_ms': 1136, 'eval_ms': 3721, 'load_ms': 1, 'queue_ms': 0, 'latency_ms': 4982}
+--- memória
+atende-ai-local-ai-api-1 1.694GiB / 4GiB
+atende-ai-local-ollama-1 3.261GiB / 7GiB
+atende-ai-local-qdrant-1 45.52MiB / 1GiB
