@@ -1,0 +1,68 @@
+tables: ['catalog_categories', 'catalog_products', 'order_items', 'order_status_history', 'orders']
+tenants with orders_enabled=1: 1
+catalog products: 21 available: 21
+> quero 2 calabresas grandes e uma coca lata
+< 'Anotado:\n• 2x Calabresa (Grande)\n• 1x Refrigerante Lata (Coca-Cola)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> não
+< 'O pedido é para *entrega* ou *retirada* na loja?'
+> retirada
+< 'Em qual nome fica o pedido?'
+> Teste
+< 'Confira seu pedido:\n• 2x Calabresa (Grande) — R$ 125,80\n• 1x Refrigerante Lata (Coca-Cola) — R$ 7,00\n\nTotal: R$ 132,80\nRetirada na loja\nNome: Teste\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.'
+> sim
+< '(Simulação) Pedido confirmado — nenhum pedido foi registrado.'
+> quero fazer um pedido
+< 'Claro! O que você gostaria de pedir?\n\n*Pizzas Tradicionais:* Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry, Palmito, Napolitana\n*Pizzas Especiais:* Camarão Especial, Parma com Rúcula, Quatro Queijos Premium, Costela BBQ, Salmão Defumado\n*Pizzas Doces:* Chocolate c/ Morango, Banana c/ Canela, Prestígio, Nutella c/ Leite Ninho, Romeu e Julieta\n*Bebidas:* Refrigerante Lata, Refrigerante 2L, Suco Natural, Água Mineral, Água com Gás\n\nPode mandar tudo de uma vez, com quantidade e opção (tamanho, sabor).'
+> Mussarela, calabresa e quatro queijos. Quero também uma coca 2 litros. E uma de prestígio.
+< 'Qual opção para Mussarela? Broto (R$ 39,90), Média (R$ 49,90), Grande (R$ 59,90)'
+> Média
+< 'Qual opção para Calabresa? Broto (R$ 42,90), Média (R$ 52,90), Grande (R$ 62,90)'
+> Grande
+< 'Qual opção para Quatro Queijos Premium? Broto (R$ 59,90), Média (R$ 72,90), Grande (R$ 87,90)'
+> Pequena
+< 'Qual opção para Quatro Queijos Premium? Broto (R$ 59,90), Média (R$ 72,90), Grande (R$ 87,90)'
+> Broto
+< 'Qual opção para Prestígio? Broto (R$ 47,90), Média (R$ 57,90), Grande (R$ 69,90)'
+> Média
+< 'Anotado:\n• 1x Refrigerante 2L (Coca-Cola)\n• 1x Mussarela (Média)\n• 1x Calabresa (Grande)\n• 1x Quatro Queijos Premium (Broto)\n• 1x Prestígio (Média)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Quero um suco natural
+< 'Qual opção para Suco Natural? Laranja (R$ 10,00), Limão (R$ 10,00), Maracujá (R$ 10,00), Uva (R$ 10,00)'
+> Laranja
+< 'Anotado:\n• 1x Refrigerante 2L (Coca-Cola)\n• 1x Mussarela (Média)\n• 1x Calabresa (Grande)\n• 1x Quatro Queijos Premium (Broto)\n• 1x Prestígio (Média)\n• 1x Suco Natural (Laranja)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Substitui a coca por guaraná
+< 'Troquei: 1x Refrigerante 2L (Coca-Cola) → 1x Refrigerante 2L (Guaraná Antarctica).\n\nAnotado:\n• 1x Mussarela (Média)\n• 1x Calabresa (Grande)\n• 1x Quatro Queijos Premium (Broto)\n• 1x Prestígio (Média)\n• 1x Suco Natural (Laranja)\n• 1x Refrigerante 2L (Guaraná Antarctica)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Entrega
+< 'Qual é o endereço de entrega? Informe rua, número, bairro e cidade (complemento é opcional).'
+> Sepetiba, Jardim espírito santo
+< 'Anotei: Sepetiba, Jardim espírito santo. Qual é o número? (se não tiver, responda *sem número*)'
+> 266
+< 'Anotei: Sepetiba, 266, Jardim espírito santo. Qual é a cidade?'
+> Uberlândia
+< 'Em qual nome fica o pedido?'
+> Teste
+< 'Confira seu pedido:\n• 1x Mussarela (Média) — R$ 49,90\n• 1x Calabresa (Grande) — R$ 62,90\n• 1x Quatro Queijos Premium (Broto) — R$ 59,90\n• 1x Prestígio (Média) — R$ 57,90\n• 1x Suco Natural (Laranja) — R$ 10,00\n• 1x Refrigerante 2L (Guaraná Antarctica) — R$ 14,00\n\nSubtotal dos produtos: R$ 254,60\nTaxa de entrega: a confirmar pela loja\nTotal final: pendente\nEntrega em: Sepetiba, 266 - Jardim espírito santo, Uberlândia\nNome: Teste\n\nResponda *SIM* para enviar o pedido à loja (o total final chega depois para você aceitar) ou *NÃO* para cancelar.'
+> sim
+< '(Simulação) Pedido confirmado — nenhum pedido foi registrado.'
+> quero fazer um pedido
+< 'Claro! O que você gostaria de pedir?\n\n*Pizzas Tradicionais:* Mussarela, Calabresa, Portuguesa, Frango c/ Catupiry, Palmito, Napolitana\n*Pizzas Especiais:* Camarão Especial, Parma com Rúcula, Quatro Queijos Premium, Costela BBQ, Salmão Defumado\n*Pizzas Doces:* Chocolate c/ Morango, Banana c/ Canela, Prestígio, Nutella c/ Leite Ninho, Romeu e Julieta\n*Bebidas:* Refrigerante Lata, Refrigerante 2L, Suco Natural, Água Mineral, Água com Gás\n\nPode mandar tudo de uma vez, com quantidade e opção (tamanho, sabor).'
+> quero 4 pizzas de quatro queijos broto
+< 'Anotado:\n• 4x Quatro Queijos Premium (Broto)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Quero só uma
+< 'Alterei: 4x Quatro Queijos Premium (Broto) → 1x Quatro Queijos Premium (Broto).\n\nAnotado:\n• 1x Quatro Queijos Premium (Broto)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> dois refrigerantes de 2L
+< 'Qual opção para Refrigerante 2L? Coca-Cola (R$ 14,00), Guaraná Antarctica (R$ 14,00), Fanta (R$ 14,00)'
+> Antartica
+< 'Anotado:\n• 1x Quatro Queijos Premium (Broto)\n• 2x Refrigerante 2L (Guaraná Antarctica)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Adiciona também um Guaraná 2 litros
+< 'Anotado:\n• 1x Quatro Queijos Premium (Broto)\n• 3x Refrigerante 2L (Guaraná Antarctica)\n\nQuer adicionar mais alguma coisa? Se não, me diga se é *entrega* ou *retirada*.'
+> Tira a Coca
+< 'Não encontrei "a coca" no seu pedido. Ele está assim:\n• 1x Quatro Queijos Premium (Broto)\n• 3x Refrigerante 2L (Guaraná Antarctica)'
+> não
+< 'O pedido é para *entrega* ou *retirada* na loja?'
+> retirada
+< 'Em qual nome fica o pedido?'
+> Teste
+< 'Confira seu pedido:\n• 1x Quatro Queijos Premium (Broto) — R$ 59,90\n• 3x Refrigerante 2L (Guaraná Antarctica) — R$ 42,00\n\nTotal: R$ 101,90\nRetirada na loja\nNome: Teste\n\nResponda *SIM* para confirmar ou *NÃO* para cancelar.'
+> não
+< 'Tudo bem, não registrei o pedido. Se quiser recomeçar, é só dizer "quero fazer um pedido".'
+orders in DB for tenant: 2
