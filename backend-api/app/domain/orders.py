@@ -5,6 +5,8 @@ FULFILLMENTS = ("entrega", "retirada")
 
 # Stored value -> label shown to the store and the customer.
 STATUS_LABELS = {
+    "aguardando_loja": "Aguardando confirmação da loja",
+    "aguardando_cliente": "Aguardando aceite do cliente",
     "novo": "Novo",
     "confirmado": "Confirmado",
     "em_preparo": "Em preparo",
@@ -17,7 +19,11 @@ STATUS_LABELS = {
 
 TERMINAL = {"entregue", "retirado", "cancelado"}
 
+# Delivery orders wait for the store's fee (aguardando_loja) and the customer's acceptance of the final total
+# (aguardando_cliente). Those steps only move through set_delivery_fee / customer_decision, never by hand.
 _NEXT = {
+    "aguardando_loja": {"cancelado"},
+    "aguardando_cliente": {"cancelado"},
     "novo": {"confirmado", "cancelado"},
     "confirmado": {"em_preparo", "cancelado"},
     "em_preparo": {"saiu_para_entrega", "pronto_para_retirada", "cancelado"},
@@ -44,6 +50,10 @@ def money(cents: int) -> str:
 
 
 NOTIFICATION_TEXTS = {
+    "aguardando_cliente": (
+        "A taxa de entrega do pedido #{number} é {fee}. Total final: {total}. "
+        "Responda *ACEITO* para confirmar ou *CANCELAR* para cancelar."
+    ),
     "confirmado": "Seu pedido #{number} foi confirmado! Já vamos começar a preparar.",
     "em_preparo": "Seu pedido #{number} está em preparo.",
     "saiu_para_entrega": "Seu pedido #{number} saiu para entrega.",
@@ -54,5 +64,8 @@ NOTIFICATION_TEXTS = {
 }
 
 
-def notification_text(status: str, order_number: int, store_name: str) -> str:
-    return f"{store_name}: " + NOTIFICATION_TEXTS[status].format(number=order_number)
+def notification_text(status: str, order_number: int, store_name: str, *, fee_cents: int | None = None,
+                      total_cents: int | None = None) -> str:
+    return f"{store_name}: " + NOTIFICATION_TEXTS[status].format(
+        number=order_number, fee=money(fee_cents or 0), total=money(total_cents or 0)
+    )

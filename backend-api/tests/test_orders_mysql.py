@@ -162,3 +162,35 @@ def test_assistant_confirmation_persists_exactly_one_order_even_with_replays(db,
                           phone_number_id="pn", session_id=None, message_id="wamid.4"))
     rows = _run(orders.list(tenant))
     assert len(rows) == 1 and rows[0]["total_cents"] == 2 * 6290 and rows[0]["status"] == "novo"
+
+
+def test_delivery_waits_for_store_fee_and_customer_acceptance(db, services):
+    catalog, orders = services
+    tenant, other = _tenant(db), _tenant(db)
+    pizza, drink = _seed(catalog, tenant)
+    items = [{"product_id": pizza["id"], "variant_name": "Grande", "quantity": 1}]
+    delivery = _run(orders.create(tenant, customer_phone="5534999990000", fulfillment="entrega", items=items,
+                                  idempotency_key="draft:fee", address="Rua A, 10 - Centro, Uberlândia"))
+    pickup = _run(orders.create(tenant, customer_phone="5534999990001", fulfillment="retirada", items=items,
+                                idempotency_key="draft:pickup"))
+    assert delivery["status"] == "aguardando_loja" and delivery["total_pending"] is True
+    assert pickup["status"] == "novo" and pickup["total_pending"] is False and pickup["total_cents"] == 6290
+    with pytest.raises(OrderError):  # by hand the store can only cancel at this step
+        _run(orders.update_status(tenant, delivery["id"], "confirmado"))
+    with pytest.raises(LookupError):  # tenant isolation
+        _run(orders.set_delivery_fee(other, delivery["id"], 800))
+    with pytest.raises(OrderError):
+        _run(orders.set_delivery_fee(tenant, pickup["id"], 800))
+    updated, _, previous = _run(orders.set_delivery_fee(tenant, delivery["id"], 800, actor_name="Loja"))
+    assert previous == "aguardando_loja" and updated["status"] == "aguardando_cliente"
+    assert updated["delivery_fee_cents"] == 800 and updated["total_cents"] == 7090 and not updated["total_pending"]
+    pending = _run(orders.pending_acceptance(tenant, "5534999990000"))
+    assert pending["id"] == delivery["id"] and pending["fee_sent_at"] is not None
+    assert _run(orders.pending_acceptance(other, "5534999990000")) is None
+    with pytest.raises(OrderConflict):  # acceptance is bound to the total the customer saw
+        _run(orders.customer_decision(tenant, delivery["id"], accept=True, expected_total_cents=6290))
+    accepted = _run(orders.customer_decision(tenant, delivery["id"], accept=True, expected_total_cents=7090))
+    assert accepted["status"] == "confirmado"
+    history = _run(orders.get(tenant, delivery["id"]))["history"]
+    assert [h["to_status"] for h in history] == ["aguardando_loja", "aguardando_cliente", "confirmado"]
+    assert history[-1]["actor_type"] == "customer"

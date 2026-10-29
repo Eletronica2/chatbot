@@ -46,7 +46,10 @@ def _order_row(row: Dict[str, Any]) -> Dict[str, Any]:
         "address": row.get("address") or "",
         "notes": row.get("notes") or "",
         "subtotal_cents": int(row.get("subtotal_cents") or 0),
+        "delivery_fee_cents": int(row["delivery_fee_cents"]) if row.get("delivery_fee_cents") is not None else None,
         "total_cents": int(row.get("total_cents") or 0),
+        # Delivery without a fee from the store yet: total_cents holds only the products.
+        "total_pending": fulfillment == "entrega" and row.get("delivery_fee_cents") is None,
         "source": row.get("source") or "whatsapp",
         "session_id": row.get("session_id") or "",
         "item_count": int(row.get("item_count") or 0),
@@ -102,7 +105,8 @@ class OrderService:
 
     _ORDER_SELECT = (
         "SELECT o.id, o.order_number, o.status, o.customer_name, o.customer_phone, o.phone_number_id, "
-        "o.fulfillment, o.address, o.notes, o.subtotal_cents, o.total_cents, o.source, o.session_id, "
+        "o.fulfillment, o.address, o.notes, o.subtotal_cents, o.delivery_fee_cents, o.total_cents, o.source, "
+        "o.session_id, "
         "o.created_at, o.updated_at, "
         "(SELECT COALESCE(SUM(i.quantity), 0) FROM order_items i WHERE i.order_id = o.id) AS item_count "
         "FROM orders o "
@@ -153,6 +157,9 @@ class OrderService:
         products = await self.catalog.list_products(tenant_key)
         priced = price_items(products, items)
         subtotal = sum(i["line_total_cents"] for i in priced)
+        # No delivery fee is registered: the store informs it and the customer accepts the final total first.
+        initial_status = "aguardando_loja" if fulfillment == "entrega" else "novo"
+        initial_note = "Pedido criado — taxa de entrega a confirmar" if fulfillment == "entrega" else "Pedido criado"
 
         def _insert() -> int:
             for _ in range(3):
@@ -169,9 +176,10 @@ class OrderService:
                                 "INSERT INTO orders (tenant_id, order_number, status, customer_name, customer_phone, "
                                 "phone_number_id, fulfillment, address, notes, subtotal_cents, total_cents, source, "
                                 "session_id, idempotency_key) "
-                                "VALUES (%s, %s, 'novo', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                                 (
-                                    tenant_pk, number, (customer_name or "").strip()[:160] or None, phone,
+                                    tenant_pk, number, initial_status, (customer_name or "").strip()[:160] or None,
+                                    phone,
                                     (phone_number_id or "")[:64] or None, fulfillment,
                                     address if fulfillment == "entrega" else None,
                                     (notes or "").strip()[:500] or None, subtotal, subtotal, source[:32],
@@ -190,8 +198,8 @@ class OrderService:
                             )
                             cursor.execute(
                                 "INSERT INTO order_status_history (order_id, from_status, to_status, actor_type, "
-                                "actor_user_id, actor_name, note) VALUES (%s, NULL, 'novo', %s, %s, %s, %s)",
-                                (order_id, actor_type, actor_user_id, actor_name, "Pedido criado"),
+                                "actor_user_id, actor_name, note) VALUES (%s, NULL, %s, %s, %s, %s, %s)",
+                                (order_id, initial_status, actor_type, actor_user_id, actor_name, initial_note),
                             )
                     return order_id
                 except pymysql.err.IntegrityError as exc:
@@ -321,6 +329,83 @@ class OrderService:
         if not history_id:
             raise OrderConflict("o pedido foi alterado por outra pessoa; atualize e tente novamente")
         return await self._get(tenant_pk, order_id), history_id, previous
+
+    async def _transition(
+        self, tenant_pk: int, order_id: int, previous: str, target: str, *, actor_type: str,
+        actor_user_id: Optional[str], actor_name: Optional[str], note: str, extra_sql: str = "",
+        extra_params: tuple = (), expect_total: Optional[int] = None,
+    ) -> int:
+        """Compare-and-set status change plus history row; 0 when the order moved meanwhile."""
+        def _apply() -> int:
+            with self.db.transaction() as conn:
+                with conn.cursor() as cursor:
+                    where = "id = %s AND tenant_id = %s AND status = %s"
+                    params: tuple = (order_id, tenant_pk, previous)
+                    if expect_total is not None:
+                        where += " AND total_cents = %s"
+                        params += (expect_total,)
+                    changed = cursor.execute(
+                        f"UPDATE orders SET status = %s{extra_sql} WHERE {where}", (target, *extra_params, *params)
+                    )
+                    if not changed:
+                        return 0
+                    cursor.execute(
+                        "INSERT INTO order_status_history (order_id, from_status, to_status, actor_type, "
+                        "actor_user_id, actor_name, note) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+                        (order_id, previous, target, actor_type, actor_user_id, (actor_name or "")[:160] or None,
+                         (note or "").strip()[:300] or None),
+                    )
+                    return int(cursor.lastrowid)
+
+        return await asyncio.to_thread(_apply)
+
+    async def set_delivery_fee(
+        self, tenant_key: str, order_id: int, fee_cents: int, *, actor_user_id: Optional[str] = None,
+        actor_name: Optional[str] = None,
+    ) -> tuple[Dict[str, Any], int, str]:
+        """Store informs the delivery fee: total is recomputed and the customer must accept it."""
+        if not isinstance(fee_cents, int) or not 0 <= fee_cents <= 1_000_000:
+            raise OrderError("taxa de entrega inválida")
+        tenant_pk = self.db.resolve_tenant_pk(tenant_key)
+        current = await self._get(tenant_pk, order_id)
+        previous = current["status"]
+        if current["fulfillment"] != "entrega" or previous not in ("aguardando_loja", "aguardando_cliente"):
+            raise OrderError("a taxa só pode ser informada em pedidos de entrega aguardando confirmação")
+        history_id = await self._transition(
+            tenant_pk, order_id, previous, "aguardando_cliente", actor_type="user", actor_user_id=actor_user_id,
+            actor_name=actor_name, note=f"Taxa de entrega {order_domain.money(fee_cents)}",
+            extra_sql=", delivery_fee_cents = %s, total_cents = subtotal_cents + %s", extra_params=(fee_cents, fee_cents),
+        )
+        if not history_id:
+            raise OrderConflict("o pedido foi alterado por outra pessoa; atualize e tente novamente")
+        return await self._get(tenant_pk, order_id), history_id, previous
+
+    async def pending_acceptance(self, tenant_key: str, customer_phone: str) -> Optional[Dict[str, Any]]:
+        """Latest order of this customer waiting for them to accept the final total (with when it was sent)."""
+        order = await self.latest_for_customer(tenant_key, customer_phone)
+        if not order or order["status"] != "aguardando_cliente":
+            return None
+        row = await self.db.fetch_one_async(
+            "SELECT MAX(created_at) AS sent_at FROM order_status_history WHERE order_id = %s "
+            "AND to_status = 'aguardando_cliente'", (order["id"],)
+        )
+        return {**order, "fee_sent_at": (row or {}).get("sent_at")}
+
+    async def customer_decision(
+        self, tenant_key: str, order_id: int, *, accept: bool, expected_total_cents: int,
+    ) -> Dict[str, Any]:
+        """Customer accepts (→ confirmado) or refuses (→ cancelado) the final total they were shown."""
+        tenant_pk = self.db.resolve_tenant_pk(tenant_key)
+        target = "confirmado" if accept else "cancelado"
+        history_id = await self._transition(
+            tenant_pk, order_id, "aguardando_cliente", target, actor_type="customer", actor_user_id=None,
+            actor_name="Cliente (WhatsApp)",
+            note="Cliente aceitou o total final" if accept else "Cliente recusou o total final",
+            expect_total=expected_total_cents,
+        )
+        if not history_id:
+            raise OrderConflict("o pedido mudou antes da resposta do cliente")
+        return await self._get(tenant_pk, order_id)
 
     async def record_notification(self, history_id: int, status: str, message_id: Optional[str] = None) -> None:
         await self.db.execute_async(

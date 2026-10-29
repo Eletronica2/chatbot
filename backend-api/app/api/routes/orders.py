@@ -30,6 +30,11 @@ class StatusPayload(BaseModel):
     notify: bool = True
 
 
+class DeliveryFeePayload(BaseModel):
+    fee_cents: int = Field(..., ge=0, le=1_000_000)
+    notify: bool = True
+
+
 def _http(exc: Exception) -> HTTPException:
     if isinstance(exc, OrderNotFound):
         return HTTPException(status_code=404, detail=str(exc))
@@ -119,3 +124,40 @@ async def update_order_status(
     )
     detail = await service.get(tenant_id, order_id)
     return {"order": detail, "notification_status": notification}
+
+
+@router.post("/{order_id}/delivery-fee")
+async def set_delivery_fee(
+    order_id: int,
+    payload: DeliveryFeePayload,
+    request: Request,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: OrderService = Depends(order_service_dependency),
+    notifications: OrderNotificationService = Depends(order_notification_service_dependency),
+    settings_service: TenantSettingsService = Depends(tenant_settings_service_dependency),
+    audit: AdminAuditService = Depends(admin_audit_service_dependency),
+) -> Dict[str, Any]:
+    """Store informs the delivery fee; the backend recomputes the total and asks the customer to accept it."""
+    assert_capability(user, "canUpdateOrders")
+    tenant_id = resolve_tenant_scope(user, request)
+    try:
+        order, history_id, previous = await service.set_delivery_fee(
+            tenant_id, order_id, payload.fee_cents, actor_user_id=str(user.user_id or ""),
+            actor_name=user.display_name,
+        )
+    except (OrderError, OrderNotFound, OrderConflict) as exc:
+        raise _http(exc) from exc
+    notification = "not_requested"
+    if payload.notify:
+        settings = await settings_service.get_or_create(tenant_id)
+        notification = await notifications.notify_status(tenant_id, order, history_id, store_name=settings.tenant_name)
+    else:
+        await service.record_notification(history_id, notification)
+    await audit.append(
+        tenant_id=tenant_id, action="order.delivery_fee.set", entity_type="order", entity_key=str(order_id),
+        summary=f"Pedido #{order['order_number']}: taxa {order_domain.money(payload.fee_cents)}, "
+                f"total {order_domain.money(order['total_cents'])}",
+        actor=user, metadata={"from": previous, "fee_cents": payload.fee_cents, "total_cents": order["total_cents"],
+                              "notification": notification},
+    )
+    return {"order": await service.get(tenant_id, order_id), "notification_status": notification}

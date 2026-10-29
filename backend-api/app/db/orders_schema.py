@@ -108,3 +108,9 @@ def apply(cursor, *, ensure_column) -> None:
     )
     for statement in STATEMENTS:
         cursor.execute(statement)
+    ensure_column(
+        cursor,
+        table="orders",
+        column="delivery_fee_cents",
+        ddl="ALTER TABLE orders ADD COLUMN delivery_fee_cents INT UNSIGNED NULL AFTER subtotal_cents",
+    )

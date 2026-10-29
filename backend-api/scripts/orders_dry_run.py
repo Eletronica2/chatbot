@@ -20,8 +20,14 @@ from app.services.tenant_settings_service import TenantSettingsService
 
 CHATS = [
     ["quero 2 calabresas grandes e uma coca lata", "não", "retirada", "Teste", "sim"],
-    ["quero fazer um pedido", "uma portuguesa média e um suco de laranja", "entrega", "Rua Teste, 100, Centro",
-     "Teste", "não"],
+    # order #2 (28/10) replayed, then the address and pending fee as they now work
+    ["quero fazer um pedido",
+     "Mussarela, calabresa e quatro queijos. Quero também uma coca 2 litros. E uma de prestígio.",
+     "Média", "Grande", "Pequena", "Broto", "Média", "Quero um suco natural", "Laranja",
+     "Substitui a coca por guaraná", "Entrega", "Sepetiba, Jardim espírito santo", "266", "Uberlândia",
+     "Teste", "sim"],
+    ["quero fazer um pedido", "quero 4 pizzas de quatro queijos broto", "Quero só uma", "dois refrigerantes de 2L",
+     "Antartica", "Adiciona também um Guaraná 2 litros", "Tira a Coca", "não", "retirada", "Teste", "não"],
 ]
 
 

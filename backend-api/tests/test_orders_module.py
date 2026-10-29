@@ -56,8 +56,9 @@ class FakeOrders:
         existing = next((o for o in self.created if o["idempotency_key"] == kwargs["idempotency_key"]), None)
         if existing:
             return existing
+        status = "aguardando_loja" if kwargs.get("fulfillment") == "entrega" else "novo"
         order = {"id": len(self.created) + 1, "order_number": len(self.created) + 1, "total_cents": total,
-                 "status": "novo", "status_label": "Novo", **kwargs}
+                 "subtotal_cents": total, "status": status, "status_label": order_domain.STATUS_LABELS[status], **kwargs}
         self.created.append(order)
         return order
 
@@ -81,9 +82,13 @@ def test_status_transitions_follow_fulfillment():
     for terminal in ("entregue", "retirado", "cancelado"):
         assert order_domain.allowed_next(terminal, "entrega") == []
     assert set(order_domain.STATUS_LABELS.values()) == {
+        "Aguardando confirmação da loja", "Aguardando aceite do cliente",
         "Novo", "Confirmado", "Em preparo", "Saiu para entrega", "Pronto para retirada", "Entregue", "Retirado",
         "Cancelado",
     }
+    # Fee and customer acceptance only move through their own operations; by hand only cancel.
+    assert order_domain.allowed_next("aguardando_loja", "entrega") == ["cancelado"]
+    assert order_domain.allowed_next("aguardando_cliente", "entrega") == ["cancelado"]
 
 
 def test_money_format():
@@ -168,7 +173,7 @@ def _converse(messages, *, trigger=None, dry_run=False):
 
 
 DELIVERY_CHAT = ["quero 2 calabresas grandes", "e uma coca lata", "não", "entrega", "Rua das Flores, 123, Centro",
-                 "Arthur", "talvez"]
+                 "Uberlândia", "Arthur", "talvez"]
 
 
 def test_full_delivery_order_requires_explicit_confirmation():
@@ -179,10 +184,13 @@ def test_full_delivery_order_requires_explicit_confirmation():
     assert "Coca-Cola" in replies[1]
     assert "entrega" in replies[2].lower()
     assert "endereço" in replies[3]
-    assert replies[4] == "Em qual nome fica o pedido?"
-    assert "Total: R$ 132,80" in replies[5] and "SIM" in replies[5]
-    assert "SIM" in replies[6]
-    assert "Pedido #1 registrado" in replies[7] and len(assistant.orders.created) == 1
+    assert replies[4].endswith("Qual é a cidade?")
+    assert replies[5] == "Em qual nome fica o pedido?"
+    assert "Subtotal dos produtos: R$ 132,80" in replies[6] and "Total final: pendente" in replies[6]
+    assert "Taxa de entrega: a confirmar pela loja" in replies[6] and "Total: R$" not in replies[6]
+    assert "SIM" in replies[7]
+    assert "Pedido #1 recebido e aguardando a confirmação da loja" in replies[8]
+    assert "Total final: pendente" in replies[8] and len(assistant.orders.created) == 1
     order = assistant.orders.created[0]
     assert order["fulfillment"] == "entrega" and order["customer_name"] == "Arthur"
     assert order["idempotency_key"].startswith("draft:")

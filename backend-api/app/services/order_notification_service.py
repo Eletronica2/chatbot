@@ -52,7 +52,10 @@ class OrderNotificationService:
             return await self._record(history_id, "not_applicable")
         try:
             if await self.window_open(tenant_key, order["customer_phone"]):
-                text = order_domain.notification_text(status, order["order_number"], store_name)
+                text = order_domain.notification_text(
+                    status, order["order_number"], store_name,
+                    fee_cents=order.get("delivery_fee_cents"), total_cents=order.get("total_cents"),
+                )
                 message_id = await self._send_text(tenant_key, order, text, history_id)
                 return await self._record(history_id, "sent" if message_id else "failed", message_id)
             return await self._send_template(tenant_key, order, history_id)
