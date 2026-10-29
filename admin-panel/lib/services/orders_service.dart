@@ -22,6 +22,8 @@ int? parseMoney(String text) {
 }
 
 const Map<String, String> kOrderStatusLabels = <String, String>{
+  'aguardando_loja': 'Aguardando confirmação da loja',
+  'aguardando_cliente': 'Aguardando aceite do cliente',
   'novo': 'Novo',
   'confirmado': 'Confirmado',
   'em_preparo': 'Em preparo',
@@ -110,6 +112,9 @@ class StoreOrder {
     required this.address,
     required this.notes,
     required this.totalCents,
+    required this.subtotalCents,
+    required this.deliveryFeeCents,
+    required this.totalPending,
     required this.itemCount,
     required this.source,
     required this.createdAt,
@@ -128,6 +133,9 @@ class StoreOrder {
   final String address;
   final String notes;
   final int totalCents;
+  final int subtotalCents;
+  final int? deliveryFeeCents;
+  final bool totalPending;
   final int itemCount;
   final String source;
   final String createdAt;
@@ -151,6 +159,9 @@ class StoreOrder {
         address: json['address'] as String? ?? '',
         notes: json['notes'] as String? ?? '',
         totalCents: (json['total_cents'] as num?)?.toInt() ?? 0,
+        subtotalCents: (json['subtotal_cents'] as num?)?.toInt() ?? 0,
+        deliveryFeeCents: (json['delivery_fee_cents'] as num?)?.toInt(),
+        totalPending: json['total_pending'] as bool? ?? false,
         itemCount: (json['item_count'] as num?)?.toInt() ?? 0,
         source: json['source'] as String? ?? '',
         createdAt: json['created_at'] as String? ?? '',
@@ -281,6 +292,17 @@ class OrdersService {
     final data = await apiClient.post(
       '/api/v1/orders/$id/status',
       body: {'status': status, 'notify': notify, if (note != null && note.isNotEmpty) 'note': note},
+    ) as Map<String, dynamic>;
+    return (
+      StoreOrder.fromJson(data['order'] as Map<String, dynamic>),
+      data['notification_status'] as String? ?? '',
+    );
+  }
+
+  Future<(StoreOrder, String)> setDeliveryFee(int id, int feeCents, {required bool notify}) async {
+    final data = await apiClient.post(
+      '/api/v1/orders/$id/delivery-fee',
+      body: {'fee_cents': feeCents, 'notify': notify},
     ) as Map<String, dynamic>;
     return (
       StoreOrder.fromJson(data['order'] as Map<String, dynamic>),

@@ -34,6 +34,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
   bool _notify = true;
   String? _updatingTo;
   String? _detailMessage;
+  final TextEditingController _feeCtrl = TextEditingController();
+  bool _sendingFee = false;
   Timer? _poll;
 
   List<CatalogCategory> _categories = const [];
@@ -57,6 +59,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   @override
   void dispose() {
     _poll?.cancel();
+    _feeCtrl.dispose();
     super.dispose();
   }
 
@@ -169,6 +172,34 @@ class _OrdersScreenState extends State<OrdersScreen> {
       if (mounted) setState(() => _detailMessage = 'Não foi possível atualizar: $e');
     } finally {
       if (mounted) setState(() => _updatingTo = null);
+    }
+  }
+
+  Future<void> _sendDeliveryFee(StoreOrder order) async {
+    final cents = parseMoney(_feeCtrl.text);
+    if (cents == null) {
+      setState(() => _detailMessage = 'Informe a taxa de entrega (ex.: 8,00).');
+      return;
+    }
+    setState(() {
+      _sendingFee = true;
+      _detailMessage = null;
+    });
+    try {
+      final (updated, notification) =
+          await ordersService.setDeliveryFee(order.id, cents, notify: _notify);
+      if (!mounted) return;
+      _feeCtrl.clear();
+      setState(() {
+        _selected = updated;
+        _detailMessage = 'Total final ${formatMoney(updated.totalCents)} enviado para o cliente aceitar. '
+            '${kNotificationLabels[notification] ?? notification}';
+      });
+      await _reloadOrders(silent: true);
+    } catch (e) {
+      if (mounted) setState(() => _detailMessage = 'Não foi possível enviar a taxa: $e');
+    } finally {
+      if (mounted) setState(() => _sendingFee = false);
     }
   }
 
@@ -405,7 +436,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${formatMoney(order.totalCents)} · ${order.itemCount} '
+                            '${order.totalPending ? '${formatMoney(order.subtotalCents)} + taxa' : formatMoney(order.totalCents)} · ${order.itemCount} '
                             '${order.itemCount == 1 ? 'item' : 'itens'} · ${_time(order.createdAt)}',
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                           ),
@@ -527,25 +558,46 @@ class _OrdersScreenState extends State<OrdersScreen> {
                       ),
                     ),
                   const Divider(color: AppColors.border),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text('Total',
-                            style: TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.w700)),
-                      ),
-                      Text(formatMoney(order.totalCents),
-                          style: const TextStyle(color: AppColors.text, fontSize: 15, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                  if (order.isDelivery)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
-                      child: Text('Taxa de entrega não incluída.',
-                          style: TextStyle(color: AppColors.textSoft, fontSize: 11)),
-                    ),
+                  if (order.isDelivery) ...[
+                    _valueRow('Subtotal dos produtos', formatMoney(order.subtotalCents)),
+                    _valueRow('Taxa de entrega',
+                        order.deliveryFeeCents == null ? 'a confirmar pela loja' : formatMoney(order.deliveryFeeCents!)),
+                  ],
+                  _valueRow(order.isDelivery ? 'Total final' : 'Total',
+                      order.totalPending ? 'pendente' : formatMoney(order.totalCents),
+                      strong: true),
                 ],
               ),
             ),
+            if (_canUpdate && (order.status == 'aguardando_loja' || order.status == 'aguardando_cliente')) ...[
+              const SizedBox(height: 16),
+              Text(
+                order.status == 'aguardando_loja'
+                    ? 'Informe a taxa de entrega'
+                    : 'Aguardando o cliente aceitar o total final (pode corrigir a taxa)',
+                style: const TextStyle(color: AppColors.text, fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 160,
+                    child: TextField(
+                      controller: _feeCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Taxa', prefixText: 'R\$ ', isDense: true),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  PremiumAccentButton(
+                    label: _sendingFee ? 'Enviando…' : 'Enviar total ao cliente',
+                    icon: _sendingFee ? null : Icons.send_rounded,
+                    onPressed: _sendingFee ? null : () => _sendDeliveryFee(order),
+                    dense: true,
+                  ),
+                ],
+              ),
+            ],
             if (_canUpdate && !order.isClosed) ...[
               const SizedBox(height: 16),
               const Text('Atualizar status',
@@ -626,6 +678,23 @@ class _OrdersScreenState extends State<OrdersScreen> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _valueRow(String label, String value, {bool strong = false}) {
+    final style = TextStyle(
+      color: AppColors.text,
+      fontSize: strong ? 15 : 13,
+      fontWeight: strong ? FontWeight.w700 : FontWeight.w500,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: style)),
+          Text(value, style: style),
+        ],
       ),
     );
   }
@@ -876,7 +945,7 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = switch (status) {
-      'novo' => AppBadgeTone.warning,
+      'novo' || 'aguardando_loja' || 'aguardando_cliente' => AppBadgeTone.warning,
       'confirmado' || 'em_preparo' => AppBadgeTone.primary,
       'saiu_para_entrega' || 'pronto_para_retirada' => AppBadgeTone.ai,
       'entregue' || 'retirado' => AppBadgeTone.success,
