@@ -416,7 +416,7 @@ class BillingService:
 
         stripe_status = str(subscription.get("status") or "inactive")
         mapped_status = self._map_subscription_status(stripe_status)
-        current_period_end = self._from_unix(subscription.get("current_period_end"))
+        current_period_end = self._from_unix(self._subscription_period_end(subscription))
         price_id = None
         items = (((subscription.get("items") or {}).get("data")) or [])
         if items:
@@ -452,10 +452,11 @@ class BillingService:
         due_date = self._from_unix(invoice.get("due_date"))
         paid_at = self._from_unix((invoice.get("status_transitions") or {}).get("paid_at"))
         status = "paid" if event_type == "invoice.paid" else "past_due"
+        subscription_id, subscription_metadata = self._invoice_subscription(invoice)
         await self._upsert_invoice_record(
             tenant_id=tenant_id,
             provider_invoice_id=str(invoice.get("id") or ""),
-            provider_subscription_id=str(invoice.get("subscription") or "") or None,
+            provider_subscription_id=subscription_id,
             status=status,
             hosted_invoice_url=invoice.get("hosted_invoice_url"),
             invoice_pdf_url=invoice.get("invoice_pdf"),
@@ -487,12 +488,29 @@ class BillingService:
                 status="active",
                 renewal_date=next_renewal,
             )
-            sub_meta = ((invoice.get("subscription_details") or {}).get("metadata")) or first_line.get("metadata") or {}
+            sub_meta = subscription_metadata or first_line.get("metadata") or {}
             plan_code = str(sub_meta.get("plan_code") or "").strip()
             if plan_code:
                 await self._activate_v2_plan(tenant_id, plan_code)
             else:
                 await self._ensure_v2_cycle_grant(tenant_id)
+
+    @staticmethod
+    def _subscription_period_end(subscription: dict[str, Any]) -> Any:
+        """API ≥ 2025-03-31 (basil, incl. 2026-09-30.endive) moved current_period_end to the subscription items."""
+        if subscription.get("current_period_end"):
+            return subscription["current_period_end"]
+        items = ((subscription.get("items") or {}).get("data")) or []
+        return (items[0] or {}).get("current_period_end") if items else None
+
+    @staticmethod
+    def _invoice_subscription(invoice: dict[str, Any]) -> tuple[str | None, dict[str, Any]]:
+        """Subscription id and metadata of an invoice: top level (old API) or parent.subscription_details (basil+)."""
+        details = ((invoice.get("parent") or {}).get("subscription_details")) or invoice.get("subscription_details") or {}
+        raw = invoice.get("subscription") or details.get("subscription")
+        if isinstance(raw, dict):
+            raw = raw.get("id")
+        return (str(raw) if raw else None), dict(details.get("metadata") or {})
 
     async def _notify_billing_failure(self, tenant_id: str) -> None:
         if self.email_service is None:
@@ -672,7 +690,14 @@ class BillingService:
                     "Authorization": f"Bearer {self.settings.STRIPE_SECRET_KEY}",
                 },
             )
-            response.raise_for_status()
+            if response.status_code >= 400:
+                try:
+                    error = (response.json().get("error") or {})
+                except ValueError:
+                    error = {}
+                logger.warning("stripe_api_error path=%s status=%s type=%s code=%s", path, response.status_code,
+                               error.get("type"), error.get("code"))
+                raise ValueError(f"Stripe recusou a operação: {error.get('message') or response.status_code}")
             return response.json()
 
     def _verify_stripe_signature(self, payload: bytes, signature_header: str) -> dict[str, Any]:
@@ -686,6 +711,9 @@ class BillingService:
         signatures = fragments.get("v1") or []
         if not timestamp or not signatures:
             raise ValueError("Stripe signature ausente")
+        # Stripe's recommended tolerance: an old (replayed) signed event is rejected.
+        if not timestamp.isdigit() or abs(datetime.now(timezone.utc).timestamp() - int(timestamp)) > 300:
+            raise ValueError("Stripe signature expirada")
         signed_payload = f"{timestamp}.{payload.decode('utf-8')}"
         expected = hmac.new(
             self.settings.STRIPE_WEBHOOK_SECRET.encode("utf-8"),

@@ -181,3 +181,55 @@ def test_past_due_or_canceled_gets_no_next_cycle(stack, event):
     gate._granted_cycles.pop(pk, None)
     next_cycle = gate.ensure_cycle_grant(pk, cycle_hint=datetime.utcnow() + timedelta(days=40))
     assert next_cycle == {"created": False, "reason": "subscription_not_paid"}
+
+
+# ── API 2026-09-30.endive (basil+) payload shapes and signature tolerance ────
+
+import hashlib  # noqa: E402
+import hmac  # noqa: E402
+import json  # noqa: E402
+import time  # noqa: E402
+
+
+def test_basil_shapes_are_read():
+    sub = {"id": "sub_1", "items": {"data": [{"current_period_end": 1893456000, "price": {"id": "price_x"}}]}}
+    assert BillingService._subscription_period_end(sub) == 1893456000
+    assert BillingService._subscription_period_end({"current_period_end": 1}) == 1
+    basil = {"parent": {"subscription_details": {"subscription": "sub_1", "metadata": {"plan_code": "PLAN_X"}}}}
+    assert BillingService._invoice_subscription(basil) == ("sub_1", {"plan_code": "PLAN_X"})
+    legacy = {"subscription": "sub_2", "subscription_details": {"metadata": {"plan_code": "PLAN_Y"}}}
+    assert BillingService._invoice_subscription(legacy) == ("sub_2", {"plan_code": "PLAN_Y"})
+
+
+def _signed(service, payload: bytes, ts: int) -> str:
+    sig = hmac.new(service.settings.STRIPE_WEBHOOK_SECRET.encode(), f"{ts}.{payload.decode()}".encode(),
+                   hashlib.sha256).hexdigest()
+    return f"t={ts},v1=deadbeef,v1={sig}"
+
+
+def test_signature_accepts_fresh_and_rejects_old_or_wrong():
+    service, _ = _service()
+    service.settings.STRIPE_WEBHOOK_SECRET = "whsec_test"
+    payload = json.dumps({"type": "ping"}).encode()
+    assert service._verify_stripe_signature(payload, _signed(service, payload, int(time.time())))["type"] == "ping"
+    with pytest.raises(ValueError, match="expirada"):
+        service._verify_stripe_signature(payload, _signed(service, payload, int(time.time()) - 3600))
+    with pytest.raises(ValueError, match="invalida"):
+        service._verify_stripe_signature(payload, f"t={int(time.time())},v1=deadbeef")
+
+
+@needs_db
+def test_basil_invoice_paid_activates_plan_without_checkout_event(stack):
+    db, gate, billing = stack
+    key, pk, _ = _sold_tenant(db, gate)
+    db.execute("INSERT INTO billing_customers (tenant_id, provider, provider_customer_id, status) "
+               "VALUES (%s, 'stripe', %s, 'inactive')", (pk, f"cus_b_{pk}"))
+    invoice = {"id": f"in_b_{pk}", "customer": f"cus_b_{pk}", "amount_due": 19700, "amount_paid": 19700,
+               "parent": {"type": "subscription_details", "subscription_details": {
+                   "subscription": f"sub_b_{pk}", "metadata": {"plan_code": "PLAN_INICIAL_2026_10", "tenant_id": key}}},
+               "lines": {"data": [{"period": {"end": int((datetime.utcnow() + timedelta(days=30)).timestamp())}}]}}
+    _run(billing._handle_invoice_event(invoice, event_type="invoice.paid"))
+    assert _available(gate, key) == 1000
+    row = db.fetch_one("SELECT provider_subscription_id FROM billing_invoices WHERE provider_invoice_id=%s",
+                       (f"in_b_{pk}",))
+    assert row["provider_subscription_id"] == f"sub_b_{pk}"
