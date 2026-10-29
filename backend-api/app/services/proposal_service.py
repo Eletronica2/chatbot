@@ -532,6 +532,8 @@ class ProposalService:
             owner_password=password,
             plan=item["plan_key"] or "inicial",
             monthly_message_limit=monthly_message_limit,
+            # Sold customers start awaiting the first payment: Stripe's invoice.paid activates the allowance.
+            subscription_status="inactive",
         )
 
         billing_config: dict[str, Any] | None = None
@@ -547,6 +549,7 @@ class ProposalService:
                 billing_mode=billing_mode,
                 operational_allowance=monthly_message_limit,
                 monthly_price=monthly_price,
+                require_paid=True,
             )
             billing_config.pop("before", None)
 

@@ -78,7 +78,7 @@ async def create_checkout_session(
             tenant_name=str(tenant_record.get("name") or target_tenant_id),
             customer_email=str(tenant_record.get("email") or user.email),
             customer_name=str(tenant_record.get("name") or user.display_name),
-            plan=payload.plan.strip().lower(),
+            plan=payload.plan.strip() if payload.plan.strip().upper().startswith("PLAN_") else payload.plan.strip().lower(),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -130,7 +130,8 @@ async def list_plans(
     assert_capability(user, "canManageBilling")
     return {
         "plans": billing_service.available_plans(),
-        "provider_ready": billing_service.provider_ready,
+        "v2_plans": billing_service.v2_plans(),
+        "provider_ready": billing_service.provider_ready and billing_service.stripe_charging_allowed,
         "note": (
             "Atende Ai cobra via Stripe (assinatura ou on-demand). "
             "Tarifas WhatsApp/Meta são cobradas diretamente pela Meta."

@@ -152,6 +152,14 @@ class BillingService {
     return BillingSummaryModel.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Catalog V2 plans sold through Stripe Checkout: code, label, price (BRL) and monthly messages.
+  Future<List<Map<String, dynamic>>> fetchV2Plans() async {
+    final data = await _apiClient.get('/api/v1/billing/plans') as Map<String, dynamic>;
+    return ((data['v2_plans'] as List?) ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
   Future<BillingCheckoutSessionModel> createCheckoutSession(String plan) async {
     final data = await _apiClient.post(
       '/api/v1/billing/checkout-session',

@@ -183,7 +183,9 @@ class BillingGate:
         billing_mode: str | None = None,
         operational_allowance: int | None = None,
         monthly_price: Decimal | None = None,
+        require_paid: bool = False,
     ) -> dict[str, Any]:
+        """Assign a V2 plan. require_paid=True: the allowance only arrives once the subscription is paid."""
         item = self.catalog.get_item(plan_code)
         if not item or item["kind"] != "plan":
             raise ValueError("Plano inexistente no catálogo")
@@ -232,7 +234,7 @@ class BillingGate:
                     (item["plan_key"] or plan_code, tenant_pk),
                 )
         self._granted_cycles.pop(tenant_pk, None)
-        grant = self.ensure_cycle_grant(tenant_pk, require_paid=False)
+        grant = self.ensure_cycle_grant(tenant_pk, require_paid=require_paid)
         return {"before": before, "plan_code": plan_code, "operational_allowance": int(allowance), "monthly_price": str(price), "grant": grant}
 
     @staticmethod

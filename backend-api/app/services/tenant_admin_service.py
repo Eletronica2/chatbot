@@ -89,6 +89,7 @@ class TenantAdminService:
         owner_password: str,
         plan: str = 'starter',
         monthly_message_limit: int | None = None,
+        subscription_status: str = 'active',
     ) -> TenantProvisionRecord:
         normalized_tenant_id = self._normalize_tenant_id(tenant_id)
         if not normalized_tenant_id:
@@ -139,7 +140,7 @@ class TenantAdminService:
         await self.subscription_service.update(
             normalized_tenant_id,
             plan=plan.strip() or 'starter',
-            status='active',
+            status=subscription_status,
             monthly_message_limit=monthly_message_limit,
         )
         await self.bootstrap_default_flows(normalized_tenant_id)

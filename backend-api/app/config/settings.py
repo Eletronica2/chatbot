@@ -82,6 +82,8 @@ class Settings(BaseSettings):
     STRIPE_ON_DEMAND_PRICE_ID: str = ""
     STRIPE_METER_EVENT_NAME: str = ""
     STRIPE_DEFAULT_CURRENCY: str = "brl"
+    # A live key (sk_live_/rk_live_) only charges when this is explicitly true (owner authorization).
+    STRIPE_ALLOW_LIVE: bool = False
 
     # Billing V2 (franquia operacional por outbound delivered + Meta dual mode).
     BILLING_V2_ENABLED: bool = False

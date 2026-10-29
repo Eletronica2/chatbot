@@ -26,23 +26,7 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
   String? _loadingPlan;
   bool _openingPortal = false;
 
-  static const List<_PlanOption> _plans = <_PlanOption>[
-    _PlanOption(
-      id: 'starter',
-      label: 'Starter',
-      blurb: 'Ideal para começar o atendimento automatizado.',
-    ),
-    _PlanOption(
-      id: 'growth',
-      label: 'Growth',
-      blurb: 'Mais volume e operação com equipe.',
-    ),
-    _PlanOption(
-      id: 'on_demand',
-      label: 'On-demand',
-      blurb: 'Uso sob demanda, sem pacote fixo alto.',
-    ),
-  ];
+  List<_PlanOption> _plans = const <_PlanOption>[];
 
   @override
   void initState() {
@@ -75,11 +59,28 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
         docs = const [];
       }
 
+      List<_PlanOption> plans = const [];
+      try {
+        final money = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+        final count = NumberFormat.decimalPattern('pt_BR');
+        plans = (await billingService.fetchV2Plans())
+            .map((p) => _PlanOption(
+                  id: p['code'].toString(),
+                  label: '${p['label']} — ${money.format(double.tryParse('${p['price']}') ?? 0)}/mês',
+                  blurb: '${count.format(p['operational_units'] ?? 0)} mensagens de atendimento por mês',
+                  key: p['label'].toString().toLowerCase(),
+                ))
+            .toList();
+      } catch (_) {
+        plans = const [];
+      }
+
       if (!mounted) return;
       setState(() {
         _subscription = sub;
         _metaRates = rates;
         _fiscalDocs = docs;
+        _plans = plans;
         _loading = false;
       });
     } catch (e) {
@@ -158,7 +159,8 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
       case 'payg':
         return 'On-demand';
       default:
-        return plan;
+        final match = _plans.where((p) => p.key == plan.toLowerCase()).firstOrNull;
+        return match != null ? match.label.split(' — ').first : plan;
     }
   }
 
@@ -284,15 +286,16 @@ class _BillingPlanScreenState extends State<BillingPlanScreen> {
               ),
               const SizedBox(height: 16),
               _SectionCard(
-                title: 'Alterar plano',
+                title: 'Contratar plano',
                 child: Column(
                   children: [
+                    if (_plans.isEmpty)
+                      const Text('Planos indisponíveis no momento. Fale com o suporte Atende Ai.',
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
                     for (final plan in _plans) ...[
                       _PlanTile(
                         option: plan,
-                        selected: current.toLowerCase() == plan.id ||
-                            (plan.id == 'on_demand' &&
-                                current.toLowerCase().contains('demand')),
+                        selected: current.toLowerCase() == plan.key,
                         loading: _loadingPlan == plan.id,
                         onTap: () => _changePlan(plan.id),
                       ),
@@ -478,11 +481,13 @@ class _PlanOption {
     required this.id,
     required this.label,
     required this.blurb,
+    this.key = '',
   });
 
   final String id;
   final String label;
   final String blurb;
+  final String key;
 }
 
 class _PlanTile extends StatelessWidget {

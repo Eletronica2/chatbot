@@ -52,11 +52,45 @@ class BillingService:
 
     @property
     def stripe_test_mode(self) -> bool:
-        """Top-up checkout only ever runs against Stripe TEST keys."""
-        return self.settings.STRIPE_SECRET_KEY.strip().startswith("sk_test_")
+        return self.settings.STRIPE_SECRET_KEY.strip().startswith(("sk_test_", "rk_test_"))
+
+    @property
+    def stripe_live_key(self) -> bool:
+        return self.settings.STRIPE_SECRET_KEY.strip().startswith(("sk_live_", "rk_live_"))
+
+    @property
+    def stripe_charging_allowed(self) -> bool:
+        """TEST keys always; a LIVE key only with STRIPE_ALLOW_LIVE=true (owner authorization)."""
+        return self.stripe_test_mode or (self.stripe_live_key and bool(self.settings.STRIPE_ALLOW_LIVE))
+
+    def _assert_charging_allowed(self) -> None:
+        if self.stripe_live_key and not self.settings.STRIPE_ALLOW_LIVE:
+            raise ValueError("Stripe LIVE não autorizado neste ambiente")
+
+    def _v2_plan(self, plan: str) -> dict[str, Any] | None:
+        """Active Catalog V2 plan with a fixed price and allowance (what the panel sells)."""
+        catalog = getattr(self.billing_gate, "catalog", None)
+        if catalog is None or not plan:
+            return None
+        item = catalog.get_item(plan.strip().upper())
+        if item and item["kind"] == "plan" and item["status"] == "active" and item.get("price") \
+                and int(item.get("operational_units") or 0) > 0:
+            return item
+        return None
+
+    def v2_plans(self) -> list[dict[str, Any]]:
+        catalog = getattr(self.billing_gate, "catalog", None)
+        if catalog is None:
+            return []
+        return [
+            {"code": i["code"], "label": i["label"], "price": str(i["price"]),
+             "operational_units": int(i["operational_units"] or 0)}
+            for i in catalog.list_items()
+            if i["kind"] == "plan" and i.get("price") and int(i.get("operational_units") or 0) > 0
+        ]
 
     async def create_topup_checkout(self, *, tenant_id: str, purchase: dict[str, Any]) -> dict[str, Any]:
-        if not self.stripe_test_mode:
+        if not self.stripe_charging_allowed:
             return {"checkout_url": None, "status": "pending", "reason": "stripe_test_not_configured"}
         cents = int((Decimal(purchase["total_amount"]) * 100).to_integral_value())
         data = await self._stripe_post(
@@ -85,7 +119,7 @@ class BillingService:
         purchase_id = str(metadata.get("purchase_id") or "").strip()
         if not purchase_id or self.topup_service is None:
             return
-        if livemode:
+        if livemode and not (self.stripe_live_key and self.settings.STRIPE_ALLOW_LIVE):
             logger.error("billing_v2_topup_livemode_rejected purchase=%s", purchase_id)
             return
         if str(session.get("payment_status") or "") != "paid":
@@ -108,6 +142,22 @@ class BillingService:
             expected_total=expected,
         )
         logger.info("billing_v2_topup_granted purchase=%s created=%s", purchase_id, result.get("created"))
+
+    async def _activate_v2_plan(self, tenant_id: str, plan_code: str) -> None:
+        """Paid subscription: assign the V2 plan (idempotent) and grant this cycle's allowance."""
+        if self.billing_gate is None or not self._v2_plan(plan_code):
+            return
+        tenant_row = self.database.get_tenant_record(tenant_id)
+        if not tenant_row:
+            return
+        tenant_pk = int(tenant_row["id"])
+        config = await asyncio.to_thread(self.billing_gate.get_config, tenant_pk)
+        if config.get("plan_code") == plan_code.strip().upper():
+            await asyncio.to_thread(self.billing_gate.ensure_cycle_grant, tenant_pk, require_paid=False)
+            return
+        await asyncio.to_thread(self.billing_gate.configure_plan, tenant_pk, plan_code=plan_code.strip().upper(),
+                                actor_id=None)
+        logger.info("billing_v2_plan_activated_by_payment tenant=%s plan=%s", tenant_id, plan_code)
 
     async def _ensure_v2_cycle_grant(self, tenant_id: str) -> None:
         if self.billing_gate is None:
@@ -140,7 +190,12 @@ class BillingService:
         plan: str,
     ) -> BillingCheckoutSession:
         self._assert_provider_ready()
-        price_id = self._price_id_for_plan(plan)
+        self._assert_charging_allowed()
+        snapshot = await self.get_customer_snapshot(tenant_id)
+        if snapshot and snapshot.provider_subscription_id and snapshot.status in {"active", "trialing", "past_due"}:
+            raise ValueError("Esta empresa já tem uma assinatura. Use o portal de cobrança para pagamento ou cancelamento.")
+        v2_item = self._v2_plan(plan)
+        price_id = None if v2_item else self._price_id_for_plan(plan)
         customer_id = await self._find_or_create_customer(
             tenant_id=tenant_id,
             tenant_name=tenant_name,
@@ -155,11 +210,24 @@ class BillingService:
             "cancel_url": self.settings.BILLING_CANCEL_URL,
             "metadata[tenant_id]": tenant_id,
             "metadata[plan]": plan,
-            "line_items[0][price]": price_id,
             "line_items[0][quantity]": "1",
             "subscription_data[metadata][tenant_id]": tenant_id,
             "subscription_data[metadata][plan]": plan,
         }
+        if v2_item:
+            # Price comes from Catalog V2 (single source); the webhook assigns the plan only once paid.
+            cents = int((Decimal(str(v2_item["price"])) * 100).to_integral_value())
+            payload.update({
+                "line_items[0][price_data][currency]": "brl",
+                "line_items[0][price_data][unit_amount]": str(cents),
+                "line_items[0][price_data][recurring][interval]": "month",
+                "line_items[0][price_data][product_data][name]": f"Atende Ai — Plano {v2_item['label']}",
+                "metadata[plan_code]": v2_item["code"],
+                "subscription_data[metadata][plan_code]": v2_item["code"],
+            })
+            plan = v2_item["code"]
+        else:
+            payload["line_items[0][price]"] = price_id
         data = await self._stripe_post("/checkout/sessions", payload)
         checkout = BillingCheckoutSession(
             provider="stripe",
@@ -313,20 +381,29 @@ class BillingService:
         return {"received": True, "event_type": event_type}
 
     async def _handle_checkout_completed(self, session: dict[str, Any]) -> None:
-        tenant_id = str((session.get("metadata") or {}).get("tenant_id") or session.get("client_reference_id") or "").strip()
+        metadata = session.get("metadata") or {}
+        tenant_id = str(metadata.get("tenant_id") or session.get("client_reference_id") or "").strip()
         if not tenant_id:
             return
         subscription_id = str(session.get("subscription") or "").strip() or None
         customer_id = str(session.get("customer") or "").strip() or None
+        paid = str(session.get("payment_status") or "") == "paid"
         if customer_id:
             await self._upsert_customer_record(
                 tenant_id=tenant_id,
                 provider_customer_id=customer_id,
                 provider_subscription_id=subscription_id,
                 provider_price_id=None,
-                status="active",
+                status="active" if paid else "inactive",
                 current_period_end=None,
             )
+        plan_code = str(metadata.get("plan_code") or "").strip()
+        if paid and plan_code and self._v2_plan(plan_code):
+            await self._sync_subscription_record(
+                tenant_id=tenant_id, plan=self._v2_plan(plan_code)["plan_key"] or plan_code.lower(),
+                status="active", renewal_date=None,
+            )
+            await self._activate_v2_plan(tenant_id, plan_code)
 
     async def _handle_subscription_event(self, subscription: dict[str, Any]) -> None:
         metadata = subscription.get("metadata") or {}
@@ -353,9 +430,11 @@ class BillingService:
             status=mapped_status,
             current_period_end=current_period_end,
         )
+        v2_item = self._v2_plan(str(metadata.get("plan_code") or ""))
         await self._sync_subscription_record(
             tenant_id=tenant_id,
-            plan=self._plan_for_price_id(str(price_id or "")) or str(metadata.get("plan") or "starter"),
+            plan=(v2_item["plan_key"] if v2_item else None)
+            or self._plan_for_price_id(str(price_id or "")) or str(metadata.get("plan") or "starter"),
             status=mapped_status,
             renewal_date=current_period_end,
         )
@@ -408,7 +487,12 @@ class BillingService:
                 status="active",
                 renewal_date=next_renewal,
             )
-            await self._ensure_v2_cycle_grant(tenant_id)
+            sub_meta = ((invoice.get("subscription_details") or {}).get("metadata")) or first_line.get("metadata") or {}
+            plan_code = str(sub_meta.get("plan_code") or "").strip()
+            if plan_code:
+                await self._activate_v2_plan(tenant_id, plan_code)
+            else:
+                await self._ensure_v2_cycle_grant(tenant_id)
 
     async def _notify_billing_failure(self, tenant_id: str) -> None:
         if self.email_service is None:
