@@ -233,3 +233,39 @@ def test_basil_invoice_paid_activates_plan_without_checkout_event(stack):
     row = db.fetch_one("SELECT provider_subscription_id FROM billing_invoices WHERE provider_invoice_id=%s",
                        (f"in_b_{pk}",))
     assert row["provider_subscription_id"] == f"sub_b_{pk}"
+
+
+# ── TEST/LIVE separation ──────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("key,event_livemode", [("sk_test_x", True), ("rk_live_x", False), ("sk_live_x", False)])
+def test_webhook_from_the_other_mode_is_ignored(key, event_livemode):
+    service, _ = _service(key=key)
+    service.settings.STRIPE_WEBHOOK_SECRET = "whsec_test"
+    payload = json.dumps({"type": "invoice.paid", "livemode": event_livemode, "data": {"object": {"customer": "cus_x"}}}).encode()
+    result = _run(service.handle_webhook(payload=payload, signature=_signed(service, payload, int(time.time()))))
+    assert result["ignored"] == "mode_mismatch"
+
+
+def test_rk_live_is_a_live_key_locked_by_default():
+    service, _ = _service(key="rk_live_x")
+    assert service.stripe_live_key and service.stripe_mode_flag == 1 and not service.stripe_charging_allowed
+
+
+@needs_db
+def test_test_customer_is_invisible_in_live_and_replaced_by_live_customer(stack):
+    db, gate, _ = stack
+    key, pk, _ = _sold_tenant(db, gate)
+    db.execute("INSERT INTO billing_customers (tenant_id, provider, provider_customer_id, provider_subscription_id, status) "
+               "VALUES (%s, 'stripe', %s, %s, 'active')", (pk, f"cus_t_{pk}", f"sub_t_{pk}"))
+
+    def service(secret):
+        settings = SimpleNamespace(STRIPE_SECRET_KEY=secret, STRIPE_ALLOW_LIVE=False)
+        return BillingService(database=db, settings=settings)
+
+    live, test = service("sk_live_x"), service("sk_test_x")
+    assert _run(test.get_customer_snapshot(key)).provider_customer_id == f"cus_t_{pk}"
+    assert _run(live.get_customer_snapshot(key)) is None  # no reuse, no "already subscribed" block from TEST
+    _run(live._upsert_customer_record(tenant_id=key, provider_customer_id=f"cus_l_{pk}", provider_subscription_id=None,
+                                      provider_price_id=None, status="inactive", current_period_end=None))
+    assert _run(live.get_customer_snapshot(key)).provider_customer_id == f"cus_l_{pk}"
+    assert _run(test.get_customer_snapshot(key)) is None

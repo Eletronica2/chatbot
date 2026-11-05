@@ -539,6 +539,9 @@ class MySQLDatabase:
         from app.db import orders_schema
 
         orders_schema.apply(cursor, ensure_column=self._ensure_column)
+        # NULL = record created before LIVE existed (TEST); TEST and LIVE customers never mix.
+        self._ensure_column(cursor, table="billing_customers", column="livemode",
+                            ddl="ALTER TABLE billing_customers ADD COLUMN livemode TINYINT(1) NULL AFTER provider")
 
     def _ensure_billing_v2_schema(self, cursor) -> None:
         from app.db import billing_v2_schema

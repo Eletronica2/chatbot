@@ -63,6 +63,11 @@ class BillingService:
         """TEST keys always; a LIVE key only with STRIPE_ALLOW_LIVE=true (owner authorization)."""
         return self.stripe_test_mode or (self.stripe_live_key and bool(self.settings.STRIPE_ALLOW_LIVE))
 
+    @property
+    def stripe_mode_flag(self) -> int:
+        """1 = LIVE key configured, 0 = TEST: customer records and webhook events are scoped to it."""
+        return 1 if self.stripe_live_key else 0
+
     def _assert_charging_allowed(self) -> None:
         if self.stripe_live_key and not self.settings.STRIPE_ALLOW_LIVE:
             raise ValueError("Stripe LIVE não autorizado neste ambiente")
@@ -303,10 +308,10 @@ class BillingService:
                 SELECT provider, provider_customer_id, provider_subscription_id, provider_price_id,
                        status, current_period_end, checkout_url, portal_url, created_at, updated_at
                 FROM billing_customers
-                WHERE tenant_id = %s
+                WHERE tenant_id = %s AND COALESCE(livemode, 0) = %s
                 LIMIT 1
                 """,
-                (tenant_pk,),
+                (tenant_pk, self.stripe_mode_flag),
             )
             if row is None:
                 return None
@@ -367,6 +372,9 @@ class BillingService:
             raise ValueError("Stripe webhook secret nao configurado")
         event = self._verify_stripe_signature(payload, signature or "")
         event_type = str(event.get("type") or "")
+        if int(bool(event.get("livemode"))) != self.stripe_mode_flag:
+            logger.warning("stripe_webhook_mode_mismatch type=%s livemode=%s", event_type, event.get("livemode"))
+            return {"received": True, "event_type": event_type, "ignored": "mode_mismatch"}
         data = ((event.get("data") or {}).get("object") or {})
 
         if event_type == "checkout.session.completed" and (data.get("metadata") or {}).get("purchase_id"):
@@ -801,13 +809,16 @@ class BillingService:
                 INSERT INTO billing_customers (
                     tenant_id,
                     provider,
+                    livemode,
                     provider_customer_id,
                     provider_subscription_id,
                     provider_price_id,
                     status,
                     current_period_end
-                ) VALUES (%s, 'stripe', %s, %s, %s, %s, %s)
+                ) VALUES (%s, 'stripe', %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
+                    livemode = VALUES(livemode),
+                    provider_customer_id = VALUES(provider_customer_id),
                     provider_subscription_id = VALUES(provider_subscription_id),
                     provider_price_id = VALUES(provider_price_id),
                     status = VALUES(status),
@@ -816,6 +827,7 @@ class BillingService:
                 """,
                 (
                     tenant_pk,
+                    self.stripe_mode_flag,
                     provider_customer_id,
                     provider_subscription_id,
                     provider_price_id,
