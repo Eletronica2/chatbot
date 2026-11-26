@@ -8,7 +8,15 @@ from datetime import datetime
 from typing import Any
 
 from app.config.settings import settings
-from app.domain.whatsapp_campaign import CampaignCreate, CampaignSummary, CampaignValidationResult
+from app.domain.whatsapp_campaign import (
+    CampaignCreate,
+    CampaignDetail,
+    CampaignPlanSnapshot,
+    CampaignRecipientRow,
+    CampaignSendReadiness,
+    CampaignSummary,
+    CampaignValidationResult,
+)
 from app.repositories.campaign_repository import CampaignRepository
 from app.services.campaign_meta_estimate import (
     META_BILLING_DISCLAIMER,
@@ -38,14 +46,63 @@ class WhatsAppCampaignService:
         self.subscription_service = subscription_service
         self.meta_rate_engine = meta_rate_engine
 
-    async def _sends_allowed(self, tenant_id: str) -> tuple[bool, str | None]:
+    def _plan_snapshot_from_check(self, check) -> CampaignPlanSnapshot:
+        sub = check.subscription
+        return CampaignPlanSnapshot(
+            plan=str(sub.plan or ""),
+            status=str(sub.status or ""),
+            used_messages=int(check.used_messages or 0),
+            monthly_message_limit=int(sub.monthly_message_limit or 0),
+            renewal_date=sub.renewal_date,
+        )
+
+    def _blocked_message(self, code: str | None, *, sub_status: str = "") -> str:
+        status = (sub_status or "").strip().lower()
+        if code == "campaign_disabled":
+            return "Envios de campanha desativados neste ambiente (CAMPAIGN_SEND_ENABLED=false)."
+        if code == "message_limit_reached":
+            return "Limite mensal de uso do software Atende Ai atingido. Aguarde o próximo ciclo ou faça upgrade do plano."
+        if code == "subscription_inactive":
+            if status == "past_due":
+                return (
+                    "Assinatura Atende Ai em atraso (past_due). Regularize o plano para liberar disparos "
+                    "(isso é independente da cobrança Meta no WhatsApp)."
+                )
+            if status == "canceled":
+                return "Assinatura Atende Ai cancelada. Reative o plano para enviar campanhas."
+            if status == "inactive":
+                return "Plano Atende Ai inativo. Ative a assinatura para enviar campanhas."
+            return "Plano Atende Ai inativo ou indisponível para envios."
+        return "Envio não autorizado pelo plano Atende Ai."
+
+    async def get_send_readiness(self, tenant_id: str) -> CampaignSendReadiness:
+        allowed, code, message, snapshot = await self._sends_allowed(tenant_id)
+        return CampaignSendReadiness(
+            sends_enabled=allowed,
+            sends_blocked_code=code,
+            sends_blocked_reason=message,
+            plan_snapshot=snapshot,
+        )
+
+    async def _sends_allowed(
+        self, tenant_id: str
+    ) -> tuple[bool, str | None, str | None, CampaignPlanSnapshot | None]:
         if not settings.CAMPAIGN_SEND_ENABLED:
-            return False, "Envios de campanha desativados em homologação (CAMPAIGN_SEND_ENABLED=false)"
-        if self.subscription_service is not None:
-            check = await self.subscription_service.check_message_allowance(tenant_id)
-            if not check.allowed:
-                return False, "Plano Atende Ai inativo ou limite de uso do software atingido"
-        return True, None
+            return False, "campaign_disabled", self._blocked_message("campaign_disabled"), None
+        if self.subscription_service is None:
+            return True, None, None, None
+        check = await self.subscription_service.check_message_allowance(tenant_id)
+        snapshot = self._plan_snapshot_from_check(check)
+        if not check.allowed:
+            code = check.reason or "subscription_inactive"
+            msg = self._blocked_message(code, sub_status=snapshot.status)
+            if code == "message_limit_reached":
+                limit = snapshot.monthly_message_limit
+                used = snapshot.used_messages
+                if limit > 0:
+                    msg = f"Limite mensal do plano atingido ({used}/{limit} mensagens processadas no mês)."
+            return False, code, msg, snapshot
+        return True, None, None, snapshot
 
     def _meta_estimate(self, category: str, count: int) -> dict[str, Any]:
         if self.meta_rate_engine is None:
@@ -143,7 +200,7 @@ class WhatsAppCampaignService:
             }
             for p in parsed
         ]
-        sends_enabled, blocked_reason = await self._sends_allowed(tenant_id)
+        sends_enabled, blocked_code, blocked_reason, plan_snapshot = await self._sends_allowed(tenant_id)
         estimate = self._meta_estimate(str(row["template_category"]), len(valid))
         estimate["recipients"] = len(valid)
         estimate["category"] = row["template_category"]
@@ -177,17 +234,23 @@ class WhatsAppCampaignService:
             )
             for p in parsed
         ]
+        invalid_rows = len([p for p in parsed if p.get("errors")])
+        consent_missing = len([p for p in parsed if not p.get("consent_ok") and not p.get("errors")])
         return CampaignValidationResult(
             campaign_id=campaign_key,
             total_rows=len(parsed),
             valid_rows=len(valid),
             duplicate_phones=dup,
+            invalid_rows=invalid_rows,
+            consent_missing_rows=consent_missing,
             recipients=previews,
             errors=parse_errors,
             estimate=estimate,
             meta_disclaimer=META_BILLING_DISCLAIMER,
             sends_enabled=sends_enabled,
             sends_blocked_reason=blocked_reason,
+            sends_blocked_code=blocked_code,
+            plan_snapshot=plan_snapshot,
         )
 
     async def start_campaign(self, tenant_id: str, campaign_key: str, *, confirm: bool) -> CampaignSummary:
@@ -201,7 +264,7 @@ class WhatsAppCampaignService:
         )
         if not pending:
             raise ValueError("Nenhum destinatário pendente")
-        sends_ok, blocked = await self._sends_allowed(tenant_id)
+        sends_ok, blocked_code, blocked, _snapshot = await self._sends_allowed(tenant_id)
         if not sends_ok:
             raise ValueError(blocked or "Envio não autorizado")
         now = datetime.utcnow()
@@ -318,6 +381,34 @@ class WhatsAppCampaignService:
         )
         return result
 
+    async def get_campaign_detail(self, tenant_id: str, campaign_key: str) -> CampaignDetail:
+        row = await self._require_campaign(tenant_id, campaign_key)
+        recipients_raw = await self.repository.list_recipients(tenant_id=tenant_id, campaign_id=int(row["id"]))
+        recipients: list[CampaignRecipientRow] = []
+        for r in recipients_raw:
+            body = r.get("body_params")
+            if isinstance(body, str):
+                try:
+                    body = json.loads(body)
+                except Exception:
+                    body = {}
+            if not isinstance(body, dict):
+                body = {}
+            recipients.append(
+                CampaignRecipientRow(
+                    row_number=int(r.get("row_number") or 0),
+                    phone=str(r.get("phone_e164") or ""),
+                    status=str(r.get("status") or "pending"),
+                    body_params={str(k): str(v) for k, v in body.items()},
+                    consent_ok=bool(r.get("consent_ok")),
+                    error_message=r.get("error_message"),
+                    sent_at=r.get("sent_at"),
+                    delivered_at=r.get("delivered_at"),
+                    read_at=r.get("read_at"),
+                )
+            )
+        return CampaignDetail(campaign=self._to_summary(row), recipients=recipients)
+
     async def build_results_xlsx(self, tenant_id: str, campaign_key: str) -> bytes:
         row = await self._require_campaign(tenant_id, campaign_key)
         recipients = await self.repository.list_recipients(tenant_id=tenant_id, campaign_id=int(row["id"]))
@@ -380,6 +471,7 @@ class WhatsAppCampaignService:
             id=str(row.get("campaign_key") or ""),
             name=str(row.get("name") or ""),
             status=str(row.get("status") or "draft"),
+            account_key=row.get("account_key"),
             template_name=str(row.get("template_name") or ""),
             template_language=str(row.get("template_language") or ""),
             template_category=str(row.get("template_category") or ""),

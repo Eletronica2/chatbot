@@ -6,7 +6,14 @@ from fastapi.responses import Response
 
 from app.api.access import assert_capability, resolve_tenant_scope
 from app.domain.auth import AuthenticatedUser
-from app.domain.whatsapp_campaign import CampaignConfirmRequest, CampaignCreate, CampaignSummary, CampaignValidationResult
+from app.domain.whatsapp_campaign import (
+    CampaignConfirmRequest,
+    CampaignCreate,
+    CampaignDetail,
+    CampaignSendReadiness,
+    CampaignSummary,
+    CampaignValidationResult,
+)
 from app.services.admin_audit_service import AdminAuditService
 from app.services.dependencies import (
     admin_audit_service_dependency,
@@ -28,6 +35,34 @@ async def list_campaigns(
     assert_capability(user, "canManageTemplates")
     target = resolve_tenant_scope(user, request, tenant_id)
     return await service.list_campaigns(target)
+
+
+@router.get("/send-readiness", response_model=CampaignSendReadiness)
+async def campaign_send_readiness(
+    request: Request,
+    tenant_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: WhatsAppCampaignService = Depends(whatsapp_campaign_service_dependency),
+) -> CampaignSendReadiness:
+    assert_capability(user, "canManageTemplates")
+    target = resolve_tenant_scope(user, request, tenant_id)
+    return await service.get_send_readiness(target)
+
+
+@router.get("/{campaign_id}", response_model=CampaignDetail)
+async def get_campaign_detail(
+    request: Request,
+    tenant_id: str,
+    campaign_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: WhatsAppCampaignService = Depends(whatsapp_campaign_service_dependency),
+) -> CampaignDetail:
+    assert_capability(user, "canManageTemplates")
+    target = resolve_tenant_scope(user, request, tenant_id)
+    try:
+        return await service.get_campaign_detail(target, campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("", response_model=CampaignSummary)

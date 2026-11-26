@@ -555,7 +555,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _navCampaigns:
         return KeyedSubtree(
           key: ValueKey<String>('campaigns-${authService.tenantId}'),
-          child: const CampaignsScreen(),
+          child: CampaignsScreen(
+            onOpenBilling: () => setState(() => _selectedNav = _navBillingPlan),
+          ),
         );
       case _navWhatsApp:
         return KeyedSubtree(

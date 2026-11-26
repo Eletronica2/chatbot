@@ -12,6 +12,19 @@ class CampaignService {
 
   final ApiClient _apiClient;
 
+  Future<CampaignSendReadinessModel> getSendReadiness(String tenantId) async {
+    final data = await _apiClient.get('/api/v1/tenants/$tenantId/campaigns/send-readiness');
+    return CampaignSendReadinessModel.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<CampaignDetailModel> getCampaignDetail({
+    required String tenantId,
+    required String campaignId,
+  }) async {
+    final data = await _apiClient.get('/api/v1/tenants/$tenantId/campaigns/$campaignId');
+    return CampaignDetailModel.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<List<CampaignSummaryModel>> listCampaigns(String tenantId) async {
     try {
       final data = await _apiClient.get('/api/v1/tenants/$tenantId/campaigns');
