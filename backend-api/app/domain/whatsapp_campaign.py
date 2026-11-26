@@ -64,23 +64,6 @@ class CampaignValidationResult(BaseModel):
     plan_snapshot: CampaignPlanSnapshot | None = None
 
 
-class CampaignRecipientRow(BaseModel):
-    row_number: int
-    phone: str
-    status: str
-    body_params: dict[str, str] = Field(default_factory=dict)
-    consent_ok: bool = False
-    error_message: str | None = None
-    sent_at: Optional[datetime] = None
-    delivered_at: Optional[datetime] = None
-    read_at: Optional[datetime] = None
-
-
-class CampaignDetail(BaseModel):
-    campaign: CampaignSummary
-    recipients: list[CampaignRecipientRow] = Field(default_factory=list)
-
-
 class CampaignSummary(BaseModel):
     id: str
     name: str
@@ -101,3 +84,20 @@ class CampaignSummary(BaseModel):
     created_at: Optional[datetime] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+
+
+class CampaignRecipientRow(BaseModel):
+    row_number: int
+    phone: str
+    status: str
+    body_params: dict[str, str] = Field(default_factory=dict)
+    consent_ok: bool = False
+    error_message: str | None = None
+    sent_at: Optional[datetime] = None
+    delivered_at: Optional[datetime] = None
+    read_at: Optional[datetime] = None
+
+
+class CampaignDetail(BaseModel):
+    campaign: CampaignSummary
+    recipients: list[CampaignRecipientRow] = Field(default_factory=list)
