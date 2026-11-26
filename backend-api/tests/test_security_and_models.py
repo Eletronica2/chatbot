@@ -107,6 +107,16 @@ def test_embedded_signup_exchange_accepts_empty_display_phone():
     assert payload.display_name == 'WhatsApp 109876543210987'
 
 
+def test_embedded_signup_exchange_accepts_v5_messaging_account_ids():
+    payload = EmbeddedSignupExchangePayload(
+        code='oauth-code',
+        messaging_account_ids=['555000111222333'],
+        phone_number_id='109876543210987',
+    )
+    assert payload.messaging_account_ids == ['555000111222333']
+    assert payload.waba_id == ''
+
+
 def test_resolve_signup_display_fields_prefers_graph_phone():
     phone, name = resolve_signup_display_fields(
         phone_number_id='1155710810954749',
@@ -119,6 +129,32 @@ def test_resolve_signup_display_fields_prefers_graph_phone():
     )
     assert phone == '+55 34 3195-3594'
     assert name == 'Atende Ai'
+
+
+def test_build_business_setup_omits_empty_and_blocks_atende_portfolio():
+    from app.services.whatsapp_onboarding_service import build_business_setup, resolve_messaging_account_id
+
+    assert build_business_setup(tenant_name='', tenant_email='') == {}
+    filled = build_business_setup(
+        tenant_name='Loja Demo',
+        tenant_email='loja@example.com',
+        website='https://loja.example.com',
+        country='BR',
+        timezone='UTC-03:00',
+    )
+    assert filled == {
+        'name': 'Loja Demo',
+        'email': 'loja@example.com',
+        'website': 'https://loja.example.com',
+        'timezone': 'UTC-03:00',
+        'address': {'country': 'BR'},
+    }
+    blocked = build_business_setup(business_portfolio_id='506485032393364', tenant_name='X')
+    assert 'id' not in blocked
+    assert blocked.get('name') == 'X'
+    assert build_business_setup(business_portfolio_id='999888777666555') == {'id': '999888777666555'}
+    assert resolve_messaging_account_id(messaging_account_ids=['111', '222']) == '111'
+    assert resolve_messaging_account_id(waba_id='333') == '333'
 
 
 def test_superadmin_can_patch_ai_models():

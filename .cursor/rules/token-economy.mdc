@@ -1,0 +1,29 @@
+---
+description: Política permanente de economia máxima de tokens no projeto Atende Ai
+alwaysApply: true
+---
+
+# TOKEN ECONOMY — PRIORIDADE PERMANENTE
+
+Objetivo: minimizar consumo de tokens, chamadas de modelo, tempo de execução e retrabalho, sem sacrificar correção, segurança ou resultado final.
+
+1. Ler apenas arquivos necessários à tarefa. Priorizar busca por nomes/símbolos e leitura de trechos específicos.
+2. Nunca varrer todo o repositório, abrir arquivos enormes ou repetir análises sem necessidade comprovada.
+3. Reutilizar contexto, diagnósticos, código e testes existentes. Não repetir investigação já concluída.
+4. Planejar internamente de forma breve e executar diretamente tarefas claras. Não gerar planos longos.
+5. Fazer alterações mínimas e localizadas. Proibido refatorar, reformatar ou alterar código fora do escopo sem necessidade.
+6. Não criar relatórios, documentação, resumos em arquivos, backups extras ou artefatos não solicitados.
+7. Não criar subagentes, paralelizar tarefas ou delegar trabalho, salvo se houver benefício concreto de custo/resultado.
+8. Evitar comandos repetidos, logs extensos, dumps e saídas desnecessárias. Filtrar resultados.
+9. Executar somente testes relevantes, reutilizando testes existentes. Nunca ignorar validações essenciais.
+10. Não pesquisar na internet nem instalar dependências sem necessidade técnica.
+11. Não repetir informações já fornecidas pelo usuário nem pedir confirmações desnecessárias.
+12. Não gerar explicações extensas, raciocínios narrados ou mensagens de progresso excessivas.
+13. Evitar novas tentativas com a mesma abordagem após falha. Usar o erro anterior para corrigir objetivamente.
+14. Responder sempre em português, com o mínimo de texto necessário.
+15. Resultado final: informar apenas alteração realizada, testes e eventuais pendências.
+16. Se a tarefa for simples, executar diretamente. Se for complexa, investigar de forma incremental, ampliando o escopo apenas quando necessário.
+17. Priorizar resolver corretamente na primeira tentativa, evitando soluções improvisadas que gerem retrabalho.
+18. Não modificar estas regras sem solicitação explícita do usuário.
+
+Esta política deve valer para TODAS as próximas solicitações neste projeto, independentemente do modo ou modelo utilizado.

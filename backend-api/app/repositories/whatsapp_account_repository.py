@@ -37,6 +37,33 @@ class WhatsAppAccountRepository:
             (tenant_pk,),
         )
 
+    async def get_active_by_account_key(self, account_key: str) -> list[dict[str, Any]]:
+        key = account_key.strip()
+        if not key:
+            return []
+
+        return await asyncio.to_thread(
+            self.database.fetch_all,
+            """
+            SELECT
+                wa.id,
+                wa.account_key,
+                wa.display_name,
+                wa.phone_number_id,
+                wa.display_phone_number,
+                wa.verify_token,
+                wa.status,
+                wa.is_default,
+                wa.access_token_encrypted,
+                t.external_key AS tenant_id
+            FROM whatsapp_accounts wa
+            INNER JOIN tenants t ON t.id = wa.tenant_id
+            WHERE wa.account_key = %s
+              AND wa.status = 'active'
+            """,
+            (key,),
+        )
+
     async def get_for_tenant(self, tenant_id: str, account_key: str) -> dict[str, Any] | None:
         tenant_pk = self.database.resolve_tenant_pk(tenant_id)
         return await asyncio.to_thread(

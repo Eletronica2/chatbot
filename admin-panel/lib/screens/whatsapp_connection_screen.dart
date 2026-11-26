@@ -5,7 +5,6 @@ import '../services/auth_service.dart';
 import '../services/whatsapp_account_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
-import '../widgets/coexistence_wizard.dart';
 import '../widgets/premium_ui.dart';
 import '../widgets/whatsapp_meta_panels.dart';
 
@@ -75,16 +74,6 @@ class _WhatsAppConnectionScreenState extends State<WhatsAppConnectionScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  Future<void> _openWizard({int initialStep = 0}) async {
-    if (_tenantId.isEmpty || _busy) return;
-    await showCoexistenceWizard(
-      context: context,
-      tenantId: _tenantId,
-      initialStep: initialStep,
-      onConnected: _load,
-    );
   }
 
   Future<void> _setDefault(WhatsAppAccountModel account) async {
@@ -281,41 +270,24 @@ class _WhatsAppConnectionScreenState extends State<WhatsAppConnectionScreen> {
           const SizedBox(height: 18),
           const _RequirementRow(
             icon: Icons.business_rounded,
-            text: 'Conta Meta Business e WhatsApp Business App',
+            text: 'Ter uma conta Meta Business',
           ),
           const _RequirementRow(
-            icon: Icons.lock_outline_rounded,
-            text: 'Painel aberto em HTTPS (exigência da Meta)',
+            icon: Icons.phone_android_rounded,
+            text: 'Ter o WhatsApp Business instalado no celular',
           ),
           const _RequirementRow(
             icon: Icons.smartphone_rounded,
-            text: 'Celular à mão para confirmar o código da Meta',
+            text: 'Usar o celular para autorizar a conexão quando a Meta solicitar',
           ),
           const SizedBox(height: 22),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              FilledButton.icon(
-                onPressed: _busy ? null : () => _openWizard(),
-                icon: const Icon(Icons.rocket_launch_rounded, size: 18),
-                label: const Text('Conectar WhatsApp'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 14,
-                  ),
-                ),
-              ),
-              WhatsAppMetaConnectButton(
-                tenantId: _tenantId,
-                accentColor: AppColors.primary,
-                label: 'Abrir Meta agora',
-                onConnected: _load,
-              ),
-            ],
+          WhatsAppMetaConnectButton(
+            tenantId: _tenantId,
+            accentColor: AppColors.primary,
+            label: 'Conectar WhatsApp',
+            filled: true,
+            icon: Icons.rocket_launch_rounded,
+            onConnected: _load,
           ),
         ],
       ),
@@ -420,18 +392,18 @@ class _WhatsAppConnectionScreenState extends State<WhatsAppConnectionScreen> {
             ],
           ),
           const SizedBox(height: 20),
-              Wrap(
+          Wrap(
             spacing: 10,
             runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              FilledButton.icon(
-                onPressed: _busy ? null : () => _openWizard(initialStep: 2),
-                icon: const Icon(Icons.link_rounded, size: 18),
-                label: const Text('Reconectar / atualizar'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                ),
+              WhatsAppMetaConnectButton(
+                tenantId: _tenantId,
+                accentColor: AppColors.primary,
+                label: 'Reconectar / atualizar',
+                filled: true,
+                icon: Icons.link_rounded,
+                onConnected: _load,
               ),
               if (account.status.toLowerCase() == 'active')
                 TextButton(

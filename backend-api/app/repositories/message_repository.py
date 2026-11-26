@@ -37,7 +37,28 @@ class MessageRepository:
     async def list_messages(self, *, tenant_id: str, session_id: str, limit: int = 200) -> list[dict[str, Any]]:
         raise NotImplementedError
 
+    async def get_message(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        message_id: int,
+    ) -> dict[str, Any] | None:
+        raise NotImplementedError
+
     async def count_incoming_since(self, *, tenant_id: str, since: datetime) -> int:
+        raise NotImplementedError
+
+    async def last_incoming_at(self, *, tenant_id: str, session_id: str) -> datetime | None:
+        raise NotImplementedError
+
+    async def patch_metadata_by_external_message_id(
+        self,
+        *,
+        tenant_id: str,
+        external_message_id: str,
+        patch: dict[str, Any],
+    ) -> None:
         raise NotImplementedError
 
 
@@ -130,7 +151,7 @@ class MySQLMessageRepository(MessageRepository):
         def _list() -> list[dict[str, Any]]:
             rows = self.database.fetch_all(
                 """
-                SELECT m.id, m.role, m.content, m.direction, m.source, m.created_at
+                SELECT m.id, m.role, m.content, m.direction, m.source, m.metadata, m.created_at
                 FROM messages m
                 INNER JOIN sessions s ON s.id = m.session_id
                 WHERE m.tenant_id = %s
@@ -143,6 +164,31 @@ class MySQLMessageRepository(MessageRepository):
             return rows
 
         return await asyncio.to_thread(_list)
+
+    async def get_message(
+        self,
+        *,
+        tenant_id: str,
+        session_id: str,
+        message_id: int,
+    ) -> dict[str, Any] | None:
+        tenant_pk = self.database.resolve_tenant_pk(tenant_id)
+
+        def _get() -> dict[str, Any] | None:
+            return self.database.fetch_one(
+                """
+                SELECT m.id, m.role, m.content, m.metadata, m.phone_number_id
+                FROM messages m
+                INNER JOIN sessions s ON s.id = m.session_id
+                WHERE m.tenant_id = %s
+                  AND s.session_id = %s
+                  AND m.id = %s
+                LIMIT 1
+                """,
+                (tenant_pk, session_id, message_id),
+            )
+
+        return await asyncio.to_thread(_get)
 
     async def count_incoming_since(self, *, tenant_id: str, since: datetime) -> int:
         tenant_pk = self.database.resolve_tenant_pk(tenant_id)
@@ -161,4 +207,54 @@ class MySQLMessageRepository(MessageRepository):
             return int((row or {}).get("total", 0) or 0)
 
         return await asyncio.to_thread(_count)
+
+    async def last_incoming_at(self, *, tenant_id: str, session_id: str) -> datetime | None:
+        tenant_pk = self.database.resolve_tenant_pk(tenant_id)
+
+        def _query() -> datetime | None:
+            row = self.database.fetch_one(
+                """
+                SELECT m.created_at
+                FROM messages m
+                INNER JOIN sessions s ON s.id = m.session_id
+                WHERE m.tenant_id = %s
+                  AND s.session_id = %s
+                  AND m.direction = 'incoming'
+                ORDER BY m.created_at DESC
+                LIMIT 1
+                """,
+                (tenant_pk, session_id),
+            )
+            if not row:
+                return None
+            value = row.get("created_at")
+            return value if isinstance(value, datetime) else None
+
+        return await asyncio.to_thread(_query)
+
+    async def patch_metadata_by_external_message_id(
+        self,
+        *,
+        tenant_id: str,
+        external_message_id: str,
+        patch: dict[str, Any],
+    ) -> None:
+        msg_id = (external_message_id or "").strip()
+        if not msg_id:
+            return
+        tenant_pk = self.database.resolve_tenant_pk(tenant_id)
+        payload = json.dumps(patch or {}, ensure_ascii=False)
+
+        def _patch() -> None:
+            self.database.execute(
+                """
+                UPDATE messages
+                SET metadata = JSON_MERGE_PATCH(COALESCE(metadata, '{}'), %s)
+                WHERE tenant_id = %s
+                  AND external_message_id = %s
+                """,
+                (payload, tenant_pk, msg_id),
+            )
+
+        await asyncio.to_thread(_patch)
 

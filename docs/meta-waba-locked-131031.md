@@ -2,6 +2,8 @@
 
 Guia para diagnosticar e resolver quando mensagens falham com `status: failed` e código **131031** no webhook da Meta.
 
+**Verificação do portfólio dono da WABA (#141010):** ver [meta-verificacao-empresa-waba-restricoes.md](./meta-verificacao-empresa-waba-restricoes.md) (caso homologado Bella Massa, 26/11/2026).
+
 ---
 
 ## Sintoma no webhook Meta

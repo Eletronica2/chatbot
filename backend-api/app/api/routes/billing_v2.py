@@ -22,10 +22,12 @@ from app.services.admin_audit_service import AdminAuditService
 from app.services.billing_dashboard_service import BillingDashboardService
 from app.services.billing_gate import TenantNotFound
 from app.services.billing_service import BillingService
+from app.services.message_service import MessageService
 from app.services.dependencies import (
     admin_audit_service_dependency,
     authenticated_user_dependency,
     billing_service_dependency,
+    message_service_dependency,
     get_billing_catalog_service,
     get_billing_gate,
     get_billing_topup_service,
@@ -690,8 +692,20 @@ async def internal_billing_status(
     payload: StatusPayload,
     usage_service: UsageLedgerService = Depends(usage_ledger_service_dependency),
     billing_service: BillingService = Depends(billing_service_dependency),
+    message_service: MessageService = Depends(message_service_dependency),
 ) -> dict[str, Any]:
     status = payload.status.strip().lower()
+    try:
+        from app.services.dependencies import get_whatsapp_campaign_service
+
+        await get_whatsapp_campaign_service().apply_provider_status(
+            payload.tenant_id,
+            payload.provider_message_id,
+            status,
+            error_code=payload.error_code,
+        )
+    except RuntimeError:
+        pass
     gate = get_billing_gate()
     is_v2_plan = False
     if gate.enabled:
@@ -707,7 +721,7 @@ async def internal_billing_status(
             await billing_service.report_meter_event(payload.tenant_id, payload.provider_message_id, quantity=1)
     if not gate.enabled:
         return {"ok": True, "billing_v2": False}
-    return await asyncio.to_thread(
+    result = await asyncio.to_thread(
         get_billing_gate().apply_status,
         payload.tenant_id,
         payload.provider_message_id,
@@ -717,3 +731,13 @@ async def internal_billing_status(
         pricing_billable=payload.pricing_billable,
         error_code=payload.error_code,
     )
+    if status == "failed" and payload.provider_message_id:
+        await message_service.patch_metadata_by_external_message_id(
+            tenant_id=payload.tenant_id,
+            external_message_id=payload.provider_message_id,
+            patch={
+                "delivery_status": "failed",
+                "delivery_error_code": payload.error_code,
+            },
+        )
+    return result

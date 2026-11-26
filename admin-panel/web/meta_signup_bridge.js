@@ -30,21 +30,45 @@ window.MetaSignupBridge = {
     window[callbackNameSafe(session.callbackName)](payload);
   },
 
+  _firstId: function (value) {
+    if (Array.isArray(value)) {
+      for (var i = 0; i < value.length; i++) {
+        var item = value[i];
+        if (item == null) continue;
+        var text = String(item).trim();
+        if (text) return text;
+      }
+      return "";
+    }
+    if (value == null) return "";
+    return String(value).trim();
+  },
+
   _tryComplete: function (session) {
     if (!session || session.finished) {
       return;
     }
     var code = session.code || window.__metaSignupLastCode || "";
-    var wabaId = session.wabaId || "";
+    // v5: messaging_account_ids replaces waba_id. Never treat primary_waac_ids as messaging account.
+    var messagingId =
+      session.messagingAccountId ||
+      window.MetaSignupBridge._firstId(session.messagingAccountIds) ||
+      session.wabaId ||
+      "";
     var phoneNumberId = session.phoneNumberId || "";
-    if (!code || !wabaId || !phoneNumberId) {
+    if (!code || !messagingId || !phoneNumberId) {
       return;
     }
     window.MetaSignupBridge._finishSession(session, {
       code: code,
-      waba_id: wabaId,
+      waba_id: messagingId,
+      messaging_account_id: messagingId,
+      messaging_account_ids: session.messagingAccountIds || (messagingId ? [messagingId] : []),
       phone_number_id: phoneNumberId,
       display_phone_number: session.displayPhoneNumber || "",
+      business_id: session.businessId || "",
+      is_on_biz_app: !!session.isOnBizApp,
+      event: session.event || "",
       granted_scopes: session.grantedScopes || "",
     });
   },
@@ -71,12 +95,11 @@ window.MetaSignupBridge = {
     return payload;
   },
 
-  _coexistenceExtras: function () {
+  _v5Extras: function () {
+    // Coexistence (WhatsApp Business app onboarding) is on by default in v5 — do not opt out.
     return {
       setup: {},
-      featureType: "whatsapp_business_app_onboarding",
-      sessionInfoVersion: "3",
-      version: "v3",
+      version: "v5",
     };
   },
 
@@ -89,8 +112,13 @@ window.MetaSignupBridge = {
       callbackName: callbackName,
       code: "",
       wabaId: "",
+      messagingAccountId: "",
+      messagingAccountIds: [],
       phoneNumberId: "",
       displayPhoneNumber: "",
+      businessId: "",
+      isOnBizApp: false,
+      event: "",
       grantedScopes: "",
       finished: false,
       cancelled: false,
@@ -105,16 +133,43 @@ window.MetaSignupBridge = {
       if (!payload) {
         return;
       }
-      var data = payload.data || {};
-      if (data.waba_id) {
-        session.wabaId = String(data.waba_id);
+      var evt = payload.event || "";
+      session.event = evt;
+      if (evt === "CANCEL" || evt === "error" || evt === "ERROR") {
+        session.cancelled = true;
+        window.MetaSignupBridge._finishSession(session, null);
+        return;
       }
+      var data = payload.data || {};
+      var messagingIds = data.messaging_account_ids || data.messagingAccountIds || [];
+      var messagingId =
+        window.MetaSignupBridge._firstId(messagingIds) ||
+        window.MetaSignupBridge._firstId(data.messaging_account_id) ||
+        window.MetaSignupBridge._firstId(data.waba_id);
+      if (messagingId) {
+        session.messagingAccountId = messagingId;
+        session.wabaId = messagingId;
+        session.messagingAccountIds = Array.isArray(messagingIds) && messagingIds.length
+          ? messagingIds.map(function (id) { return String(id); })
+          : [messagingId];
+      }
+      // Intentionally ignore primary_waac_ids — WAAC IDs must not be stored as messaging account IDs.
       if (data.phone_number_id) {
         session.phoneNumberId = String(data.phone_number_id);
       }
       var displayPhone = data.display_phone_number || data.displayPhoneNumber || data.phone_number || "";
       if (displayPhone) {
         session.displayPhoneNumber = String(displayPhone);
+      }
+      if (data.business_id) {
+        session.businessId = String(data.business_id);
+      }
+      if (typeof data.is_on_biz_app === "boolean") {
+        session.isOnBizApp = data.is_on_biz_app;
+      } else if (
+        evt === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+      ) {
+        session.isOnBizApp = true;
       }
       window.MetaSignupBridge._tryComplete(session);
     };
@@ -137,13 +192,19 @@ window.MetaSignupBridge = {
           version: "v22.0",
         });
 
-        var extras = extrasOverride && typeof extrasOverride === "object"
-          ? extrasOverride
-          : { sessionInfoVersion: "3" };
-        if (coexistence) {
-          extras = Object.assign({}, window.MetaSignupBridge._coexistenceExtras(), extras);
-        } else if (!extras.setup) {
-          extras.setup = {};
+        var extras = window.MetaSignupBridge._v5Extras();
+        if (extrasOverride && typeof extrasOverride === "object") {
+          extras = Object.assign({}, extras, extrasOverride);
+          if (extrasOverride.setup && typeof extrasOverride.setup === "object") {
+            extras.setup = Object.assign({}, extras.setup || {}, extrasOverride.setup);
+          }
+        }
+        // Drop obsolete v3 keys if an old override still sends them.
+        delete extras.sessionInfoVersion;
+        delete extras.featureType;
+        extras.version = "v5";
+        if (coexistence === false) {
+          extras.features = [{ name: "whatsapp_business_app_onboarding", enabled: false }];
         }
 
         window.FB.login(

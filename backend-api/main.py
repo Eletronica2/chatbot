@@ -42,6 +42,7 @@ from app.api.routes import (
     usage,
     whatsapp_accounts,
     whatsapp_templates,
+    whatsapp_campaigns,
     whatsapp_onboarding,
     meta_callbacks,
 )
@@ -56,6 +57,7 @@ from app.repositories.message_repository import MySQLMessageRepository
 from app.repositories.session_repository import MySQLSessionRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.whatsapp_account_repository import WhatsAppAccountRepository
+from app.repositories.campaign_repository import CampaignRepository
 from app.security.crypto import TokenCipher
 from app.services.ai_service import AIService
 from app.services.auth_service import AuthService
@@ -90,6 +92,8 @@ from app.services.dependencies import (
     set_whatsapp_account_service,
     set_whatsapp_onboarding_service,
     set_whatsapp_template_service,
+    set_whatsapp_template_status_service,
+    set_whatsapp_campaign_service,
     set_meta_graph_service,
     set_orders_module,
 )
@@ -115,6 +119,9 @@ from app.services.flow_actions_service import FlowActionsService
 from app.services.whatsapp_account_service import WhatsAppAccountService
 from app.services.whatsapp_onboarding_service import WhatsAppOnboardingService
 from app.services.whatsapp_template_service import WhatsAppTemplateService
+from app.repositories.whatsapp_template_status_repository import WhatsAppTemplateStatusRepository
+from app.services.whatsapp_template_status_service import WhatsAppTemplateStatusService
+from app.services.whatsapp_campaign_service import WhatsAppCampaignService
 from app.services.meta_graph_service import MetaGraphService
 from app.services.conversation_group_service import ConversationGroupService
 from app.services.quick_reply_service import QuickReplyService
@@ -178,13 +185,20 @@ async def lifespan(app: FastAPI):
         TokenCipher(settings.APP_SECRET_KEY),
         meta_graph_service,
     )
+    whatsapp_template_status_repository = WhatsAppTemplateStatusRepository(database)
+    whatsapp_template_status_service = WhatsAppTemplateStatusService(
+        whatsapp_template_status_repository,
+        whatsapp_account_service,
+    )
     whatsapp_template_service = WhatsAppTemplateService(
         meta_graph_service,
         whatsapp_account_service,
+        template_status_service=whatsapp_template_status_service,
     )
     whatsapp_onboarding_service = WhatsAppOnboardingService(
         meta_graph_service,
         whatsapp_account_service,
+        database=database,
     )
     flow_catalog_service = FlowCatalogService(flow_catalog_repository)
     tenant_user_service = TenantUserService(
@@ -208,6 +222,14 @@ async def lifespan(app: FastAPI):
         flow_service=flow_service,
     )
     meta_rate_engine = MetaRateEngine(database)
+    campaign_repository = CampaignRepository(database)
+    whatsapp_campaign_service = WhatsAppCampaignService(
+        campaign_repository,
+        whatsapp_template_service,
+        whatsapp_account_service,
+        subscription_service=subscription_service,
+        meta_rate_engine=meta_rate_engine,
+    )
     billing_catalog_service = BillingCatalogService(database)
     billing_gate = BillingGate(database, meta_rate_engine, billing_catalog_service)
     ai_usage_service = AIUsageService(database)
@@ -266,6 +288,21 @@ async def lifespan(app: FastAPI):
     set_whatsapp_account_service(whatsapp_account_service)
     set_meta_graph_service(meta_graph_service)
     set_whatsapp_template_service(whatsapp_template_service)
+    set_whatsapp_template_status_service(whatsapp_template_status_service)
+    try:
+        partner = (settings.META_SYSTEM_USER_TOKEN or "").strip()
+        if partner:
+            fields = await meta_graph_service.list_app_webhook_subscriptions(partner)
+            if "message_template_status_update" not in fields:
+                logger.warning(
+                    "Meta app webhook missing message_template_status_update (fields=%s)",
+                    fields,
+                )
+            else:
+                logger.info("Meta app webhook includes message_template_status_update")
+    except Exception as exc:
+        logger.info("Could not verify Meta template webhook fields: %s", exc)
+    set_whatsapp_campaign_service(whatsapp_campaign_service)
     set_whatsapp_onboarding_service(whatsapp_onboarding_service)
     set_flow_catalog_service(flow_catalog_service)
     set_tenant_admin_service(tenant_admin_service)
@@ -330,9 +367,23 @@ async def lifespan(app: FastAPI):
             copy_default_flows=False,
         )
     housekeeping = asyncio.create_task(_billing_housekeeping(billing_gate))
+    campaign_worker = asyncio.create_task(_campaign_worker(whatsapp_campaign_service))
     yield
+    campaign_worker.cancel()
     housekeeping.cancel()
     logger.info("Backend API shutdown complete")
+
+
+async def _campaign_worker(service: WhatsAppCampaignService) -> None:
+    interval = max(5, int(getattr(settings, "CAMPAIGN_WORKER_INTERVAL_SECONDS", 15)))
+    while True:
+        await asyncio.sleep(interval)
+        try:
+            await service.process_queue_tick()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("campaign_worker_tick_failed")
 
 
 async def _billing_housekeeping(gate: BillingGate) -> None:
@@ -400,6 +451,7 @@ app.include_router(subscriptions.router)
 app.include_router(conversation_logs.router)
 app.include_router(whatsapp_accounts.router)
 app.include_router(whatsapp_templates.router)
+app.include_router(whatsapp_campaigns.router)
 app.include_router(whatsapp_onboarding.router)
 app.include_router(meta_callbacks.router)
 app.include_router(internal_whatsapp.router)

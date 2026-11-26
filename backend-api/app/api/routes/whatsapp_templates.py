@@ -16,10 +16,29 @@ from app.services.dependencies import (
     admin_audit_service_dependency,
     authenticated_user_dependency,
     whatsapp_template_service_dependency,
+    whatsapp_template_status_service_dependency,
 )
 from app.services.whatsapp_template_service import WhatsAppTemplateService
+from app.services.whatsapp_template_status_service import WhatsAppTemplateStatusService
 
 router = APIRouter(prefix="/api/v1/tenants/{tenant_id}/whatsapp-templates", tags=["WhatsApp Templates"])
+
+
+@router.get("/status-watch")
+async def watch_template_status(
+    request: Request,
+    tenant_id: str,
+    account_key: str,
+    since: int = 0,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: WhatsAppTemplateStatusService = Depends(whatsapp_template_status_service_dependency),
+) -> list[dict]:
+    target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
+    return await service.list_watch(
+        tenant_id=target_tenant_id,
+        account_key=account_key,
+        since_unix=max(0, since),
+    )
 
 
 @router.get("", response_model=list[WhatsAppTemplate])

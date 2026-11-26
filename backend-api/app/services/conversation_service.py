@@ -23,6 +23,7 @@ from app.services.order_assistant import claims_order_confirmation, price_reply
 from app.services.session_service import SessionService
 from app.services.subscription_service import SubscriptionService
 from app.services.tenant_settings_service import TenantSettingsService
+from app.utils.inbox_visibility import touch_inbound_customer
 from app.utils.phone_utils import normalize_whatsapp_phone
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,21 @@ class ConversationService:
 
     def _billing_v2_active(self) -> bool:
         return self.billing_gate is not None and bool(self.billing_gate.enabled)
+
+    def _inbound_queue_context(self, context: dict | None) -> dict:
+        ctx = touch_inbound_customer(context)
+        ctx["unread_count"] = int(ctx.get("unread_count", 0) or 0) + 1
+        return ctx
+
+    async def _persist_customer_activity(
+        self,
+        session: ConversationSession,
+        ctx: ExecutionContext,
+    ) -> ConversationSession:
+        if not ctx.persist:
+            return session
+        session.context = touch_inbound_customer(session.context)
+        return await self._persist_session_update(ctx, session)
 
     async def handle_incoming_message(
         self,
@@ -165,6 +181,17 @@ class ConversationService:
         return action.model_copy(update={"metadata": metadata})
 
     @staticmethod
+    def _inbound_metadata(message: NormalizedMessage, **extra: Any) -> Dict[str, Any]:
+        meta = dict(message.metadata or {})
+        meta["message_type"] = message.message_type.value
+        if message.media_id:
+            meta["media_id"] = message.media_id
+        if message.media_mime_type:
+            meta["media_mime_type"] = message.media_mime_type
+        meta.update(extra)
+        return meta
+
+    @staticmethod
     def _billing_source_path(source: str) -> str:
         if source.startswith("ai"):
             return "ai"
@@ -175,6 +202,7 @@ class ConversationService:
     async def _billing_blocked(self, message: NormalizedMessage, ctx: ExecutionContext, decision: Any) -> ConversationAction:
         code = getattr(decision, "code", None) or "billing_error"
         session = await self._resolve_session(message, ctx)
+        session = await self._persist_customer_activity(session, ctx)
         self._append_message(session, role="user", content=message.content)
         await self._persist_message(
             ctx,
@@ -184,15 +212,14 @@ class ConversationService:
             role="user",
             content=message.content,
             source="gateway",
-            metadata={**(message.metadata or {}), "billing_blocked": code},
+            metadata=self._inbound_metadata(message, billing_blocked=code),
             external_message_id=message.message_id,
             phone_number_id=message.phone_number_id,
         )
-        context = dict(session.context or {})
+        context = self._inbound_queue_context(session.context)
         context["human_handoff_pending"] = True
         context["human_handoff_reason"] = code
         context["human_handoff_at"] = datetime.utcnow().isoformat()
-        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
         session = await self._persist_session_update(ctx, session, context_updates=context)
         return ConversationAction(
             source="billing_blocked",
@@ -210,6 +237,7 @@ class ConversationService:
         """Store the inbound and leave it for a human; no flow, no AI, no billing reservation, nothing sent."""
         logger.info("auto_reply_blocked tenant=%s message=%s reason=%s", message.tenant_id, message.message_id, reason)
         session = await self._resolve_session(message, ctx)
+        session = await self._persist_customer_activity(session, ctx)
         self._append_message(session, role="user", content=message.content)
         await self._persist_message(
             ctx,
@@ -219,15 +247,14 @@ class ConversationService:
             role="user",
             content=message.content,
             source="gateway",
-            metadata={**(message.metadata or {}), "auto_reply_blocked": reason},
+            metadata=self._inbound_metadata(message, auto_reply_blocked=reason),
             external_message_id=message.message_id,
             phone_number_id=message.phone_number_id,
         )
-        context = dict(session.context or {})
+        context = self._inbound_queue_context(session.context)
         context["human_handoff_pending"] = True
         context["human_handoff_reason"] = reason
         context["human_handoff_at"] = datetime.utcnow().isoformat()
-        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
         context["last_message"] = message.content
         session = await self._persist_session_update(ctx, session, context_updates=context)
         return ConversationAction(
@@ -280,6 +307,10 @@ class ConversationService:
                 session_state={},
             )
 
+        session = await self._resolve_session(message, ctx)
+        if ctx.persist:
+            session = await self._persist_customer_activity(session, ctx)
+
         if ctx.allow_billing and not self._billing_v2_active():
             allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
             if not allowance.allowed:
@@ -287,7 +318,6 @@ class ConversationService:
                     "Aguarde um momento — já vamos te responder! 🙋\n"
                     "Um atendente da casa vai continuar essa conversa com você."
                 )
-                session = await self._resolve_session(message, ctx)
                 self._append_message(session, role="user", content=message.content)
                 await self._persist_message(
                     ctx,
@@ -297,18 +327,14 @@ class ConversationService:
                     role="user",
                     content=message.content,
                     source="gateway",
-                    metadata={
-                        **(message.metadata or {}),
-                        "handoff_reason": allowance.reason,
-                    },
+                    metadata=self._inbound_metadata(message, handoff_reason=allowance.reason),
                     external_message_id=message.message_id,
                     phone_number_id=message.phone_number_id,
                 )
-                context = dict(session.context or {})
+                context = self._inbound_queue_context(session.context)
                 context["human_handoff_pending"] = True
                 context["human_handoff_reason"] = allowance.reason
                 context["human_handoff_at"] = datetime.utcnow().isoformat()
-                context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
                 session = await self._persist_session_update(
                     ctx,
                     session,
@@ -346,7 +372,6 @@ class ConversationService:
                 )
                 return action
 
-        session = await self._resolve_session(message, ctx)
         if ctx.persist:
             session = await self._ensure_operational_defaults(session)
 
@@ -361,12 +386,11 @@ class ConversationService:
                 role="user",
                 content=message.content,
                 source="gateway",
-                metadata={**(message.metadata or {}), "awaiting_human": True},
+                metadata=self._inbound_metadata(message, awaiting_human=True),
                 external_message_id=message.message_id,
                 phone_number_id=message.phone_number_id,
             )
-            context = dict(session.context or {})
-            context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
+            context = self._inbound_queue_context(session.context)
             context["last_message"] = message.content
             context["updated_at"] = datetime.utcnow().isoformat()
             session = await self._persist_session_update(ctx, session, context_updates=context)
@@ -394,7 +418,7 @@ class ConversationService:
             role="user",
             content=message.content,
             source="gateway",
-            metadata=message.metadata or {},
+            metadata=self._inbound_metadata(message),
             external_message_id=message.message_id,
             phone_number_id=message.phone_number_id,
         )
@@ -743,11 +767,10 @@ class ConversationService:
         started_at: float,
     ) -> ConversationAction:
         """Keep the inbound message and route failures to the human queue without sending/billing a reply."""
-        context = dict(session.context or {})
+        context = self._inbound_queue_context(session.context)
         context["human_handoff_pending"] = True
         context["human_handoff_reason"] = str((ai_metadata or {}).get("error") or "ai_unavailable")[:80]
         context["human_handoff_at"] = datetime.utcnow().isoformat()
-        context["unread_count"] = int(context.get("unread_count", 0) or 0) + 1
         session = await self._persist_session_update(ctx, session, context_updates=context)
         metadata = {**(ai_metadata or {}), "human_handoff_pending": True, "ai_failure": True}
         if ctx.is_test:

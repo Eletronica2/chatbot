@@ -34,12 +34,11 @@ class UserRepository:
                     UPDATE users
                     SET tenant_id = %s,
                         display_name = %s,
-                        password_hash = %s,
                         role = %s,
                         status = 'active'
                     WHERE email = %s
                     """,
-                    (tenant_pk, display_name, password_hash, role, email),
+                    (tenant_pk, display_name, role, email),
                 )
                 return
             self.database.insert(

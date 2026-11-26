@@ -539,6 +539,17 @@ class MySQLDatabase:
         from app.db import orders_schema
 
         orders_schema.apply(cursor, ensure_column=self._ensure_column)
+        from app.db import campaign_schema
+
+        campaign_schema.apply(
+            cursor,
+            ensure_column=self._ensure_column,
+            ensure_index=self._ensure_index,
+            fetchone=self._fetchone,
+        )
+        from app.db import template_status_schema
+
+        template_status_schema.apply(cursor, ensure_index=self._ensure_index)
         # NULL = record created before LIVE existed (TEST); TEST and LIVE customers never mix.
         self._ensure_column(cursor, table="billing_customers", column="livemode",
                             ddl="ALTER TABLE billing_customers ADD COLUMN livemode TINYINT(1) NULL AFTER provider")

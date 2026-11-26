@@ -31,10 +31,26 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
     }
 
     final code = map['code']?.toString() ?? '';
-    final wabaId = map['waba_id']?.toString();
+    final messagingIdsRaw = map['messaging_account_ids'];
+    final messagingIds = <String>[];
+    if (messagingIdsRaw is List) {
+      for (final item in messagingIdsRaw) {
+        final value = item?.toString().trim() ?? '';
+        if (value.isNotEmpty) messagingIds.add(value);
+      }
+    }
+    final messagingAccountId = (map['messaging_account_id']?.toString().trim().isNotEmpty ?? false)
+        ? map['messaging_account_id']!.toString().trim()
+        : (messagingIds.isNotEmpty ? messagingIds.first : map['waba_id']?.toString());
+    final wabaId = messagingAccountId;
     final phoneNumberId = map['phone_number_id']?.toString();
+    final isOnBizApp = map['is_on_biz_app'];
 
-    if (code.isEmpty || wabaId == null || wabaId.isEmpty || phoneNumberId == null || phoneNumberId.isEmpty) {
+    if (code.isEmpty ||
+        wabaId == null ||
+        wabaId.isEmpty ||
+        phoneNumberId == null ||
+        phoneNumberId.isEmpty) {
       completer.complete(null);
       return;
     }
@@ -43,8 +59,12 @@ Future<MetaEmbeddedSignupResult?> launchMetaEmbeddedSignup({
       MetaEmbeddedSignupResult(
         code: code,
         wabaId: wabaId,
+        messagingAccountId: messagingAccountId,
+        messagingAccountIds: messagingIds.isNotEmpty ? messagingIds : <String>[wabaId],
         phoneNumberId: phoneNumberId,
         displayPhoneNumber: map['display_phone_number']?.toString(),
+        businessId: map['business_id']?.toString(),
+        isOnBizApp: isOnBizApp is bool ? isOnBizApp : null,
       ),
     );
   }

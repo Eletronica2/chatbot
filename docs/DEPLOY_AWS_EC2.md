@@ -63,6 +63,14 @@ Preencher secrets **novos**. Não reutilizar tokens que estiveram no Git.
 API_BASE_URL=https://api.meuatendeai.com.br ./scripts/build_admin_web.sh
 ```
 
+Sync de código para a EC2 (não copia `.env`, `.env.production` nem credenciais locais):
+
+```bash
+./scripts/rsync_production.sh backend-api
+./scripts/rsync_production.sh whatsapp-gateway
+./scripts/rsync_production.sh admin-web
+```
+
 ## 8. Subir Compose
 
 ```bash

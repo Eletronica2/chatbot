@@ -20,6 +20,8 @@ from app.services.conversation_log_service import ConversationLogService
 from app.services.whatsapp_account_service import WhatsAppAccountService
 from app.services.whatsapp_onboarding_service import WhatsAppOnboardingService
 from app.services.whatsapp_template_service import WhatsAppTemplateService
+from app.services.whatsapp_template_status_service import WhatsAppTemplateStatusService
+from app.services.whatsapp_campaign_service import WhatsAppCampaignService
 from app.services.meta_graph_service import MetaGraphService
 from app.services.admin_audit_service import AdminAuditService
 from app.services.dashboard_service import DashboardService
@@ -45,6 +47,8 @@ _message_service: Optional[MessageService] = None
 _auth_service: Optional[AuthService] = None
 _whatsapp_account_service: Optional[WhatsAppAccountService] = None
 _whatsapp_template_service: Optional[WhatsAppTemplateService] = None
+_whatsapp_template_status_service: Optional[WhatsAppTemplateStatusService] = None
+_whatsapp_campaign_service: Optional[WhatsAppCampaignService] = None
 _whatsapp_onboarding_service: Optional[WhatsAppOnboardingService] = None
 _meta_graph_service: Optional[MetaGraphService] = None
 _flow_catalog_service: Optional[FlowCatalogService] = None
@@ -258,6 +262,40 @@ def get_whatsapp_template_service() -> WhatsAppTemplateService:
 def whatsapp_template_service_dependency(
     service: WhatsAppTemplateService = Depends(get_whatsapp_template_service),
 ) -> WhatsAppTemplateService:
+    return service
+
+
+def set_whatsapp_template_status_service(service: WhatsAppTemplateStatusService) -> None:
+    global _whatsapp_template_status_service
+    _whatsapp_template_status_service = service
+
+
+def get_whatsapp_template_status_service() -> WhatsAppTemplateStatusService:
+    if _whatsapp_template_status_service is None:
+        raise RuntimeError("WhatsAppTemplateStatusService not configured")
+    return _whatsapp_template_status_service
+
+
+def whatsapp_template_status_service_dependency(
+    service: WhatsAppTemplateStatusService = Depends(get_whatsapp_template_status_service),
+) -> WhatsAppTemplateStatusService:
+    return service
+
+
+def set_whatsapp_campaign_service(service: WhatsAppCampaignService) -> None:
+    global _whatsapp_campaign_service
+    _whatsapp_campaign_service = service
+
+
+def get_whatsapp_campaign_service() -> WhatsAppCampaignService:
+    if _whatsapp_campaign_service is None:
+        raise RuntimeError("WhatsAppCampaignService not configured")
+    return _whatsapp_campaign_service
+
+
+def whatsapp_campaign_service_dependency(
+    service: WhatsAppCampaignService = Depends(get_whatsapp_campaign_service),
+) -> WhatsAppCampaignService:
     return service
 
 

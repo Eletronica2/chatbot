@@ -248,7 +248,6 @@ class TenantAdminService:
                             UPDATE users
                             SET tenant_id = %s,
                                 display_name = %s,
-                                password_hash = %s,
                                 role = 'owner',
                                 status = 'active',
                                 updated_at = CURRENT_TIMESTAMP
@@ -257,7 +256,6 @@ class TenantAdminService:
                             (
                                 tenant_pk,
                                 owner_name.strip(),
-                                owner_password_hash,
                                 int(user_row['id']),
                             ),
                         )

@@ -26,6 +26,7 @@ import 'quick_replies_screen.dart';
 import 'settings_screen.dart';
 import 'team_screen.dart';
 import 'template_dispatch_screen.dart';
+import 'campaigns_screen.dart';
 import 'whatsapp_connection_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -46,6 +47,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const String _navBilling = 'billing';
   static const String _navBillingPlan = 'billing_plan';
   static const String _navTemplates = 'templates';
+  static const String _navCampaigns = 'campaigns';
   static const String _navWhatsApp = 'whatsapp';
   static const String _navTeam = 'team';
   static const String _navGroups = 'groups';
@@ -150,6 +152,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: Icons.campaign_rounded,
         section: 'Automação',
         helper: 'Criar modelos Meta, ver status e disparar testes',
+        visible: caps.canManageTemplates,
+      ),
+      AppSidebarItem(
+        id: _navCampaigns,
+        label: 'Campanhas',
+        icon: Icons.send_and_archive_rounded,
+        section: 'Automação',
+        helper: 'Disparo em massa com templates aprovados e importação XLSX',
         visible: caps.canManageTemplates,
       ),
       AppSidebarItem(
@@ -346,6 +356,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _selectedConversation = null;
       _sidebarCollapsed = false;
     });
+    _refreshConversations();
   }
 
   void _onSidebarCollapsedChanged(bool collapsed) {
@@ -466,6 +477,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Ações';
       case _navTemplates:
         return 'Templates WhatsApp';
+      case _navCampaigns:
+        return 'Campanhas';
       case _navWhatsApp:
         return 'WhatsApp';
       case _navTeam:
@@ -497,6 +510,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Cadastre ações reutilizáveis — imagens, links, requisições HTTP e mais — para usar nos fluxos.';
       case _navTemplates:
         return 'Crie modelos oficiais da Meta, acompanhe PENDING/APPROVED e dispare testes.';
+      case _navCampaigns:
+        return 'Importe destinatários via XLSX e acompanhe o progresso do disparo em massa.';
       case _navWhatsApp:
         return 'Conecte o WhatsApp Business da sua empresa e configure a coexistência.';
       case _navTeam:
@@ -536,6 +551,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return KeyedSubtree(
           key: ValueKey<String>('templates-${authService.tenantId}'),
           child: const TemplateDispatchScreen(),
+        );
+      case _navCampaigns:
+        return KeyedSubtree(
+          key: ValueKey<String>('campaigns-${authService.tenantId}'),
+          child: const CampaignsScreen(),
         );
       case _navWhatsApp:
         return KeyedSubtree(

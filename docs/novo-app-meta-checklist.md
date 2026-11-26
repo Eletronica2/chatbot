@@ -267,7 +267,7 @@ Erro `name_placeholder should represent a valid URL` costuma ser URL **cortada**
 | Sintoma | Link / ação |
 |---------|-------------|
 | `#131030` | Refazer destinatário de teste (Fase 2.2) |
-| `#131031` | [meta-waba-locked-131031.md](./meta-waba-locked-131031.md) + billing na WABA certa + verificação WABA |
+| `#131031` / `#141010` | [meta-waba-locked-131031.md](./meta-waba-locked-131031.md) + [meta-verificacao-empresa-waba-restricoes.md](./meta-verificacao-empresa-waba-restricoes.md) (verificar **portfólio dono da WABA**) |
 | App não lista no Developers | Usar conta **labeltink02**; app novo aparece na **sua** lista |
 | Webhook sem POST | Túnel ativo + campo **messages** assinado |
 | Template não cria | Token novo + permissão `whatsapp_business_management` na submissão |

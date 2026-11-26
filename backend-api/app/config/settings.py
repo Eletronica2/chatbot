@@ -87,6 +87,7 @@ class Settings(BaseSettings):
 
     # Billing V2 (franquia operacional por outbound delivered + Meta dual mode).
     BILLING_V2_ENABLED: bool = False
+    CAMPAIGN_SEND_ENABLED: bool = False
     META_BILLING_DEFAULT: str = "customer_direct"
     BILLING_MARKET: str = "BR"
     BILLING_RESERVATION_STALE_MINUTES: int = 1440

@@ -27,6 +27,32 @@ class ApiClient {
     return _handleResponse(response);
   }
 
+  Future<http.Response> postMultipart(
+    String path, {
+    required Map<String, String> fields,
+    required List<http.MultipartFile> files,
+  }) async {
+    final uri = Uri.parse('$apiBaseUrl$path');
+    final request = http.MultipartRequest('POST', uri);
+    request.fields.addAll(fields);
+    request.files.addAll(files);
+    final token = authService.accessToken;
+    final tenantId = authService.tenantId;
+    if (token != null && token.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+    if (tenantId != null && tenantId.isNotEmpty) {
+      request.headers['x-tenant-id'] = tenantId;
+    }
+    final streamed = await _httpClient.send(request);
+    return http.Response.fromStream(streamed);
+  }
+
+  Future<http.Response> getRaw(String path) async {
+    final uri = Uri.parse('$apiBaseUrl$path');
+    return _httpClient.get(uri, headers: _headers());
+  }
+
   Future<dynamic> post(String path, {Map<String, dynamic>? body}) async {
     final uri = Uri.parse('$apiBaseUrl$path');
     debugPrint('API_CLIENT: POST to $uri');

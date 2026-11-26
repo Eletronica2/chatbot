@@ -4,6 +4,7 @@ import '../models/whatsapp_template.dart';
 import '../services/billing_service.dart';
 import '../services/whatsapp_onboarding_service.dart';
 import '../services/whatsapp_template_service.dart';
+import '../theme/app_tokens.dart';
 import '../utils/meta_embedded_signup.dart';
 
 class WhatsAppTemplatesSection extends StatefulWidget {
@@ -378,12 +379,16 @@ class WhatsAppMetaConnectButton extends StatefulWidget {
     required this.onConnected,
     this.accentColor = const Color(0xFF22D3EE),
     this.label = 'Conectar via Meta (Coexistência)',
+    this.filled = false,
+    this.icon = Icons.link_rounded,
   });
 
   final String tenantId;
   final Future<void> Function() onConnected;
   final Color accentColor;
   final String label;
+  final bool filled;
+  final IconData icon;
 
   @override
   State<WhatsAppMetaConnectButton> createState() => _WhatsAppMetaConnectButtonState();
@@ -397,7 +402,7 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Embedded Signup disponivel apenas no admin web (Flutter Web).'),
+          content: Text('A conexão com a Meta está disponível apenas no painel web.'),
         ),
       );
       return;
@@ -409,13 +414,15 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Permita popups neste site. A Meta abrira uma janela para conectar o WhatsApp Business.',
+            'Se o navegador bloquear, permita popups. A Meta abrirá a janela para conectar o WhatsApp Business.',
           ),
           duration: Duration(seconds: 5),
         ),
       );
 
-      final config = await whatsAppOnboardingService.getEmbeddedSignupConfig();
+      final config = await whatsAppOnboardingService.getEmbeddedSignupConfig(
+        tenantId: widget.tenantId,
+      );
       final extras = config['extras'];
       final result = await launchMetaEmbeddedSignup(
         appId: config['app_id']?.toString() ?? '',
@@ -427,16 +434,15 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
         throw StateError('Cadastro cancelado ou incompleto');
       }
 
-      final wabaId = result.wabaId;
+      final wabaId = result.messagingAccountId ?? result.wabaId;
       final phoneNumberId = result.phoneNumberId;
       if (wabaId == null || phoneNumberId == null) {
-        throw StateError(
-          'Meta nao retornou WABA/Phone Number ID. Complete o fluxo e informe os IDs manualmente se necessario.',
-        );
+        throw StateError('ids_ausentes');
       }
 
       final displayPhone = (result.displayPhoneNumber ?? '').trim();
       final resolvedPhone = displayPhone.isEmpty ? phoneNumberId : displayPhone;
+      final coexistence = result.isOnBizApp ?? true;
       final exchange = await whatsAppOnboardingService.exchangeEmbeddedSignup(
         tenantId: widget.tenantId,
         code: result.code,
@@ -444,33 +450,34 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
         phoneNumberId: phoneNumberId,
         displayPhoneNumber: resolvedPhone,
         displayName: 'WhatsApp $resolvedPhone',
-        coexistence: true,
+        coexistence: coexistence,
+        messagingAccountId: result.messagingAccountId ?? wabaId,
+        messagingAccountIds: result.messagingAccountIds,
+        businessId: result.businessId,
+        isOnBizApp: result.isOnBizApp,
       );
       await widget.onConnected();
       if (!mounted) return;
       final phoneStatus = exchange['phone_status'];
       final status = phoneStatus is Map ? phoneStatus['status']?.toString() : null;
       final message = status == 'CONNECTED'
-          ? 'WhatsApp conectado! Numero CONNECTED na Meta.'
-          : 'Conta vinculada. Status: ${status ?? "aguardando verificacao"}. '
-              'No celular: abra a mensagem da Meta, toque Conectar e cole o codigo.';
+          ? 'WhatsApp conectado com sucesso.'
+          : 'Conta vinculada. No celular, abra a mensagem da Meta, toque em Conectar e confirme quando solicitado.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
     } catch (err) {
       if (!mounted) return;
       final text = '$err';
-      final friendly = text.contains('WABA/Phone Number ID')
-          ? 'Meta nao enviou os IDs. Complete o codigo de verificacao no celular e tente de novo.'
+      final friendly = text.contains('ids_ausentes')
+          ? 'Não concluímos a conexão. Autorize no celular quando a Meta pedir e tente de novo.'
           : (text.contains('cancelado') || text.contains('incompleto'))
-              ? 'Popup bloqueado ou fluxo cancelado. Permita popups e use a URL https do tunnel.'
-              : text.contains('META_APP_SECRET')
-                  ? 'Configure META_APP_SECRET no backend e reinicie o Docker.'
-                  : text.contains('422')
-                      ? 'A Meta concluiu o cadastro, mas o painel rejeitou o payload (numero de exibicao vazio). Tente conectar de novo.'
-                      : text;
+              ? 'Conexão cancelada. Se o popup foi bloqueado, permita popups e tente novamente.'
+              : text.contains('422')
+                  ? 'Não foi possível concluir a conexão. Tente novamente.'
+                  : 'Não foi possível conectar o WhatsApp. Tente novamente.';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao conectar: $friendly')),
+        SnackBar(content: Text(friendly)),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -479,16 +486,33 @@ class _WhatsAppMetaConnectButtonState extends State<WhatsAppMetaConnectButton> {
 
   @override
   Widget build(BuildContext context) {
+    final icon = _loading
+        ? SizedBox(
+            width: 16,
+            height: 16,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: widget.filled ? AppColors.onPrimary : widget.accentColor,
+            ),
+          )
+        : Icon(widget.icon, size: widget.filled ? 18 : 16);
+    final label = Text(_loading ? 'Conectando...' : widget.label);
+    if (widget.filled) {
+      return FilledButton.icon(
+        onPressed: _loading ? null : _connect,
+        icon: icon,
+        label: label,
+        style: FilledButton.styleFrom(
+          backgroundColor: widget.accentColor,
+          foregroundColor: AppColors.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      );
+    }
     return OutlinedButton.icon(
       onPressed: _loading ? null : _connect,
-      icon: _loading
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.link_rounded, size: 16),
-      label: Text(_loading ? 'Conectando...' : widget.label),
+      icon: icon,
+      label: label,
       style: OutlinedButton.styleFrom(
         foregroundColor: widget.accentColor,
         side: BorderSide(color: widget.accentColor.withValues(alpha: 0.5)),

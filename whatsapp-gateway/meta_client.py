@@ -104,6 +104,56 @@ class MetaAPIClient:
             }
         )
 
+    async def upload_media(self, *, data: bytes, mime_type: str, filename: str) -> Optional[str]:
+        if not self.phone_number_id:
+            return None
+        try:
+            # Multipart upload must not send Content-Type: application/json (breaks form fields on Meta).
+            media_type = mime_type.split(";", 1)[0].strip() or "application/octet-stream"
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
+                    f"{self.base_url}/{self.phone_number_id}/media",
+                    headers=headers,
+                    data={
+                        "messaging_product": "whatsapp",
+                        "type": media_type,
+                    },
+                    files={"file": (filename or "upload", data, media_type)},
+                )
+            if response.status_code == 200:
+                return str((response.json() or {}).get("id") or "") or None
+            logger.error("Failed to upload media: %s", response.text)
+            return None
+        except Exception as exc:
+            logger.error("Upload media error: %s", exc)
+            return None
+
+    async def send_audio_message(self, *, to: str, media_id: str) -> SendMessageResponse:
+        return await self._send_request(
+            {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": to,
+                "type": "audio",
+                "audio": {"id": media_id},
+            }
+        )
+
+    async def send_video_message(self, *, to: str, media_id: str, caption: str | None = None) -> SendMessageResponse:
+        video_data: dict = {"id": media_id}
+        if caption:
+            video_data["caption"] = caption
+        return await self._send_request(
+            {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": to,
+                "type": "video",
+                "video": video_data,
+            }
+        )
+
     async def send_document_message(self, message: OutgoingDocumentMessage) -> SendMessageResponse:
         document_data = {}
         if message.document_url:

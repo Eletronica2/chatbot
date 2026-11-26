@@ -9,8 +9,8 @@ from datetime import datetime
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
 from config import settings
@@ -21,6 +21,8 @@ from schemas import (
     MessageDirection,
     MessageType,
     NormalizedMessage,
+    OutgoingDocumentMessage,
+    OutgoingImageMessage,
     OutgoingTemplateMessage,
     OutgoingTextMessage,
     WebhookPayload,
@@ -182,6 +184,39 @@ async def _post_internal(path: str, payload: dict) -> bool:
     except Exception as exc:  # noqa: BLE001 — billing must not break webhook
         logger.warning("Internal billing call %s error: %s", path, exc)
         return False
+
+
+async def _report_template_status(
+    *,
+    waba_id: str,
+    entry_time: int,
+    value: dict,
+) -> None:
+    if not isinstance(value, dict):
+        return
+    event = str(value.get("event") or value.get("status") or "").strip()
+    template_ref = value.get("message_template_id") or value.get("message_template_name")
+    if not waba_id or not event or template_ref is None:
+        logger.info(
+            "Template status webhook ignored waba=%s keys=%s",
+            waba_id,
+            list(value.keys()),
+        )
+        return
+    logger.info(
+        "Template status webhook waba=%s template=%s event=%s",
+        waba_id,
+        template_ref,
+        event,
+    )
+    await _post_internal(
+        "/api/v1/internal/whatsapp/template-status",
+        {
+            "waba_id": waba_id,
+            "entry_time": entry_time,
+            "value": value,
+        },
+    )
 
 
 async def _report_message_status(
@@ -377,6 +412,17 @@ async def receive_webhook(
                     background_tasks.add_task(_handle_coexistence_event, field, value)
                     continue
 
+                if field == "message_template_status_update":
+                    waba_id = str(entry.get("id") or "").strip()
+                    entry_time = int(entry.get("time") or 0)
+                    background_tasks.add_task(
+                        _report_template_status,
+                        waba_id=waba_id,
+                        entry_time=entry_time,
+                        value=value if isinstance(value, dict) else {},
+                    )
+                    continue
+
                 if field != "messages":
                     continue
 
@@ -528,6 +574,95 @@ async def send_message(body: SendMessageRequest, request: Request):
     if not result.success:
         raise HTTPException(status_code=502, detail=f"Meta API error: {result.error}")
     return {"ok": True, "message_id": result.message_id}
+
+
+class FetchMediaRequest(BaseModel):
+    tenant_id: str | None = None
+    phone_number_id: str | None = None
+    media_id: str
+
+
+@router.post("/fetch-media")
+async def fetch_media(body: FetchMediaRequest, request: Request):
+    _assert_internal_api(request)
+    media_id = (body.media_id or "").strip()
+    if not media_id:
+        raise HTTPException(status_code=422, detail="media_id is required")
+    account_context = await _resolve_account_context(
+        tenant_id=body.tenant_id,
+        phone_number_id=body.phone_number_id,
+    )
+    if account_context is None:
+        account_context = _fallback_account_context(
+            tenant_id=body.tenant_id,
+            phone_number_id=body.phone_number_id,
+        )
+    client = _build_client(account_context)
+    if client is None:
+        raise HTTPException(status_code=502, detail="No WhatsApp account configured")
+    media_url = await client.get_media_url(media_id)
+    if not media_url:
+        raise HTTPException(status_code=404, detail="Media not found")
+    payload = await client.download_media(media_url)
+    if not payload:
+        raise HTTPException(status_code=502, detail="Failed to download media")
+    mime = "application/octet-stream"
+    if "/" in media_id:
+        pass
+    return Response(content=payload, media_type=mime)
+
+
+@router.post("/send-media")
+async def send_media(
+    request: Request,
+    tenant_id: str = Form(""),
+    to: str = Form(""),
+    phone_number_id: str | None = Form(None),
+    media_type: str = Form("image"),
+    caption: str = Form(""),
+    filename: str = Form("upload"),
+    billing_reservation_id: str | None = Form(None),
+    billing_enforced: str | None = Form(None),
+    file: UploadFile = File(...),
+):
+    _assert_internal_api(request)
+    if not (billing_reservation_id or "").strip() and billing_enforced != "false":
+        raise HTTPException(status_code=428, detail="billing gate decision required")
+
+    if not to.strip():
+        raise HTTPException(status_code=422, detail="to is required")
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=422, detail="empty file")
+    mime = (file.content_type or "application/octet-stream").strip()
+    kind = (media_type or "image").strip().lower()
+    account_context = await _resolve_account_context(tenant_id=tenant_id or None, phone_number_id=phone_number_id)
+    if account_context is None:
+        account_context = _fallback_account_context(tenant_id=tenant_id or None, phone_number_id=phone_number_id)
+    client = _build_client(account_context)
+    if client is None:
+        raise HTTPException(status_code=502, detail="No WhatsApp account configured")
+
+    media_id = await client.upload_media(data=raw, mime_type=mime, filename=filename or file.filename or "upload")
+    if not media_id:
+        raise HTTPException(status_code=502, detail="Meta media upload failed")
+
+    cap = caption.strip() or None
+    if kind == "image":
+        result = await client.send_image_message(OutgoingImageMessage(to=to, image_id=media_id, caption=cap))
+    elif kind == "document":
+        result = await client.send_document_message(
+            OutgoingDocumentMessage(to=to, document_id=media_id, filename=filename or file.filename or "arquivo", caption=cap)
+        )
+    elif kind == "audio":
+        result = await client.send_audio_message(to=to, media_id=media_id)
+    elif kind == "video":
+        result = await client.send_video_message(to=to, media_id=media_id, caption=cap)
+    else:
+        raise HTTPException(status_code=422, detail="unsupported media_type")
+    if not result.success:
+        raise HTTPException(status_code=502, detail=f"Meta API error: {result.error}")
+    return {"ok": True, "message_id": result.message_id, "media_id": media_id, "media_type": kind}
 
 
 @router.post("/send-template")

@@ -1,12 +1,15 @@
 """Conversation monitoring and operational inbox endpoints."""
 from __future__ import annotations
 
-from datetime import datetime
+import json
+import mimetypes
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from app.api.access import assert_tenant_access, is_tenant_admin, resolve_tenant_scope
@@ -26,8 +29,111 @@ from app.services.message_service import MessageService
 from app.services.outbound_billing import finalize_outbound, gateway_billing_fields, reserve_outbound
 from app.services.session_service import SessionService
 from app.services.tenant_user_service import TenantUserService
+from app.utils.inbox_visibility import (
+    customer_last_message_at,
+    hide_from_inbox,
+    outside_service_window,
+)
+from app.utils.phone_utils import normalize_whatsapp_phone
 
 router = APIRouter(prefix="/api/v1/conversations", tags=["Conversations"])
+
+SERVICE_WINDOW = timedelta(hours=24)
+_DELIVERY_ERROR_HINTS = {
+    "131047": "A Meta recusou a entrega (janela de 24h ou reengajamento). Peça uma mensagem do cliente ou use template.",
+}
+
+
+def _parse_metadata(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+            return parsed if isinstance(parsed, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+    return {}
+
+
+def _message_payload(
+    *,
+    conversation_id: str,
+    item: dict[str, Any],
+    index: int,
+) -> dict[str, Any]:
+    meta = _parse_metadata(item.get("metadata"))
+    message_type = str(meta.get("message_type") or "text").lower()
+    media_id = str(meta.get("media_id") or "").strip()
+    row_id = str(item.get("id") or index)
+    payload: dict[str, Any] = {
+        "id": row_id,
+        "role": str(item.get("role") or "user"),
+        "content": str(item.get("content") or ""),
+        "created_at": _safe_iso_datetime(item.get("created_at")),
+        "message_type": message_type,
+        "source": str(item.get("source") or meta.get("source") or ""),
+    }
+    if media_id:
+        payload["media_id"] = media_id
+        payload["media_mime_type"] = meta.get("media_mime_type")
+        payload["media_url"] = f"/api/v1/conversations/{conversation_id}/messages/{row_id}/media"
+    filename = meta.get("filename")
+    if filename:
+        payload["filename"] = filename
+    if str(meta.get("delivery_status") or "").lower() == "failed":
+        code = str(meta.get("delivery_error_code") or "")
+        payload["delivery_failed"] = True
+        payload["delivery_error_code"] = code
+        payload["delivery_error_hint"] = _DELIVERY_ERROR_HINTS.get(code) or (
+            "A Meta não entregou esta mensagem no WhatsApp do cliente."
+        )
+    return payload
+
+
+async def _assert_service_window(
+    *,
+    message_service: MessageService,
+    tenant_id: str,
+    session_id: str,
+) -> None:
+    last = await message_service.last_incoming_at(tenant_id=tenant_id, session_id=session_id)
+    if last is None:
+        raise HTTPException(
+            status_code=422,
+            detail="Não há mensagem recente do cliente. Aguarde o cliente escrever ou use um template aprovado.",
+        )
+    if datetime.utcnow() - last > SERVICE_WINDOW:
+        raise HTTPException(
+            status_code=422,
+            detail="Janela de atendimento de 24h expirou. Use template ou aguarde nova mensagem do cliente.",
+        )
+
+
+async def _mark_session_read(
+    session,
+    *,
+    session_service: SessionService,
+    group_service: ConversationGroupService | None = None,
+    tenant_user_service: TenantUserService | None = None,
+) -> Dict[str, Any]:
+    context = dict(session.context or {})
+    changed = False
+    if int(context.get("unread_count", 0) or 0) > 0:
+        context["unread_count"] = 0
+        changed = True
+    if changed:
+        session.context = context
+        session = await session_service.update_session(session)
+    group_name = None
+    assigned_name = None
+    if group_service and session.group_id:
+        groups = await _group_lookup(group_service, session.tenant_id)
+        group_name = groups.get(str(session.group_id))
+    if tenant_user_service and session.assigned_user_id:
+        users = await _user_name_lookup(tenant_user_service, session.tenant_id)
+        assigned_name = users.get(str(session.assigned_user_id))
+    return _serialize_conversation(session, group_name=group_name, assigned_user_name=assigned_name)
 
 
 class TransferPayload(BaseModel):
@@ -123,6 +229,7 @@ async def list_conversations(
     group_id: Optional[str] = Query(default=None),
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     session_service: SessionService = Depends(session_service_dependency),
+    message_service: MessageService = Depends(message_service_dependency),
     group_service: ConversationGroupService = Depends(conversation_group_service_dependency),
     tenant_user_service: TenantUserService = Depends(tenant_user_service_dependency),
 ) -> List[Dict[str, Any]]:
@@ -161,6 +268,34 @@ async def list_conversations(
         if group_id and str(sid_group or "") != str(group_id):
             continue
 
+        context = dict(session.context or {})
+        if context.get("inbox_hidden"):
+            continue
+
+        last_customer = customer_last_message_at(context)
+        if last_customer is None:
+            last_customer = await message_service.last_incoming_at(
+                tenant_id=target_tenant_id,
+                session_id=session.session_id,
+            )
+            if last_customer is not None:
+                context["last_customer_message_at"] = last_customer.isoformat()
+                session.context = context
+                session = await session_service.update_session(session)
+
+        if last_customer is not None and outside_service_window(last_customer):
+            session.context = hide_from_inbox(context, reason="service_window_expired")
+            await session_service.update_session(session)
+            continue
+        if last_customer is None:
+            last_touch = session.last_interaction
+            if last_touch is not None and outside_service_window(
+                last_touch.replace(tzinfo=None) if getattr(last_touch, "tzinfo", None) else last_touch
+            ):
+                session.context = hide_from_inbox(context, reason="service_window_expired")
+                await session_service.update_session(session)
+                continue
+
         rows.append(
             _serialize_conversation(
                 session,
@@ -184,15 +319,15 @@ async def get_conversation_messages(
     assert_tenant_access(user, tenant_id)
 
     session = await session_service.get_or_create_session(tenant_id, phone_number)
+    context = dict(session.context or {})
+    if int(context.get("unread_count", 0) or 0) > 0:
+        context["unread_count"] = 0
+        session.context = context
+        session = await session_service.update_session(session)
     stored = await message_service.list_messages(tenant_id=tenant_id, session_id=session.session_id, limit=200)
     if stored:
         return [
-            {
-                "id": str(item.get("id") or index),
-                "role": str(item.get("role") or "user"),
-                "content": str(item.get("content") or ""),
-                "created_at": _safe_iso_datetime(item.get("created_at")),
-            }
+            _message_payload(conversation_id=conversation_id, item=item, index=index)
             for index, item in enumerate(stored, start=1)
         ]
 
@@ -270,6 +405,11 @@ async def send_reply(
         raise HTTPException(status_code=422, detail="text cannot be empty")
 
     session = await session_service.get_or_create_session(tenant_id, phone_number)
+    await _assert_service_window(
+        message_service=message_service,
+        tenant_id=tenant_id,
+        session_id=session.session_id,
+    )
 
     source_path = "quick_reply" if (body.source or "").strip().lower() == "quick_reply" else "manual"
     billing = await reserve_outbound(
@@ -288,7 +428,7 @@ async def send_reply(
                 headers={"x-internal-api-key": settings.INTERNAL_API_KEY},
                 json={
                     "tenant_id": tenant_id,
-                    "to": phone_number,
+                    "to": normalize_whatsapp_phone(phone_number),
                     "text": text,
                     "phone_number_id": session.phone_number_id,
                     **gateway_billing_fields(billing),
@@ -348,6 +488,235 @@ async def send_reply(
     )
 
     return {"ok": True, "phone_number": phone_number, "billing_level": billing.get("billing_level")}
+
+
+def _media_kind(mime_type: str, filename: str) -> str:
+    mime = (mime_type or "").lower()
+    if mime.startswith("image/"):
+        return "image"
+    if mime.startswith("audio/"):
+        return "audio"
+    if mime.startswith("video/"):
+        return "video"
+    if filename.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+        return "image"
+    return "document"
+
+
+@router.get("/{conversation_id}/messages/{message_db_id}/media")
+async def download_conversation_media(
+    conversation_id: str,
+    message_db_id: int,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    session_service: SessionService = Depends(session_service_dependency),
+    message_service: MessageService = Depends(message_service_dependency),
+):
+    tenant_id, phone_number = _parse_conversation_id(conversation_id)
+    assert_tenant_access(user, tenant_id)
+    session = await session_service.get_or_create_session(tenant_id, phone_number)
+    row = await message_service.get_message(
+        tenant_id=tenant_id,
+        session_id=session.session_id,
+        message_id=message_db_id,
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="message not found")
+    meta = _parse_metadata(row.get("metadata"))
+    media_id = str(meta.get("media_id") or "").strip()
+    if not media_id:
+        raise HTTPException(status_code=404, detail="no media on message")
+    phone_number_id = row.get("phone_number_id") or session.phone_number_id
+    async with httpx.AsyncClient(timeout=settings.GATEWAY_API_TIMEOUT) as client:
+        gw_resp = await client.post(
+            f"{settings.GATEWAY_API_URL}/fetch-media",
+            headers={"x-internal-api-key": settings.INTERNAL_API_KEY},
+            json={
+                "tenant_id": tenant_id,
+                "phone_number_id": phone_number_id,
+                "media_id": media_id,
+            },
+        )
+    if gw_resp.status_code != 200:
+        raise HTTPException(status_code=502, detail="Não foi possível carregar a mídia")
+    mime = str(meta.get("media_mime_type") or gw_resp.headers.get("content-type") or "application/octet-stream")
+    return Response(content=gw_resp.content, media_type=mime)
+
+
+@router.post("/{conversation_id}/reply-media")
+async def send_reply_media(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    session_service: SessionService = Depends(session_service_dependency),
+    message_service: MessageService = Depends(message_service_dependency),
+    caption: str = Form(""),
+    media_type: str = Form(""),
+    file: UploadFile = File(...),
+):
+    tenant_id, phone_number = _parse_conversation_id(conversation_id)
+    assert_tenant_access(user, tenant_id)
+    session = await session_service.get_or_create_session(tenant_id, phone_number)
+    await _assert_service_window(
+        message_service=message_service,
+        tenant_id=tenant_id,
+        session_id=session.session_id,
+    )
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=422, detail="empty file")
+    filename = file.filename or "upload"
+    mime = (file.content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream").strip()
+    kind = (media_type or _media_kind(mime, filename)).strip().lower()
+
+    billing = await reserve_outbound(
+        tenant_id,
+        category="SERVICE",
+        category_source="freeform_service_reply",
+        source_path="manual_media",
+        idempotency_key=f"manual_media:{uuid4()}",
+        phone_number_id=session.phone_number_id,
+    )
+    provider_message_id: str | None = None
+    uploaded_media_id: str | None = None
+    try:
+        data = {
+            "tenant_id": tenant_id,
+            "to": normalize_whatsapp_phone(phone_number),
+            "phone_number_id": session.phone_number_id or "",
+            "media_type": kind,
+            "caption": caption.strip(),
+            "filename": filename,
+            **gateway_billing_fields(billing),
+        }
+        if not data.get("billing_reservation_id"):
+            data["billing_enforced"] = "false"
+        async with httpx.AsyncClient(timeout=settings.GATEWAY_API_TIMEOUT) as client:
+            gw_resp = await client.post(
+                f"{settings.GATEWAY_API_URL}/send-media",
+                headers={"x-internal-api-key": settings.INTERNAL_API_KEY},
+                data=data,
+                files={"file": (filename, raw, mime)},
+            )
+        if gw_resp.status_code != 200:
+            raise HTTPException(status_code=502, detail="Não foi possível enviar a mídia")
+        body = gw_resp.json() or {}
+        provider_message_id = body.get("message_id")
+        uploaded_media_id = body.get("media_id")
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Gateway unreachable: {exc}") from exc
+    finally:
+        await finalize_outbound(tenant_id, billing, provider_message_id=provider_message_id)
+
+    cap = caption.strip()
+    label = cap if cap else {
+        "image": "[Imagem enviada]",
+        "audio": "[Áudio enviado]",
+        "video": "[Vídeo enviado]",
+        "document": f"[Documento: {filename}]",
+    }.get(kind, "[Mídia enviada]")
+    context: Dict[str, Any] = dict(session.context or {})
+    session.append_history(role="assistant", content=label, limit=10, source="human")
+    if _assignment_mode(session) == "ai":
+        session.assignment_mode = "human"
+        session.assigned_user_id = user.user_id
+        context["assignment_mode"] = "human"
+        context["assigned_user_id"] = user.user_id
+        context["assigned_user_name"] = user.display_name
+    context.pop("human_handoff_pending", None)
+    context.pop("human_handoff_reason", None)
+    context.pop("human_handoff_at", None)
+    context["unread_count"] = 0
+    context["last_message"] = label
+    context["last_role"] = "assistant"
+    context["updated_at"] = datetime.utcnow().isoformat()
+    session.context = context
+    session = await session_service.update_session(session)
+    await message_service.append(
+        tenant_id=tenant_id,
+        session_id=session.session_id,
+        direction="outgoing",
+        role="assistant",
+        content=label,
+        source="human",
+        metadata={
+            "source": "admin_panel",
+            "actor_user_id": user.user_id,
+            "message_type": kind,
+            "media_id": uploaded_media_id,
+            "media_mime_type": mime,
+            "filename": filename,
+            "caption": cap,
+            "provider_message_id": provider_message_id,
+            "billing_reservation_id": billing.get("billing_reservation_id"),
+        },
+        phone_number_id=session.phone_number_id,
+        external_message_id=provider_message_id,
+    )
+    return {
+        "ok": True,
+        "message_type": kind,
+        "content": label,
+        "caption": cap,
+        "provider_message_id": provider_message_id,
+    }
+
+
+@router.post("/{conversation_id}/finalize")
+async def finalize_conversation(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    session_service: SessionService = Depends(session_service_dependency),
+    group_service: ConversationGroupService = Depends(conversation_group_service_dependency),
+    tenant_user_service: TenantUserService = Depends(tenant_user_service_dependency),
+    audit: AdminAuditService = Depends(admin_audit_service_dependency),
+) -> Dict[str, Any]:
+    """Archive thread in the inbox until the customer sends a new inbound message."""
+    tenant_id, phone_number = _parse_conversation_id(conversation_id)
+    assert_tenant_access(user, tenant_id)
+    session = await session_service.get_or_create_session(tenant_id, phone_number)
+
+    session.assignment_mode = "ai"
+    session.assigned_user_id = None
+    context = hide_from_inbox(session.context, reason="agent_finalized")
+    context["assignment_mode"] = "ai"
+    context.pop("assigned_user_id", None)
+    context.pop("assigned_user_name", None)
+    session.context = context
+    session = await session_service.update_session(session)
+
+    await audit.append(
+        tenant_id=tenant_id,
+        action="conversation.finalize",
+        entity_type="conversation",
+        entity_key=conversation_id,
+        summary="Atendimento finalizado e removido da fila",
+        actor=user,
+        metadata={"phone_number": phone_number},
+    )
+    return await _mark_session_read(
+        session,
+        session_service=session_service,
+        group_service=group_service,
+        tenant_user_service=tenant_user_service,
+    )
+
+
+@router.post("/{conversation_id}/mark-read")
+async def mark_conversation_read(
+    conversation_id: str,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    session_service: SessionService = Depends(session_service_dependency),
+    group_service: ConversationGroupService = Depends(conversation_group_service_dependency),
+    tenant_user_service: TenantUserService = Depends(tenant_user_service_dependency),
+) -> Dict[str, Any]:
+    tenant_id, phone_number = _parse_conversation_id(conversation_id)
+    assert_tenant_access(user, tenant_id)
+    session = await session_service.get_or_create_session(tenant_id, phone_number)
+    return await _mark_session_read(
+        session,
+        session_service=session_service,
+        group_service=group_service,
+        tenant_user_service=tenant_user_service,
+    )
 
 
 @router.post("/{conversation_id}/assume")

@@ -1,3 +1,7 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -15,6 +19,7 @@ import '../services/quick_reply_service.dart';
 import '../services/tenant_user_service.dart';
 import '../theme/app_motion.dart';
 import '../theme/app_tokens.dart';
+import '../utils/clipboard_image_paste.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/premium_ui.dart';
 import '../widgets/ui_kit.dart';
@@ -58,6 +63,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
   bool _showContext = true;
   bool _contextSeeded = false;
   bool _showQuickPicker = false;
+  Uint8List? _stagedImageBytes;
+  String? _stagedImageMime;
+  String? _stagedImageName;
 
   @override
   void initState() {
@@ -67,6 +75,15 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     _loadMessages();
     _loadFlowState();
     _loadAssignmentMeta();
+    if (kIsWeb) {
+      registerClipboardImagePaste(
+        enabled: () => mounted && !_sending,
+        onImage: (bytes, mimeType, filename) {
+          if (!mounted) return;
+          _stagePastedImage(bytes, mime: mimeType, filename: filename);
+        },
+      );
+    }
   }
 
   @override
@@ -86,6 +103,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       _conversation = widget.conversation;
       _replyCtrl.clear();
       _showQuickPicker = false;
+      _stagedImageBytes = null;
+      _stagedImageMime = null;
+      _stagedImageName = null;
       _loadMessages();
       _loadFlowState();
       _loadAssignmentMeta();
@@ -96,6 +116,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
 
   @override
   void dispose() {
+    if (kIsWeb) {
+      unregisterClipboardImagePaste();
+    }
     _replyCtrl.removeListener(_onReplyChanged);
     _replyCtrl.dispose();
     _scrollCtrl.dispose();
@@ -189,6 +212,55 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Não foi possível assumir: $e'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _assignmentBusy = false);
+    }
+  }
+
+  Future<void> _finalizeAttendance() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Finalizar atendimento?'),
+        content: const Text(
+          'A conversa sai da lista até o cliente enviar uma nova mensagem. '
+          'A IA volta a atender automaticamente.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Finalizar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _assignmentBusy = true);
+    try {
+      final updated = await conversationService.finalizeAttendance(_conversation.id);
+      if (!mounted) return;
+      _applyConversation(updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Atendimento finalizado.')),
+      );
+      if (widget.embedded) {
+        widget.onClose?.call();
+      } else {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível finalizar: $e'),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -309,6 +381,14 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
         _messages = messages;
         _loadingMessages = false;
       });
+      try {
+        final refreshed = await conversationService.markAsRead(_conversation.id);
+        if (mounted) _applyConversation(refreshed);
+      } catch (_) {
+        if (mounted) {
+          _applyConversation(_conversation.copyWith(unreadCount: 0));
+        }
+      }
       _scrollToBottom();
     } catch (err) {
       if (!mounted) return;
@@ -346,9 +426,107 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
     });
   }
 
+  String? _guessMediaType(String filename, String? mime) {
+    final lower = filename.toLowerCase();
+  final m = (mime ?? '').toLowerCase();
+    if (m.startsWith('image/') || RegExp(r'\.(png|jpe?g|gif|webp)$').hasMatch(lower)) {
+      return 'image';
+    }
+    if (m.startsWith('audio/') || RegExp(r'\.(ogg|mp3|m4a|aac|opus)$').hasMatch(lower)) {
+      return 'audio';
+    }
+    if (m.startsWith('video/') || RegExp(r'\.(mp4|mov|webm)$').hasMatch(lower)) {
+      return 'video';
+    }
+    return 'document';
+  }
+
+  void _stagePastedImage(
+    Uint8List bytes, {
+    required String mime,
+    required String filename,
+  }) {
+    setState(() {
+      _stagedImageBytes = bytes;
+      _stagedImageMime = mime;
+      _stagedImageName = filename;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Imagem colada — adicione legenda se quiser e envie.'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _clearStagedImage() {
+    if (_stagedImageBytes == null) return;
+    setState(() {
+      _stagedImageBytes = null;
+      _stagedImageMime = null;
+      _stagedImageName = null;
+    });
+  }
+
+  Future<void> _deliverMedia({
+    required Uint8List bytes,
+    required String filename,
+    String? mime,
+  }) async {
+    setState(() => _sending = true);
+    final caption = _replyCtrl.text.trim();
+    try {
+      await conversationService.sendReplyMedia(
+        conversationId: _conversation.id,
+        bytes: bytes,
+        filename: filename,
+        mimeType: mime,
+        caption: caption,
+        mediaType: _guessMediaType(filename, mime),
+      );
+      _replyCtrl.clear();
+      _clearStagedImage();
+      await _loadMessages();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Anexo enviado com sucesso.')),
+      );
+    } catch (err) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível enviar o anexo: $err'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  Future<void> _pickAndSendMedia() async {
+    if (_sending) return;
+    final result = await FilePicker.platform.pickFiles(withData: true, allowMultiple: false);
+    final file = result?.files.single;
+    if (file == null || file.bytes == null || file.bytes!.isEmpty) return;
+    await _deliverMedia(bytes: file.bytes!, filename: file.name);
+  }
+
   Future<void> _sendReply() async {
+    if (_sending) return;
+
+    final staged = _stagedImageBytes;
+    if (staged != null && staged.isNotEmpty) {
+      await _deliverMedia(
+        bytes: staged,
+        filename: _stagedImageName ?? 'imagem.png',
+        mime: _stagedImageMime,
+      );
+      return;
+    }
+
     final text = _replyCtrl.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty) return;
 
     setState(() => _sending = true);
     try {
@@ -396,6 +574,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
           onAssume: _assume,
           onTransfer: _transfer,
           onReturnToAi: _returnToAi,
+          onFinalize: _finalizeAttendance,
           onGroupChanged: _setGroup,
           contextVisible: _showContext,
           onToggleContext: () => setState(() => _showContext = !_showContext),
@@ -413,6 +592,7 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                 children: [
                   Expanded(
                     child: _ChatPanel(
+                      conversationId: _conversation.id,
                       messages: _messages,
                       loading: _loadingMessages,
                       error: _messagesError,
@@ -420,6 +600,9 @@ class _ConversationDetailScreenState extends State<ConversationDetailScreen> {
                       replyCtrl: _replyCtrl,
                       sending: _sending,
                       onSend: _sendReply,
+                      onAttach: _pickAndSendMedia,
+                      stagedImage: _stagedImageBytes,
+                      onClearStagedImage: _clearStagedImage,
                       showQuickPicker: _showQuickPicker,
                       filteredQuickReplies: _filteredQuickReplies,
                       onPickQuickReply: _insertQuickReply,
@@ -540,6 +723,7 @@ class _ConversationHeader extends StatelessWidget {
     required this.onAssume,
     required this.onTransfer,
     required this.onReturnToAi,
+    required this.onFinalize,
     required this.onGroupChanged,
     required this.contextVisible,
     required this.onToggleContext,
@@ -554,6 +738,7 @@ class _ConversationHeader extends StatelessWidget {
   final VoidCallback onAssume;
   final VoidCallback onTransfer;
   final VoidCallback onReturnToAi;
+  final VoidCallback onFinalize;
   final ValueChanged<String?> onGroupChanged;
   final bool contextVisible;
   final VoidCallback onToggleContext;
@@ -720,6 +905,11 @@ class _ConversationHeader extends StatelessWidget {
                   icon: const Icon(Icons.auto_awesome_rounded, size: 16),
                   label: const Text('Devolver para IA'),
                 ),
+              OutlinedButton.icon(
+                onPressed: busy ? null : onFinalize,
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 16),
+                label: const Text('Finalizar atendimento'),
+              ),
             ],
           ),
         ],
@@ -730,6 +920,7 @@ class _ConversationHeader extends StatelessWidget {
 
 class _ChatPanel extends StatelessWidget {
   const _ChatPanel({
+    required this.conversationId,
     required this.messages,
     required this.loading,
     required this.error,
@@ -737,12 +928,16 @@ class _ChatPanel extends StatelessWidget {
     required this.replyCtrl,
     required this.sending,
     required this.onSend,
+    required this.onAttach,
+    this.stagedImage,
+    required this.onClearStagedImage,
     required this.showQuickPicker,
     required this.filteredQuickReplies,
     required this.onPickQuickReply,
     required this.onToggleQuickPicker,
   });
 
+  final String conversationId;
   final List<ChatMessageModel> messages;
   final bool loading;
   final String? error;
@@ -750,6 +945,9 @@ class _ChatPanel extends StatelessWidget {
   final TextEditingController replyCtrl;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
+  final Uint8List? stagedImage;
+  final VoidCallback onClearStagedImage;
   final bool showQuickPicker;
   final List<QuickReply> filteredQuickReplies;
   final ValueChanged<QuickReply> onPickQuickReply;
@@ -771,6 +969,9 @@ class _ChatPanel extends StatelessWidget {
             ctrl: replyCtrl,
             sending: sending,
             onSend: onSend,
+            onAttach: onAttach,
+            stagedImage: stagedImage,
+            onClearStagedImage: onClearStagedImage,
             onToggleQuickPicker: onToggleQuickPicker,
           ),
         ],
@@ -803,7 +1004,10 @@ class _ChatPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
       itemCount: messages.length,
       itemBuilder: (context, index) {
-        return MessageBubble(message: messages[index]);
+        return MessageBubble(
+          message: messages[index],
+          conversationId: conversationId,
+        );
       },
     );
   }
@@ -860,13 +1064,23 @@ class _ReplyBar extends StatelessWidget {
     required this.ctrl,
     required this.sending,
     required this.onSend,
+    required this.onAttach,
+    this.stagedImage,
+    required this.onClearStagedImage,
     required this.onToggleQuickPicker,
   });
 
   final TextEditingController ctrl;
   final bool sending;
   final VoidCallback onSend;
+  final VoidCallback onAttach;
+  final Uint8List? stagedImage;
+  final VoidCallback onClearStagedImage;
   final VoidCallback onToggleQuickPicker;
+
+  bool get _canSend =>
+      !sending &&
+      ((stagedImage != null && stagedImage!.isNotEmpty) || ctrl.text.trim().isNotEmpty);
 
   @override
   Widget build(BuildContext context) {
@@ -876,9 +1090,55 @@ class _ReplyBar extends StatelessWidget {
         color: AppColors.surface,
         border: Border(top: BorderSide(color: AppColors.border)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (stagedImage != null && stagedImage!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      stagedImage!,
+                      width: 88,
+                      height: 88,
+                      fit: BoxFit.cover,
+                      gaplessPlayback: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Legenda opcional no campo abaixo',
+                      style: GoogleFonts.manrope(
+                        fontSize: 12,
+                        color: AppColors.textSoft,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remover imagem',
+                    onPressed: sending ? null : onClearStagedImage,
+                    icon: const Icon(Icons.close_rounded, color: AppColors.textSoft),
+                  ),
+                ],
+              ),
+            ),
+          Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          IconButton(
+            tooltip: 'Anexar arquivo',
+            onPressed: sending ? null : onAttach,
+            icon: const Icon(
+              Icons.attach_file_rounded,
+              color: AppColors.textSoft,
+              size: 22,
+            ),
+          ),
           IconButton(
             tooltip: 'Respostas rápidas (/)',
             onPressed: onToggleQuickPicker,
@@ -897,7 +1157,7 @@ class _ReplyBar extends StatelessWidget {
               onSubmitted: (_) => onSend(),
               style: GoogleFonts.manrope(fontSize: 14, color: AppColors.text),
               decoration: InputDecoration(
-                hintText: 'Digite uma resposta… ou /atalho',
+                hintText: 'Mensagem, /atalho ou Ctrl+V para colar print',
                 filled: true,
                 fillColor: AppColors.surfaceAlt,
                 contentPadding: const EdgeInsets.symmetric(
@@ -926,7 +1186,7 @@ class _ReplyBar extends StatelessWidget {
           SizedBox(
             height: 44,
             child: FilledButton(
-              onPressed: sending ? null : onSend,
+              onPressed: _canSend ? onSend : null,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.onPrimary,
@@ -951,6 +1211,8 @@ class _ReplyBar extends StatelessWidget {
                       ],
                     ),
             ),
+          ),
+        ],
           ),
         ],
       ),

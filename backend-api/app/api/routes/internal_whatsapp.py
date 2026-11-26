@@ -4,8 +4,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
-from app.services.dependencies import internal_api_dependency, whatsapp_account_service_dependency
+from app.services.dependencies import (
+    internal_api_dependency,
+    whatsapp_account_service_dependency,
+    whatsapp_template_status_service_dependency,
+)
 from app.services.whatsapp_account_service import WhatsAppAccountService
+from app.services.whatsapp_template_status_service import WhatsAppTemplateStatusService
 
 router = APIRouter(prefix="/api/v1/internal/whatsapp", tags=["Internal WhatsApp"])
 
@@ -17,6 +22,12 @@ class ResolveAccountPayload(BaseModel):
 
 class VerifyTokenPayload(BaseModel):
     verify_token: str
+
+
+class TemplateStatusWebhookPayload(BaseModel):
+    waba_id: str
+    entry_time: int = 0
+    value: dict
 
 
 @router.post("/resolve", dependencies=[Depends(internal_api_dependency)])
@@ -49,4 +60,19 @@ async def verify_token(
     service: WhatsAppAccountService = Depends(whatsapp_account_service_dependency),
 ) -> dict:
     return {"valid": await service.validate_verify_token(payload.verify_token)}
+
+
+@router.post("/template-status", dependencies=[Depends(internal_api_dependency)])
+async def template_status_webhook(
+    payload: TemplateStatusWebhookPayload,
+    service: WhatsAppTemplateStatusService = Depends(whatsapp_template_status_service_dependency),
+) -> dict:
+    try:
+        return await service.ingest_webhook(
+            waba_id=payload.waba_id,
+            entry_time=payload.entry_time,
+            value=payload.value if isinstance(payload.value, dict) else {},
+        )
+    except ValueError as exc:
+        return {"applied": False, "reason": str(exc)}
 

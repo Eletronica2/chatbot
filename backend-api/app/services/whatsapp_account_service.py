@@ -107,6 +107,17 @@ class WhatsAppAccountService:
             return None
         return self._to_secret(row)
 
+    async def resolve_for_waba_id(self, waba_id: str) -> WhatsAppAccountSecret | None:
+        rows = await self.repository.get_active_by_account_key(waba_id)
+        if not rows:
+            return None
+        if len(rows) > 1:
+            tenants = {str(r.get("tenant_id") or "") for r in rows}
+            raise ValueError(
+                f"WABA {waba_id} vinculada a mais de um tenant ({', '.join(sorted(tenants))})"
+            )
+        return self._to_secret(rows[0])
+
     async def resolve_for_account_key(
         self,
         tenant_id: str,
@@ -154,33 +165,26 @@ class WhatsAppAccountService:
         current_token = secret.access_token if secret else None
 
         if not current_token:
-            if not system_token:
-                raise ValueError("Token de acesso da conta WhatsApp nao configurado")
-            await self.update_account(
-                tenant_id,
-                resolved_key,
-                WhatsAppAccountUpdate(access_token=system_token),
+            raise ValueError(
+                "Token OAuth da conta WhatsApp ausente. Reconecte via Embedded Signup; "
+                "token de sistema nao e gravado em contas de tenant."
             )
-            return resolved_key, system_token, True
 
-        if not system_token or not self.meta_graph:
+        if not self.meta_graph:
             return resolved_key, current_token, False
 
         try:
             payload = await self.meta_graph.debug_token(current_token)
             debug_data = payload.get("data") if isinstance(payload.get("data"), dict) else payload
         except Exception:
-            debug_data = {"is_valid": False}
+            debug_data = {"is_valid": True}
 
-        if not self._token_needs_refresh(debug_data):
-            return resolved_key, current_token, False
+        if self._token_needs_refresh(debug_data) and not debug_data.get("is_valid", True):
+            raise ValueError(
+                "Token OAuth da conta WhatsApp expirou ou e invalido. Reconecte via Embedded Signup."
+            )
 
-        await self.update_account(
-            tenant_id,
-            resolved_key,
-            WhatsAppAccountUpdate(access_token=system_token),
-        )
-        return resolved_key, system_token, True
+        return resolved_key, current_token, False
 
     def _to_domain(self, row: dict) -> WhatsAppAccount:
         encrypted = row.get("access_token_encrypted")

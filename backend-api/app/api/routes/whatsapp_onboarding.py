@@ -20,23 +20,47 @@ router = APIRouter(tags=["WhatsApp Onboarding"])
 
 class EmbeddedSignupExchangePayload(BaseModel):
     code: str = Field(..., min_length=1)
-    waba_id: str = Field(..., min_length=1)
+    waba_id: str = ""
+    messaging_account_id: str | None = None
+    messaging_account_ids: list[str] = Field(default_factory=list)
     phone_number_id: str = Field(..., min_length=1)
     display_phone_number: str = ""
     display_name: str = ""
     verify_token: str | None = None
     coexistence: bool = True
     redirect_uri: str | None = None
+    business_id: str | None = None
+    is_on_biz_app: bool | None = None
 
-    @field_validator("code", "waba_id", "phone_number_id", mode="before")
+    @field_validator(
+        "code",
+        "waba_id",
+        "messaging_account_id",
+        "phone_number_id",
+        "business_id",
+        mode="before",
+    )
     @classmethod
     def _stringify_ids(cls, value: object) -> object:
         if value is None:
             return value
         return str(value).strip()
 
+    @field_validator("messaging_account_ids", mode="before")
+    @classmethod
+    def _normalize_account_ids(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, (str, int)):
+            return [str(value).strip()]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return []
+
     @model_validator(mode="after")
     def _fill_display_fields(self) -> "EmbeddedSignupExchangePayload":
+        if not (self.waba_id or "").strip() and not (self.messaging_account_id or "").strip() and not self.messaging_account_ids:
+            raise ValueError("Informe messaging_account_id ou waba_id")
         phone = (self.display_phone_number or "").strip()
         if not phone:
             self.display_phone_number = self.phone_number_id
@@ -55,11 +79,15 @@ class EmbeddedSignupExchangeResponse(BaseModel):
 
 @router.get("/api/v1/meta/embedded-signup/config")
 async def embedded_signup_config(
+    request: Request,
+    tenant_id: str | None = None,
     user: AuthenticatedUser = Depends(authenticated_user_dependency),
     service: WhatsAppOnboardingService = Depends(whatsapp_onboarding_service_dependency),
 ) -> dict:
-    _ = user
-    config = service.embedded_signup_config()
+    scoped_tenant = None
+    if tenant_id:
+        scoped_tenant = resolve_tenant_scope(user, request, tenant_id)
+    config = service.embedded_signup_config(tenant_id=scoped_tenant)
     if not config.get("app_id") or not config.get("config_id"):
         raise HTTPException(
             status_code=503,
@@ -109,6 +137,10 @@ async def exchange_embedded_signup(
             verify_token=payload.verify_token,
             coexistence=payload.coexistence,
             redirect_uri=payload.redirect_uri,
+            messaging_account_id=payload.messaging_account_id,
+            messaging_account_ids=payload.messaging_account_ids,
+            business_id=payload.business_id,
+            is_on_biz_app=payload.is_on_biz_app,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
