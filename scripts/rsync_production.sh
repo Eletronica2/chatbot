@@ -35,6 +35,11 @@ usage() {
   exit 1
 }
 
+target="${1:-}"
+if [[ -z "$target" ]]; then
+  usage
+fi
+
 echo "rsync_production: publishing $target from HEAD (clean worktree)"
 
 WORK="$(mktemp -d)"
@@ -44,7 +49,6 @@ cleanup() {
 trap cleanup EXIT
 git -C "$ROOT" worktree add --detach "$WORK" HEAD >/dev/null
 
-target="${1:-}"
 case "$target" in
   backend-api)
     rsync -avz "${RSYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
