@@ -35,14 +35,36 @@ def test_template_has_no_fake_rows_and_parses_friendly_headers():
     wb = load_workbook(BytesIO(raw))
     assert wb.sheetnames[0] == "Destinatarios"
     assert wb["Destinatarios"].max_row == 1
+    assert "Consentimento" not in [c.value for c in wb["Destinatarios"][1]]
     ws = wb["Destinatarios"]
-    ws.append(["5534999999999", "Arthur", "sim"])
+    ws.append(["5534999999999", "Arthur"])
     buf = BytesIO()
     wb.save(buf)
     rows, errors = parse_destinatarios_xlsx(buf.getvalue(), variable_columns=["1"])
     assert not errors
     assert rows[0]["body_params"]["1"] == "Arthur"
     assert rows[0]["phone"] == "5534999999999"
+
+
+def test_explicit_denial_is_not_covered_by_missing_column_rules():
+    raw = build_template_xlsx(
+        template_name="promo",
+        category="UTILITY",
+        language="pt_BR",
+        body_example="Oi {{1}}",
+        variable_columns=["1"],
+    )
+    wb = load_workbook(BytesIO(raw))
+    ws = wb["Destinatarios"]
+    ws.cell(1, 3, "consentimento")
+    ws.append(["5534999999999", "Ana", "sim"])
+    ws.append(["5534888888888", "Bia", "não"])
+    buf = BytesIO()
+    wb.save(buf)
+    rows, errors = parse_destinatarios_xlsx(buf.getvalue(), variable_columns=["1"])
+    assert rows[0]["consent_ok"] is True and not rows[0]["errors"]
+    assert rows[1]["consent_denied"] is True
+    assert errors
 
 
 def test_results_hide_wamid_and_keep_estimate():

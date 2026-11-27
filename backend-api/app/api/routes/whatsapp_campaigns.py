@@ -1,6 +1,8 @@
 """Bulk WhatsApp template campaigns."""
 from __future__ import annotations
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response
 
@@ -144,9 +146,33 @@ async def start_campaign(
     assert_capability(user, "canManageTemplates")
     target = resolve_tenant_scope(user, request, tenant_id)
     try:
-        item = await service.start_campaign(target, campaign_id, confirm=body.confirm)
+        item, phones = await service.start_campaign(
+            target,
+            campaign_id,
+            confirm=body.confirm,
+            recipient_authorization=body.recipient_authorization,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    phones = phones or []
+    await audit.append(
+        tenant_id=target,
+        action="campaign.recipient_authorization",
+        entity_type="campaign",
+        entity_key=campaign_id,
+        summary="Declaração de autorização dos destinatários",
+        actor=user,
+        metadata={
+            "tenant_id": target,
+            "campaign_id": campaign_id,
+            "actor_user_id": user.user_id,
+            "actor_email": user.email,
+            "recipient_count": len(phones),
+            "recipients": phones,
+            "declared_at": datetime.utcnow().isoformat() + "Z",
+            "is_recipient_consent": False,
+        },
+    )
     await audit.append(
         tenant_id=target,
         action="campaign.start",

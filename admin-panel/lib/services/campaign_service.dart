@@ -95,11 +95,12 @@ class CampaignService {
   Future<CampaignSummaryModel> startCampaign({
     required String tenantId,
     required String campaignId,
-    bool confirm = true,
+    bool confirm = false,
+    bool recipientAuthorization = false,
   }) async {
     final data = await _apiClient.post(
       '/api/v1/tenants/$tenantId/campaigns/$campaignId/start',
-      body: {'confirm': confirm},
+      body: {'confirm': confirm, 'recipient_authorization': recipientAuthorization},
     );
     return CampaignSummaryModel.fromJson(data as Map<String, dynamic>);
   }

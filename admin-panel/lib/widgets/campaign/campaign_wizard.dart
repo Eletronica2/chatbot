@@ -73,6 +73,7 @@ class _CampaignWizardFlowState extends State<CampaignWizardFlow> {
   CampaignValidationModel? _validation;
   String? _pickedFileName;
   bool _busy = false;
+  bool _recipientAuthorization = false;
   String? _error;
 
   static const _titles = ['Informações', 'Destinatários', 'Revisão', 'Confirmação'];
@@ -207,6 +208,7 @@ class _CampaignWizardFlowState extends State<CampaignWizardFlow> {
     if (v == null || v.validRows < 1) return false;
     if (!v.sendsEnabled) return false;
     if (!widget.sendReadiness.sendsEnabled) return false;
+    if (!_recipientAuthorization) return false;
     return _campaign?.status == 'validated' || _campaign?.status == 'paused';
   }
 
@@ -218,7 +220,12 @@ class _CampaignWizardFlowState extends State<CampaignWizardFlow> {
       _error = null;
     });
     try {
-      await campaignService.startCampaign(tenantId: widget.tenantId, campaignId: campaign.id);
+      await campaignService.startCampaign(
+        tenantId: widget.tenantId,
+        campaignId: campaign.id,
+        confirm: true,
+        recipientAuthorization: true,
+      );
       if (!mounted) return;
       Navigator.pop(context);
       widget.onFinished?.call();
@@ -554,6 +561,16 @@ class _CampaignWizardFlowState extends State<CampaignWizardFlow> {
             '${v!.planSnapshot!.plan} · ${v.planSnapshot!.status}',
           ),
         const SizedBox(height: AppSpacing.md),
+        CheckboxListTile(
+          value: _recipientAuthorization,
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: const Text(
+            'Declaro que estou autorizado a contatar estes destinatários. Esta confirmação não registra o consentimento de cada pessoa.',
+            style: TextStyle(color: AppColors.text, fontSize: 13),
+          ),
+          onChanged: (value) => setState(() => _recipientAuthorization = value ?? false),
+        ),
         Text(kCampaignMetaDisclaimer, style: const TextStyle(color: AppColors.textSoft, fontSize: 11)),
         if (blocked) ...[
           const SizedBox(height: AppSpacing.md),
@@ -627,7 +644,7 @@ class _ValidationStats extends StatelessWidget {
         _chip('Válidas', validation.validRows, AppColors.success),
         _chip('Inválidas', validation.invalidRows, AppColors.danger),
         _chip('Duplicadas', validation.duplicatePhones, AppColors.warning),
-        _chip('Sem consentimento', validation.consentMissingRows, AppColors.warning),
+        _chip('Não autorizados', validation.consentMissingRows, AppColors.warning),
       ],
     );
   }

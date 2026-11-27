@@ -241,23 +241,51 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     }
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Confirmar disparo'),
-        content: Text(
-          'Enviar para ${item.totalRecipients} destinatário(s)?\n\n'
-          'Estimativa Meta: ${formatCampaignMetaEstimate(item.metaEstimate)}\n\n'
-          '$kCampaignMetaDisclaimer',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmar')),
-        ],
-      ),
+      builder: (ctx) {
+        var authorized = false;
+        return StatefulBuilder(
+          builder: (ctx, setLocal) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Confirmar disparo'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Enviar para ${item.totalRecipients} destinatário(s)?\n\n'
+                  'Estimativa Meta: ${formatCampaignMetaEstimate(item.metaEstimate)}\n\n'
+                  '$kCampaignMetaDisclaimer',
+                ),
+                CheckboxListTile(
+                  value: authorized,
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text(
+                    'Declaro que estou autorizado a contatar estes destinatários. Isto não é o consentimento de cada pessoa.',
+                  ),
+                  onChanged: (value) => setLocal(() => authorized = value ?? false),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+              FilledButton(
+                onPressed: authorized ? () => Navigator.pop(ctx, true) : null,
+                child: const Text('Confirmar'),
+              ),
+            ],
+          ),
+        );
+      },
     );
     if (ok != true) return;
     try {
-      await campaignService.startCampaign(tenantId: _tenantId, campaignId: item.id);
+      await campaignService.startCampaign(
+        tenantId: _tenantId,
+        campaignId: item.id,
+        confirm: true,
+        recipientAuthorization: true,
+      );
       await _load();
     } catch (err) {
       if (!mounted) return;

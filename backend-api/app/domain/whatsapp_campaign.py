@@ -20,7 +20,8 @@ class CampaignValidateRequest(BaseModel):
 
 
 class CampaignConfirmRequest(BaseModel):
-    confirm: bool = True
+    confirm: bool = False
+    recipient_authorization: bool = False
 
 
 class CampaignRecipientPreview(BaseModel):

@@ -8,13 +8,13 @@ from typing import Any
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
-from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.utils.phone_utils import normalize_whatsapp_phone
 
 PHONE_COL = "telefone"
 CONSENT_COL = "consentimento"
 REQUIRED_CONSENT_VALUES = {"sim", "yes", "1", "true", "s"}
+DENIED_CONSENT_VALUES = {"nao", "não", "no", "0", "false", "n", "nao autorizado", "não autorizado"}
 _HEADER_FILL = PatternFill("solid", fgColor="0E7490")
 _HEADER_FONT = Font(color="FFFFFF", bold=True)
 
@@ -95,10 +95,16 @@ def parse_destinatarios_xlsx(
         if phone in seen:
             row_errors.append("telefone duplicado no arquivo")
         seen.add(phone)
-        consent = str(row[col_index[CONSENT_COL]] if CONSENT_COL in col_index and col_index[CONSENT_COL] < len(row) else "").strip().lower()
-        consent_ok = consent in REQUIRED_CONSENT_VALUES
-        if not consent_ok:
-            row_errors.append('consentimento deve ser "sim"')
+        consent_denied = False
+        consent_ok = False
+        if CONSENT_COL in col_index:
+            raw_consent = row[col_index[CONSENT_COL]] if col_index[CONSENT_COL] < len(row) else ""
+            consent = str(raw_consent or "").strip().lower()
+            if consent in DENIED_CONSENT_VALUES:
+                consent_denied = True
+                row_errors.append("contato explicitamente não autorizado")
+            elif consent in REQUIRED_CONSENT_VALUES:
+                consent_ok = True
         params: dict[str, str] = {}
         for key in variable_columns:
             if key not in col_index:
@@ -117,6 +123,7 @@ def parse_destinatarios_xlsx(
                 "phone": phone,
                 "body_params": params,
                 "consent_ok": consent_ok,
+                "consent_denied": consent_denied,
                 "errors": row_errors,
             }
         )
@@ -143,14 +150,8 @@ def build_template_xlsx(
     for key in variable_columns:
         label = (labels.get(str(key)) or "").strip() or f"Variável {key}"
         headers.append(label)
-    headers.append("Consentimento")
     dest.append(headers)
     dest.column_dimensions["A"].number_format = "@"
-    consent_col = get_column_letter(len(headers))
-    dv = DataValidation(type="list", formula1='"sim,não"', allow_blank=True)
-    dv.error = "Informe sim ou não"
-    dv.add(f"{consent_col}2:{consent_col}500")
-    dest.add_data_validation(dv)
     _style_header(dest)
 
     inst = wb.create_sheet("Instrucoes")
@@ -158,7 +159,7 @@ def build_template_xlsx(
     inst.append(["Uma linha por destinatário na aba Destinatarios. Esta aba não é importada."])
     inst.append([f"Template: {template_name} ({language}) — {category}"])
     inst.append(["Telefone com DDI, como texto. Exemplo: 5534999999999"])
-    inst.append(["Consentimento: sim"])
+    inst.append(["A autorização dos destinatários é declarada na revisão da campanha, não nesta planilha."])
     if body_example:
         inst.append([f"Texto do modelo: {body_example}"])
     for key in variable_columns:

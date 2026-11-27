@@ -246,7 +246,7 @@ class WhatsAppCampaignService:
             for p in parsed
         ]
         invalid_rows = len([p for p in parsed if p.get("errors")])
-        consent_missing = len([p for p in parsed if not p.get("consent_ok") and not p.get("errors")])
+        consent_missing = len([p for p in parsed if p.get("consent_denied")])
         return CampaignValidationResult(
             campaign_id=campaign_key,
             total_rows=len(parsed),
@@ -264,17 +264,32 @@ class WhatsAppCampaignService:
             plan_snapshot=plan_snapshot,
         )
 
-    async def start_campaign(self, tenant_id: str, campaign_key: str, *, confirm: bool) -> CampaignSummary:
+    async def start_campaign(
+        self,
+        tenant_id: str,
+        campaign_key: str,
+        *,
+        confirm: bool,
+        recipient_authorization: bool = False,
+    ) -> tuple[CampaignSummary, list[str]]:
         if not confirm:
             raise ValueError("Confirmação explícita obrigatória")
+        if not recipient_authorization:
+            raise ValueError("Declaração de autorização dos destinatários é obrigatória")
         row = await self._require_campaign(tenant_id, campaign_key)
         if row.get("status") not in {"validated", "paused"}:
             raise ValueError("Campanha não está validada")
         pending = await self.repository.list_pending_recipients(
             tenant_id=tenant_id, campaign_id=int(row["id"]), limit=5000
         )
+        pending = [
+            item
+            for item in pending
+            if "não autorizado" not in str(item.get("error_message") or "").lower()
+        ]
         if not pending:
             raise ValueError("Nenhum destinatário pendente")
+        authorized = [str(item.get("phone_e164") or "") for item in pending if item.get("phone_e164")]
         sends_ok, blocked_code, blocked, _snapshot = await self._sends_allowed(tenant_id)
         if not sends_ok:
             raise ValueError(blocked or "Envio não autorizado")
@@ -285,7 +300,7 @@ class WhatsAppCampaignService:
             {"status": "running", "confirmed_at": now, "started_at": now},
         )
         row = await self.repository.get_campaign(tenant_id, campaign_key)
-        return self._to_summary(row or {})
+        return self._to_summary(row or {}), authorized
 
     async def pause_campaign(self, tenant_id: str, campaign_key: str) -> CampaignSummary:
         row = await self._require_campaign(tenant_id, campaign_key)
