@@ -165,8 +165,8 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     double metaSum = 0;
     var hasMeta = false;
     for (final c in _items) {
-      sent += c.sentCount + c.deliveredCount + c.readCount + c.failedCount + c.uncertainCount;
-      delivered += c.deliveredCount + c.readCount;
+      sent += c.messagesSent;
+      delivered += c.messagesDelivered;
       failed += c.failedCount;
       uncertain += c.uncertainCount;
       final raw = c.metaEstimate['total_if_all_delivered_estimate'];
@@ -177,7 +177,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
       }
     }
     final denom = delivered + failed + uncertain;
-    final rate = denom > 0 ? delivered / denom : null;
+    final rate = denom > 0 ? (delivered / denom) * 100 : null;
     return (
       sent: sent > 0 ? sent : null,
       delivered: delivered > 0 ? delivered : null,
@@ -665,6 +665,7 @@ class _CampaignTableState extends State<_CampaignTable> {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: tableWidth),
                 child: DataTable(
+                  showCheckboxColumn: false,
                   columnSpacing: 12,
                   horizontalMargin: 10,
             headingTextStyle: const TextStyle(
@@ -699,15 +700,18 @@ class _CampaignTableState extends State<_CampaignTable> {
                   DataCell(
                     PopupMenuButton<String>(
                       tooltip: 'Ações',
-                      itemBuilder: (ctx) => [
+                      itemBuilder: (ctx) {
+                        final locked = const {'completed', 'cancelled', 'canceled'}.contains(c.status);
+                        return [
                         const PopupMenuItem(value: 'detail', child: Text('Ver detalhes')),
-                        const PopupMenuItem(value: 'import', child: Text('Importar destinatários')),
-                        const PopupMenuItem(value: 'model', child: Text('Baixar modelo Excel')),
-                        const PopupMenuItem(value: 'wizard', child: Text('Assistente de configuração')),
+                        if (!locked) const PopupMenuItem(value: 'import', child: Text('Importar destinatários')),
+                        if (!locked) const PopupMenuItem(value: 'model', child: Text('Baixar modelo Excel')),
+                        if (!locked) const PopupMenuItem(value: 'wizard', child: Text('Assistente de configuração')),
                         if (widget.onStart(c))
                           const PopupMenuItem(value: 'start', child: Text('Iniciar campanha')),
                         const PopupMenuItem(value: 'export', child: Text('Exportar resultados')),
-                      ],
+                      ];
+                      },
                       onSelected: (v) async {
                         switch (v) {
                           case 'detail':

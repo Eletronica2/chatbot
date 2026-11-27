@@ -21,11 +21,13 @@ String formatCampaignMoney(dynamic raw, {String? currency}) {
 
 String formatCampaignMetaEstimate(Map<String, dynamic>? estimate) {
   if (estimate == null || estimate.isEmpty) return '—';
-  return formatCampaignMoney(
-    estimate['total_if_all_delivered_estimate'],
-    currency: estimate['currency']?.toString(),
-  );
+  final raw = estimate['consumption_estimate'] ?? estimate['total_if_all_delivered_estimate'];
+  if (raw == null || '$raw'.trim().isEmpty) return '—';
+  return formatCampaignMoney(raw, currency: estimate['currency']?.toString());
 }
+
+bool campaignMetaEstimateIsActual(Map<String, dynamic>? estimate) =>
+    estimate != null && estimate['consumption_estimate'] != null;
 
 String campaignStatusLabel(String status) {
   switch (status.toLowerCase()) {

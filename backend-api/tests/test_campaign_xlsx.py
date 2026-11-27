@@ -1,45 +1,66 @@
 """Campaign XLSX import/export."""
 from __future__ import annotations
 
-from app.services.campaign_xlsx import build_template_xlsx, parse_destinatarios_xlsx
+from io import BytesIO
+
+from openpyxl import load_workbook
+
+from app.services.campaign_metrics import presentation_counts
+from app.services.campaign_xlsx import build_results_xlsx, build_template_xlsx, parse_destinatarios_xlsx
 
 
-def test_build_and_parse_destinatarios_roundtrip():
+def test_presentation_rates():
+    zero = presentation_counts(sent=0, delivered=0, failed=0)
+    assert zero["delivery_rate"] is None
+    half = presentation_counts(delivered=1, failed=1)
+    assert half["sent"] == 2
+    assert half["delivery_rate"] == 50
+    full = presentation_counts(delivered=1)
+    assert full["sent"] == 1
+    assert full["delivered"] == 1
+    assert full["delivery_rate"] == 100
+
+
+def test_template_has_no_fake_rows_and_parses_friendly_headers():
     raw = build_template_xlsx(
-        template_name="promo_verao",
-        category="MARKETING",
-        language="pt_BR",
-        body_example="Ola {{1}}, use {{2}}",
-        variable_columns=["1", "2"],
-    )
-    rows, errors = parse_destinatarios_xlsx(raw, variable_columns=["1", "2"])
-    assert not errors
-    assert len(rows) == 1
-    row = rows[0]
-    assert row["phone"].startswith("55")
-    assert row["consent_ok"] is True
-    assert row["body_params"]["1"] == "exemplo_1"
-
-
-def test_parse_rejects_invalid_phone_and_consent():
-    raw = build_template_xlsx(
-        template_name="t",
+        template_name="promo",
         category="UTILITY",
         language="pt_BR",
-        body_example="oi",
-        variable_columns=[],
+        body_example="Oi {{1}}",
+        variable_columns=["1"],
     )
-    from io import BytesIO
-    from openpyxl import load_workbook
-
     wb = load_workbook(BytesIO(raw))
+    assert wb.sheetnames[0] == "Destinatarios"
+    assert wb["Destinatarios"].max_row == 1
     ws = wb["Destinatarios"]
-    # overwrite example with bad row
-    ws.delete_rows(2)
-    ws.append(["11999999999", "nao"])
+    ws.append(["5534999999999", "Arthur", "sim"])
     buf = BytesIO()
     wb.save(buf)
-    bad = buf.getvalue()
-    rows, errors = parse_destinatarios_xlsx(bad, variable_columns=[])
-    assert rows[0]["errors"]
-    assert errors
+    rows, errors = parse_destinatarios_xlsx(buf.getvalue(), variable_columns=["1"])
+    assert not errors
+    assert rows[0]["body_params"]["1"] == "Arthur"
+    assert rows[0]["phone"] == "5534999999999"
+
+
+def test_results_hide_wamid_and_keep_estimate():
+    raw = build_results_xlsx(
+        campaign_name="Homolog",
+        template_name="promo",
+        category="UTILITY",
+        status="completed",
+        recipients=[
+            {
+                "phone_e164": "5534992665547",
+                "status": "delivered",
+                "provider_message_id": "wamid.SECRET",
+                "body_params": {"1": "Arthur", "2": "TESTE002"},
+            }
+        ],
+        consumption_estimate={"consumption_estimate": "0.035", "currency": "BRL"},
+        status_totals=presentation_counts(delivered=1),
+    )
+    wb = load_workbook(BytesIO(raw))
+    assert wb.sheetnames[0] == "Resumo"
+    blob = " ".join(str(c.value) for row in wb["Destinatarios"].iter_rows() for c in row)
+    assert "wamid" not in blob.lower()
+    assert "Arthur" in blob

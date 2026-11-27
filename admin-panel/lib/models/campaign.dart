@@ -163,6 +163,25 @@ class CampaignSummaryModel {
   final DateTime? startedAt;
   final DateTime? completedAt;
 
+  /// Mensagens aceitas pela Meta, inclusive as que já evoluíram para entregue/lida/falha.
+  int get messagesSent =>
+      sentCount + deliveredCount + readCount + failedCount + uncertainCount;
+
+  int get messagesDelivered => deliveredCount + readCount;
+
+  /// Percentual 0–100. Denominador: entregues + lidas + falhas + incertas.
+  double? get deliveryRatePercent {
+    final known = messagesDelivered + failedCount + uncertainCount;
+    if (known <= 0) return null;
+    return messagesDelivered / known * 100;
+  }
+
+  double get processingProgress {
+    if (totalRecipients <= 0) return 0;
+    final done = messagesSent.clamp(0, totalRecipients);
+    return done / totalRecipients;
+  }
+
   factory CampaignSummaryModel.fromJson(Map<String, dynamic> json) {
     DateTime? parse(String? v) =>
         v == null || v.isEmpty ? null : DateTime.tryParse(v);

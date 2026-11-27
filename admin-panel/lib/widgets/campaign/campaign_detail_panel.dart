@@ -111,12 +111,12 @@ class CampaignDetailPanel extends StatelessWidget {
             runSpacing: AppSpacing.xs,
             children: [
               _metricChip('Destinatários', summary.totalRecipients),
-              _metricChip('Pendentes', summary.pendingCount),
-              _metricChip('Enviadas', summary.sentCount),
-              _metricChip('Entregues', summary.deliveredCount),
+              _metricChip('Enviadas', summary.messagesSent),
+              _metricChip('Entregues', summary.messagesDelivered),
               _metricChip('Lidas', summary.readCount),
               _metricChip('Falhas', summary.failedCount),
-              _metricChip('Incertas', summary.uncertainCount),
+              if (summary.pendingCount > 0) _metricChip('Pendentes', summary.pendingCount),
+              if (summary.uncertainCount > 0) _metricChip('Incertas', summary.uncertainCount),
             ],
           ),
         ),
@@ -124,8 +124,8 @@ class CampaignDetailPanel extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
           child: Text(
-            'Estimativa Meta: ${formatCampaignMetaEstimate(summary.metaEstimate)}',
-            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+            '${campaignMetaEstimateIsActual(summary.metaEstimate) ? 'Custo estimado Meta' : 'Previsão Meta'}: ${formatCampaignMetaEstimate(summary.metaEstimate)}',
+            style: const TextStyle(color: AppColors.text, fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
         if (!sendReadiness.sendsEnabled) ...[
@@ -144,16 +144,18 @@ class CampaignDetailPanel extends StatelessWidget {
             spacing: AppSpacing.sm,
             runSpacing: AppSpacing.sm,
             children: [
-              OutlinedButton.icon(
-                onPressed: onDownloadTemplate,
-                icon: const Icon(Icons.download, size: 18),
-                label: const Text('Modelo XLSX'),
-              ),
-              OutlinedButton.icon(
-                onPressed: onImport,
-                icon: const Icon(Icons.upload_file, size: 18),
-                label: const Text('Importar'),
-              ),
+              if (!const {'completed', 'cancelled', 'canceled'}.contains(summary.status)) ...[
+                OutlinedButton.icon(
+                  onPressed: onDownloadTemplate,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Modelo XLSX'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: onImport,
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('Importar'),
+                ),
+              ],
               OutlinedButton.icon(
                 onPressed: onDownloadResults,
                 icon: const Icon(Icons.table_view, size: 18),
@@ -286,9 +288,13 @@ class _RecipientsTableState extends State<_RecipientsTable> {
                 dense: true,
                 title: Text(r.phone, style: const TextStyle(fontSize: 13)),
                 subtitle: Text(
-                  recipientStatusLabel(r.status) +
-                      (r.errorMessage != null ? ' · ${r.errorMessage}' : ''),
-                  style: const TextStyle(fontSize: 11),
+                  [
+                    recipientStatusLabel(r.status),
+                    if (r.bodyParams.isNotEmpty)
+                      r.bodyParams.entries.map((e) => '${e.key}: ${e.value}').join(' · '),
+                    if (r.errorMessage != null) r.errorMessage!,
+                  ].where((p) => p.isNotEmpty).join(' · '),
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
                 trailing: Text(
                   formatCampaignDate(r.deliveredAt ?? r.sentAt),

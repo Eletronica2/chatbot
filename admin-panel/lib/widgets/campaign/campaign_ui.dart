@@ -104,21 +104,14 @@ class CampaignMetricsStrip extends StatelessWidget {
       _metric(
         label: 'Taxa de entrega',
         value: _fmtRate(deliveryRate),
-        helper: 'Sobre resultados conhecidos',
+        helper: 'Entregues ÷ resultado conhecido',
         icon: Icons.insights_outlined,
         accent: AppColors.accentSecondary,
-      ),
-      _metric(
-        label: 'Estimativa Meta',
-        value: metaEstimateLabel ?? '—',
-        helper: 'Soma com previsão (est.)',
-        icon: Icons.payments_outlined,
-        accent: AppColors.warning,
       ),
     ];
     if (loading) {
       return LayoutBuilder(
-        builder: (ctx, c) => _metricRow(c.maxWidth, List.generate(5, (_) => const _SkeletonMetric())),
+        builder: (ctx, c) => _metricRow(c.maxWidth, List.generate(4, (_) => const _SkeletonMetric())),
       );
     }
     return LayoutBuilder(
@@ -150,8 +143,7 @@ class CampaignMetricsStrip extends StatelessWidget {
     if (w < 420) return 1;
     if (w < 640) return 2;
     if (w < 900) return 3;
-    if (w < 1180) return 4;
-    return 5;
+    return 4;
   }
 
   Widget _metricRow(double maxWidth, List<Widget> children) {
@@ -210,48 +202,31 @@ class CampaignProgressBar extends StatelessWidget {
     if (total <= 0) {
       return const Text('Sem destinatários', style: TextStyle(color: AppColors.textSoft, fontSize: 12));
     }
-    final pending = item.pendingCount;
-    final sent = item.sentCount;
-    final delivered = item.deliveredCount;
-    final read = item.readCount;
-    final failed = item.failedCount;
-    final uncertain = item.uncertainCount;
-    final processed = sent + delivered + read + failed + uncertain;
-    final progress = (processed / total).clamp(0.0, 1.0);
+    final progress = item.processingProgress.clamp(0.0, 1.0);
+    final pct = formatCampaignPercent(progress * 100);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        ClipRRect(
-          borderRadius: AppRadius.pill,
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: AppColors.surfaceSoft,
-            color: AppColors.primary,
+        Expanded(
+          child: ClipRRect(
+            borderRadius: AppRadius.pill,
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: AppColors.surfaceSoft,
+              color: AppColors.primary,
+            ),
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
-        Wrap(
-          spacing: 12,
-          runSpacing: 4,
-          children: [
-            _chip('Pendentes', pending, AppColors.textMuted),
-            _chip('Enviadas', sent, AppColors.accentBlue),
-            _chip('Entregues', delivered, AppColors.success),
-            _chip('Lidas', read, AppColors.primarySoft),
-            _chip('Falhas', failed, AppColors.danger),
-            _chip('Incertas', uncertain, AppColors.warning),
-          ],
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 52,
+          child: Text(
+            pct,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _chip(String label, int value, Color color) {
-    return Text(
-      '$label: $value',
-      style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
     );
   }
 }

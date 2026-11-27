@@ -23,6 +23,7 @@ from app.services.campaign_meta_estimate import (
     estimate_actual_spend,
     estimate_campaign_cost,
 )
+from app.services.campaign_metrics import presentation_counts
 from app.services.campaign_xlsx import build_results_xlsx, build_template_xlsx, parse_destinatarios_xlsx
 from app.services.meta_rate_engine import MetaRateEngine
 from app.services.subscription_service import SubscriptionService
@@ -186,6 +187,8 @@ class WhatsAppCampaignService:
 
     async def validate_upload(self, tenant_id: str, campaign_key: str, raw: bytes) -> CampaignValidationResult:
         row = await self._require_campaign(tenant_id, campaign_key)
+        if str(row.get("status") or "") in {"completed", "cancelled", "canceled", "running"}:
+            raise ValueError("Esta campanha não aceita nova importação de destinatários")
         keys = json.loads(row.get("body_variable_keys") or "[]")
         if not isinstance(keys, list):
             keys = []
@@ -420,17 +423,19 @@ class WhatsAppCampaignService:
                 delivered_count=int(row.get("delivered_count") or 0),
                 read_count=int(row.get("read_count") or 0),
             )
-        status_totals = {
-            "pending": int(row.get("pending_count") or 0),
-            "sent": int(row.get("sent_count") or 0),
-            "delivered": int(row.get("delivered_count") or 0),
-            "read": int(row.get("read_count") or 0),
-            "failed": int(row.get("failed_count") or 0),
-            "uncertain": int(row.get("uncertain_count") or 0),
-        }
+        status_totals = presentation_counts(
+            pending=int(row.get("pending_count") or 0),
+            sent=int(row.get("sent_count") or 0),
+            delivered=int(row.get("delivered_count") or 0),
+            read=int(row.get("read_count") or 0),
+            failed=int(row.get("failed_count") or 0),
+            uncertain=int(row.get("uncertain_count") or 0),
+        )
         return build_results_xlsx(
             campaign_name=row["name"],
             template_name=row["template_name"],
+            category=str(row.get("template_category") or ""),
+            status=str(row.get("status") or ""),
             recipients=recipients,
             consumption_estimate=consumption,
             status_totals=status_totals,

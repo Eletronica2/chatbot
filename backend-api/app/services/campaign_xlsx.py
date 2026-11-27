@@ -6,17 +6,52 @@ import re
 from typing import Any
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import Font, PatternFill
+from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from app.utils.phone_utils import normalize_whatsapp_phone
 
 PHONE_COL = "telefone"
 CONSENT_COL = "consentimento"
 REQUIRED_CONSENT_VALUES = {"sim", "yes", "1", "true", "s"}
+_HEADER_FILL = PatternFill("solid", fgColor="0E7490")
+_HEADER_FONT = Font(color="FFFFFF", bold=True)
 
 
 def _digits_phone(raw: str) -> str:
     return normalize_whatsapp_phone(str(raw or "").strip())
+
+
+def _header_key(raw: str) -> str:
+    text = str(raw or "").strip().lower()
+    text = text.replace("á", "a").replace("ã", "a").replace("é", "e")
+    if text in {"telefone", "phone", "celular"}:
+        return PHONE_COL
+    if text in {"consentimento", "consent"}:
+        return CONSENT_COL
+    if text.startswith("variavel "):
+        suffix = text.split()[-1]
+        return suffix if suffix.isdigit() or suffix else text
+    return text
+
+
+def _safe_cell(value: Any) -> Any:
+    if isinstance(value, str) and value[:1] in "=+-@":
+        return "'" + value
+    return value
+
+
+def _style_header(ws) -> None:
+    for cell in ws[1]:
+        cell.fill = _HEADER_FILL
+        cell.font = _HEADER_FONT
+        cell.alignment = Alignment(vertical="center")
+    ws.auto_filter.ref = ws.dimensions
+    ws.freeze_panes = "A2"
+    for idx, cell in enumerate(ws[1], start=1):
+        width = max(14, min(36, len(str(cell.value or "")) + 4))
+        ws.column_dimensions[get_column_letter(idx)].width = width
 
 
 def parse_destinatarios_xlsx(
@@ -37,7 +72,7 @@ def parse_destinatarios_xlsx(
     ws = wb["Destinatarios"]
     rows = ws.iter_rows(values_only=True)
     try:
-        header = [str(c or "").strip().lower() for c in next(rows)]
+        header = [_header_key(c) for c in next(rows)]
     except StopIteration:
         return [], ["Planilha vazia"]
     if PHONE_COL not in header:
@@ -98,31 +133,38 @@ def build_template_xlsx(
     language: str,
     body_example: str,
     variable_columns: list[str],
+    variable_labels: dict[str, str] | None = None,
 ) -> bytes:
     wb = Workbook()
-    default = wb.active
-    default.title = "Destinatarios"
-    headers = [PHONE_COL, *variable_columns, CONSENT_COL, "origem_consentimento", "data_consentimento"]
-    default.append(headers)
-    default.freeze_panes = "A2"
-    example_row = ["5534999999999"]
-    for col in variable_columns:
-        example_row.append(f"exemplo_{col}")
-    example_row.extend(["sim", "cadastro", "2026-01-01"])
-    default.append(example_row)
+    dest = wb.active
+    dest.title = "Destinatarios"
+    labels = variable_labels or {}
+    headers = ["Telefone"]
+    for key in variable_columns:
+        label = (labels.get(str(key)) or "").strip() or f"Variável {key}"
+        headers.append(label)
+    headers.append("Consentimento")
+    dest.append(headers)
+    dest.column_dimensions["A"].number_format = "@"
+    consent_col = get_column_letter(len(headers))
+    dv = DataValidation(type="list", formula1='"sim,não"', allow_blank=True)
+    dv.error = "Informe sim ou não"
+    dv.add(f"{consent_col}2:{consent_col}500")
+    dest.add_data_validation(dv)
+    _style_header(dest)
 
     inst = wb.create_sheet("Instrucoes")
-    inst.append(["ATENDE AI — importação de destinatários"])
-    inst.append([])
-    inst.append(["01", "Use uma linha por destinatário na aba Destinatarios"])
-    inst.append(["02", "Telefone com DDI (texto), sem fórmulas"])
-    inst.append(["03", f'Template: {template_name} ({language}) — categoria {category}'])
-
-    tpl = wb.create_sheet("Template_exemplo")
-    tpl.append(["Campo", "Exemplo / regra"])
-    tpl.append(["Categoria", category])
-    tpl.append(["Idioma", language])
-    tpl.append(["Texto", body_example])
+    inst.append(["Instruções"])
+    inst.append(["Uma linha por destinatário na aba Destinatarios. Esta aba não é importada."])
+    inst.append([f"Template: {template_name} ({language}) — {category}"])
+    inst.append(["Telefone com DDI, como texto. Exemplo: 5534999999999"])
+    inst.append(["Consentimento: sim"])
+    if body_example:
+        inst.append([f"Texto do modelo: {body_example}"])
+    for key in variable_columns:
+        label = (labels.get(str(key)) or "").strip() or f"Variável {key}"
+        inst.append([f"{label}: preencha o valor do parâmetro {key} do template"])
+    inst.column_dimensions["A"].width = 88
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -135,50 +177,105 @@ def build_results_xlsx(
     template_name: str,
     recipients: list[dict[str, Any]],
     consumption_estimate: dict[str, Any] | None = None,
-    status_totals: dict[str, int] | None = None,
+    status_totals: dict[str, Any] | None = None,
+    category: str = "",
+    status: str = "",
 ) -> bytes:
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo("America/Sao_Paulo")
+
+    def as_local(value: Any):
+        if not isinstance(value, datetime):
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=ZoneInfo("UTC"))
+        return value.astimezone(tz).replace(tzinfo=None)
+
     wb = Workbook()
-    ws = wb.active
-    ws.title = "Resultados"
-    ws.append(
-        [
-            "linha",
-            "telefone",
-            "status",
-            "wamid",
-            "erro",
-            "enviado_em",
-            "entregue_em",
-            "lido_em",
-            "falhou_em",
-        ]
-    )
-    ws.freeze_panes = "A2"
+    summary = wb.active
+    summary.title = "Resumo"
+    totals = status_totals or {}
+    summary.append(["Campanha", _safe_cell(campaign_name)])
+    summary.append(["Template", _safe_cell(template_name)])
+    if category:
+        summary.append(["Categoria", category])
+    if status:
+        summary.append(["Status", status])
+    summary.append(["Destinatários", len(recipients)])
+    for label, key in (
+        ("Enviadas", "sent"),
+        ("Entregues", "delivered"),
+        ("Lidas", "read"),
+        ("Falhas", "failed"),
+        ("Pendentes", "pending"),
+        ("Incertas", "uncertain"),
+    ):
+        if key in totals and totals[key]:
+            summary.append([label, int(totals[key])])
+        elif key in totals and key in {"sent", "delivered", "failed"}:
+            summary.append([label, int(totals[key] or 0)])
+    rate = totals.get("delivery_rate")
+    if isinstance(rate, (int, float)):
+        cell_row = summary.max_row + 1
+        summary.append(["Taxa de entrega", float(rate) / 100])
+        summary.cell(cell_row, 2).number_format = "0.0%"
+    if consumption_estimate and consumption_estimate.get("consumption_estimate") not in (None, ""):
+        amount = float(consumption_estimate["consumption_estimate"])
+        row_i = summary.max_row + 1
+        summary.append(["Custo estimado Meta (BRL)", amount])
+        summary.cell(row_i, 2).number_format = '"R$" #,##0.00'
+    summary.append(["Aviso", "Mensagens cobradas diretamente pela Meta. Valores são estimativas."])
+    summary.column_dimensions["A"].width = 32
+    summary.column_dimensions["B"].width = 48
+
+    dest = wb.create_sheet("Destinatarios")
+    param_keys: list[str] = []
     for row in recipients:
-        ws.append(
+        body = row.get("body_params") or {}
+        if isinstance(body, str):
+            continue
+        for key in body:
+            if str(key) not in param_keys:
+                param_keys.append(str(key))
+    headers = ["Telefone", *[f"Variável {k}" for k in param_keys], "Situação", "Enviada em", "Entregue em", "Lida em", "Motivo da falha"]
+    dest.append(headers)
+    labels = {
+        "pending": "Pendente",
+        "sending": "Enviando",
+        "sent": "Enviada",
+        "delivered": "Entregue",
+        "read": "Lida",
+        "failed": "Falhou",
+        "uncertain": "Incerta",
+        "invalid": "Inválida",
+    }
+    for row in recipients:
+        body = row.get("body_params") or {}
+        if isinstance(body, str):
+            body = {}
+        values = [_safe_cell(row.get("phone_e164"))]
+        for key in param_keys:
+            values.append(_safe_cell(body.get(key) or ""))
+        values.append(labels.get(str(row.get("status") or ""), str(row.get("status") or "")))
+        values.extend(
             [
-                row.get("row_number"),
-                row.get("phone_e164"),
-                row.get("status"),
-                row.get("provider_message_id"),
-                row.get("error_message") or row.get("error_code"),
-                row.get("sent_at"),
-                row.get("delivered_at"),
-                row.get("read_at"),
-                row.get("failed_at"),
+                as_local(row.get("sent_at")),
+                as_local(row.get("delivered_at")),
+                as_local(row.get("read_at")),
+                _safe_cell(row.get("error_message") or "") if row.get("status") == "failed" else "",
             ]
         )
-    summary = wb.create_sheet("Resumo")
-    summary.append(["Campanha", campaign_name])
-    summary.append(["Template", template_name])
-    summary.append(["Total destinatários", len(recipients)])
-    if status_totals:
-        for key in ("pending", "sending", "sent", "delivered", "read", "failed", "uncertain", "invalid"):
-            if key in status_totals:
-                summary.append([f"total_{key}", status_totals[key]])
-    if consumption_estimate:
-        for key, value in consumption_estimate.items():
-            summary.append([key, value])
+        dest.append(values)
+    for col in range(3 + len(param_keys), 6 + len(param_keys)):
+        for cell in dest.iter_cols(min_col=col, max_col=col, min_row=2):
+            for item in cell:
+                if isinstance(item.value, datetime):
+                    item.number_format = "DD/MM/YYYY HH:MM"
+    _style_header(dest)
+    dest.column_dimensions["A"].number_format = "@"
+
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
