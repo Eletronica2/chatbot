@@ -35,21 +35,30 @@ usage() {
   exit 1
 }
 
+echo "rsync_production: publishing $target from HEAD (clean worktree)"
+
+WORK="$(mktemp -d)"
+cleanup() {
+  git -C "$ROOT" worktree remove --force "$WORK" >/dev/null 2>&1 || rm -rf "$WORK"
+}
+trap cleanup EXIT
+git -C "$ROOT" worktree add --detach "$WORK" HEAD >/dev/null
+
 target="${1:-}"
 case "$target" in
   backend-api)
     rsync -avz "${RSYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
-      "$ROOT/backend-api/" "$REMOTE:$REMOTE_DIR/backend-api/"
+      "$WORK/backend-api/" "$REMOTE:$REMOTE_DIR/backend-api/"
     ;;
   whatsapp-gateway)
     rsync -avz "${RSYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
-      "$ROOT/whatsapp-gateway/" "$REMOTE:$REMOTE_DIR/whatsapp-gateway/"
+      "$WORK/whatsapp-gateway/" "$REMOTE:$REMOTE_DIR/whatsapp-gateway/"
     ;;
   admin-web)
     API_BASE_URL="${API_BASE_URL:-https://api.meuatendeai.com.br}" \
-      "$ROOT/scripts/build_admin_web.sh"
+      "$WORK/scripts/build_admin_web.sh"
     rsync -avz --delete -e "$RSYNC_SSH" \
-      "$ROOT/admin-panel/build/web/" "$REMOTE:$REMOTE_DIR/admin-panel/build/web/"
+      "$WORK/admin-panel/build/web/" "$REMOTE:$REMOTE_DIR/admin-panel/build/web/"
     ;;
   *)
     usage

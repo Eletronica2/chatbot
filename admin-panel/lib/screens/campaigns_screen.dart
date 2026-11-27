@@ -176,7 +176,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
         hasMeta = true;
       }
     }
-    final denom = delivered + failed + uncertain;
+    final denom = sent;
     final rate = denom > 0 ? (delivered / denom) * 100 : null;
     return (
       sent: sent > 0 ? sent : null,

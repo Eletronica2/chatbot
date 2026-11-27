@@ -79,6 +79,7 @@ class CampaignSummary(BaseModel):
     read_count: int = 0
     failed_count: int
     uncertain_count: int = 0
+    messages_sent: int = 0
     meta_estimate: dict[str, Any] = Field(default_factory=dict)
     meta_disclaimer: str | None = None
     created_at: Optional[datetime] = None

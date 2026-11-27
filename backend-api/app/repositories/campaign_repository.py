@@ -205,6 +205,40 @@ class CampaignRepository:
 
         return await asyncio.to_thread(_list)
 
+    async def accepted_exception_counts(self, tenant_id: str) -> dict[int, dict[str, int]]:
+        """Falhas/incertas que a Meta chegou a aceitar (wamid, sent_at ou evento sent/delivered/read)."""
+        tenant_pk = self.database.resolve_tenant_pk(tenant_id)
+
+        def _run() -> dict[int, dict[str, int]]:
+            rows = self.database.fetch_all(
+                """
+                SELECT r.campaign_id, r.status, COUNT(*) AS total
+                FROM whatsapp_campaign_recipients r
+                WHERE r.tenant_id=%s
+                  AND r.status IN ('failed', 'uncertain')
+                  AND (
+                    (r.provider_message_id IS NOT NULL AND r.provider_message_id <> '')
+                    OR r.sent_at IS NOT NULL
+                    OR EXISTS (
+                      SELECT 1 FROM campaign_recipient_status_events e
+                      WHERE e.recipient_id = r.id
+                        AND e.status IN ('sent', 'delivered', 'read')
+                    )
+                  )
+                GROUP BY r.campaign_id, r.status
+                """,
+                (tenant_pk,),
+            ) or []
+            out: dict[int, dict[str, int]] = {}
+            for item in rows:
+                bucket = out.setdefault(int(item["campaign_id"]), {"failed": 0, "uncertain": 0})
+                status = str(item["status"])
+                if status in bucket:
+                    bucket[status] = int(item["total"] or 0)
+            return out
+
+        return await asyncio.to_thread(_run)
+
     async def reclaim_stale_sending(self, *, tenant_id: str, campaign_id: int, older_minutes: int = 15) -> int:
         tenant_pk = self.database.resolve_tenant_pk(tenant_id)
         cutoff = datetime.utcnow() - timedelta(minutes=max(5, older_minutes))

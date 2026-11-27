@@ -136,7 +136,15 @@ class WhatsAppCampaignService:
 
     async def list_campaigns(self, tenant_id: str) -> list[CampaignSummary]:
         rows = await self.repository.list_campaigns(tenant_id)
-        return [self._to_summary(row) for row in rows]
+        extras = await self.repository.accepted_exception_counts(tenant_id)
+        out = []
+        for row in rows:
+            item = dict(row)
+            extra = extras.get(int(item["id"]), {"failed": 0, "uncertain": 0})
+            item["failed_accepted"] = extra["failed"]
+            item["uncertain_accepted"] = extra["uncertain"]
+            out.append(self._to_summary(item))
+        return out
 
     async def create_campaign(self, tenant_id: str, payload: CampaignCreate, *, user_id: str | None) -> CampaignSummary:
         accounts = await self.account_service.list_accounts(tenant_id)
@@ -410,11 +418,12 @@ class WhatsAppCampaignService:
                     read_at=r.get("read_at"),
                 )
             )
-        return CampaignDetail(campaign=self._to_summary(row), recipients=recipients)
+        return CampaignDetail(campaign=self._to_summary(await self._with_acceptance(tenant_id, row)), recipients=recipients)
 
     async def build_results_xlsx(self, tenant_id: str, campaign_key: str) -> bytes:
         row = await self._require_campaign(tenant_id, campaign_key)
         recipients = await self.repository.list_recipients(tenant_id=tenant_id, campaign_id=int(row["id"]))
+        extras = await self.repository.accepted_exception_counts(tenant_id)
         consumption = {}
         if self.meta_rate_engine is not None:
             consumption = estimate_actual_spend(
@@ -430,6 +439,8 @@ class WhatsAppCampaignService:
             read=int(row.get("read_count") or 0),
             failed=int(row.get("failed_count") or 0),
             uncertain=int(row.get("uncertain_count") or 0),
+            failed_accepted=int((extras.get(int(row["id"])) or {}).get("failed") or 0),
+            uncertain_accepted=int((extras.get(int(row["id"])) or {}).get("uncertain") or 0),
         )
         return build_results_xlsx(
             campaign_name=row["name"],
@@ -462,6 +473,14 @@ class WhatsAppCampaignService:
             raise ValueError("Campanha não encontrada")
         return row
 
+    async def _with_acceptance(self, tenant_id: str, row: dict[str, Any]) -> dict[str, Any]:
+        extras = await self.repository.accepted_exception_counts(tenant_id)
+        item = dict(row)
+        extra = extras.get(int(item["id"]), {"failed": 0, "uncertain": 0})
+        item["failed_accepted"] = extra["failed"]
+        item["uncertain_accepted"] = extra["uncertain"]
+        return item
+
     @staticmethod
     def _to_summary(row: dict[str, Any]) -> CampaignSummary:
         estimate = row.get("meta_cost_estimate_json") or row.get("estimate_json")
@@ -487,6 +506,14 @@ class WhatsAppCampaignService:
             read_count=int(row.get("read_count") or 0),
             failed_count=int(row.get("failed_count") or 0),
             uncertain_count=int(row.get("uncertain_count") or 0),
+            messages_sent=int(row.get("messages_sent") or 0)
+            or (
+                int(row.get("sent_count") or 0)
+                + int(row.get("delivered_count") or 0)
+                + int(row.get("read_count") or 0)
+                + int(row.get("failed_accepted") or 0)
+                + int(row.get("uncertain_accepted") or 0)
+            ),
             meta_estimate=estimate,
             meta_disclaimer=META_BILLING_DISCLAIMER,
             created_at=row.get("created_at"),

@@ -12,9 +12,12 @@ from app.services.campaign_xlsx import build_results_xlsx, build_template_xlsx, 
 def test_presentation_rates():
     zero = presentation_counts(sent=0, delivered=0, failed=0)
     assert zero["delivery_rate"] is None
-    half = presentation_counts(delivered=1, failed=1)
-    assert half["sent"] == 2
-    assert half["delivery_rate"] == 50
+    without_evidence = presentation_counts(delivered=1, failed=1)
+    assert without_evidence["sent"] == 1
+    assert without_evidence["delivery_rate"] == 100
+    with_evidence = presentation_counts(delivered=1, failed=1, failed_accepted=1)
+    assert with_evidence["sent"] == 2
+    assert with_evidence["delivery_rate"] == 50
     full = presentation_counts(delivered=1)
     assert full["sent"] == 1
     assert full["delivered"] == 1

@@ -136,6 +136,7 @@ class CampaignSummaryModel {
     required this.readCount,
     required this.failedCount,
     required this.uncertainCount,
+    required this.messagesSent,
     this.metaEstimate = const {},
     this.metaDisclaimer,
     this.createdAt,
@@ -163,22 +164,19 @@ class CampaignSummaryModel {
   final DateTime? startedAt;
   final DateTime? completedAt;
 
-  /// Mensagens aceitas pela Meta, inclusive as que já evoluíram para entregue/lida/falha.
-  int get messagesSent =>
-      sentCount + deliveredCount + readCount + failedCount + uncertainCount;
+  /// Aceitas pela Meta (sent/delivered/read, ou falha/incerta com wamid/evento).
+  final int messagesSent;
 
   int get messagesDelivered => deliveredCount + readCount;
 
-  /// Percentual 0–100. Denominador: entregues + lidas + falhas + incertas.
   double? get deliveryRatePercent {
-    final known = messagesDelivered + failedCount + uncertainCount;
-    if (known <= 0) return null;
-    return messagesDelivered / known * 100;
+    if (messagesSent <= 0) return null;
+    return messagesDelivered / messagesSent * 100;
   }
 
   double get processingProgress {
     if (totalRecipients <= 0) return 0;
-    final done = messagesSent.clamp(0, totalRecipients);
+    final done = (totalRecipients - pendingCount).clamp(0, totalRecipients);
     return done / totalRecipients;
   }
 
@@ -201,6 +199,10 @@ class CampaignSummaryModel {
       readCount: (json['read_count'] as num?)?.toInt() ?? 0,
       failedCount: (json['failed_count'] as num?)?.toInt() ?? 0,
       uncertainCount: (json['uncertain_count'] as num?)?.toInt() ?? 0,
+      messagesSent: (json['messages_sent'] as num?)?.toInt() ??
+          ((json['sent_count'] as num?)?.toInt() ?? 0) +
+              ((json['delivered_count'] as num?)?.toInt() ?? 0) +
+              ((json['read_count'] as num?)?.toInt() ?? 0),
       metaEstimate: json['meta_estimate'] is Map<String, dynamic>
           ? json['meta_estimate'] as Map<String, dynamic>
           : const {},
