@@ -202,24 +202,24 @@ class _ActionsScreenState extends State<ActionsScreen> {
     _selectedType = action.actionType;
     final c = action.config;
     switch (action.actionType) {
-      case ActionType.sendImage:
-        _captionCtrl.text = c['caption'] as String? ?? '';
-        _imageBase64 = c['image_data'] as String?;
-        _imageMime = c['mime_type'] as String? ?? 'image/jpeg';
-      case ActionType.sendLink:
-        _linkUrlCtrl.text = c['url'] as String? ?? '';
-        _linkTitleCtrl.text = c['title'] as String? ?? '';
-        _linkDescCtrl.text = c['description'] as String? ?? '';
-      case ActionType.httpRequest:
-        _httpMethod = c['method'] as String? ?? 'POST';
-        _httpUrlCtrl.text = c['url'] as String? ?? '';
-        _httpHeadersCtrl.text = _jsonPretty(c['headers']);
-        _httpBodyCtrl.text = c['body'] as String? ?? '';
-      case ActionType.delay:
-        _delayCtrl.text = '${c['seconds'] ?? 2}';
-      case ActionType.sendDocument:
-        _docUrlCtrl.text = c['url'] as String? ?? '';
-        _docFilenameCtrl.text = c['filename'] as String? ?? '';
+        case ActionType.sendImage:
+          _captionCtrl.text = c['caption'] as String? ?? '';
+          _imageBase64 = c['image_data'] as String?;
+          _imageMime = c['mime_type'] as String? ?? 'image/jpeg';
+        case ActionType.sendLink:
+          _linkUrlCtrl.text = c['url'] as String? ?? '';
+          _linkTitleCtrl.text = c['title'] as String? ?? '';
+          _linkDescCtrl.text = c['description'] as String? ?? '';
+        case ActionType.httpRequest:
+          _httpMethod = c['method'] as String? ?? 'POST';
+          _httpUrlCtrl.text = c['url'] as String? ?? '';
+          _httpHeadersCtrl.text = _jsonPretty(c['headers']);
+          _httpBodyCtrl.text = c['body'] as String? ?? '';
+        case ActionType.delay:
+          _delayCtrl.text = '${c['seconds'] ?? 2}';
+        case ActionType.sendDocument:
+          _docUrlCtrl.text = c['url'] as String? ?? '';
+          _docFilenameCtrl.text = c['filename'] as String? ?? '';
     }
   }
 
@@ -261,7 +261,7 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   void _onFormChanged() {
     if (_saveFeedback != null || _editorError != null) {
-      setState(() {
+    setState(() {
         _saveFeedback = null;
         _editorError = null;
       });
@@ -512,11 +512,11 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   Widget _buildListPane() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-          child: Column(
+                child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -635,8 +635,8 @@ class _ActionsScreenState extends State<ActionsScreen> {
 
   Widget _buildEditorPane({required bool showBack}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
         if (showBack)
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
@@ -725,9 +725,9 @@ class _ActionsScreenState extends State<ActionsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
+                      Container(
               padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
+                        decoration: BoxDecoration(
                 color: _kCard,
                 shape: BoxShape.circle,
                 border: Border.all(color: _kBorder),
@@ -805,14 +805,14 @@ class _ActionListItemState extends State<_ActionListItem> {
                       : Colors.transparent,
                 ),
               ),
-              child: Row(
-                children: [
-                  Container(
+      child: Row(
+        children: [
+          Container(
                     width: 34,
                     height: 34,
-                    decoration: BoxDecoration(
-                      color: _kAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
+            decoration: BoxDecoration(
+              color: _kAccent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: _kBorder),
                     ),
                     child: Icon(
@@ -826,7 +826,7 @@ class _ActionListItemState extends State<_ActionListItem> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+          Text(
                           action.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1014,23 +1014,23 @@ class _ActionEditorForm extends StatelessWidget {
               );
 
               if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
                     title,
-                    const SizedBox(height: 6),
+        const SizedBox(height: 6),
                     meta,
                     const SizedBox(height: 10),
                     actions,
-                  ],
-                );
-              }
+      ],
+    );
+  }
               return Row(
                 children: [
                   Expanded(
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
                         title,
                         const SizedBox(height: 4),
                         meta,
@@ -1105,57 +1105,57 @@ class _ActionEditorForm extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: ActionType.values.map((t) {
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: ActionType.values.map((t) {
                         final selected = selectedType == t;
                         return Semantics(
                           button: true,
                           label: 'Tipo ${t.label}',
                           child: GestureDetector(
                             onTap: () => onTypeChanged(t),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 8,
                               ),
-                              decoration: BoxDecoration(
+                decoration: BoxDecoration(
                                 color: selected
                                     ? _kAccent.withValues(alpha: 0.14)
                                     : _kInput,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
                                   color: selected ? _kAccent : _kBorder,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                                   Icon(
                                     _typeIcon(t),
                                     size: 14,
                                     color: selected ? _kAccent : _kSubtle,
                                   ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    t.label,
-                                    style: TextStyle(
+                    const SizedBox(width: 6),
+                    Text(
+                      t.label,
+                      style: TextStyle(
                                       color: selected ? _kText : _kMuted,
-                                      fontSize: 12,
+                        fontSize: 12,
                                       fontWeight: selected
                                           ? FontWeight.w600
                                           : FontWeight.w400,
-                                    ),
-                                  ),
-                                ],
+                      ),
+                    ),
+                  ],
                               ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
+                ),
+              ),
+            );
+          }).toList(),
                     ),
                     const SizedBox(height: 18),
                   ] else ...[
@@ -1202,8 +1202,8 @@ class _ActionEditorForm extends StatelessWidget {
   Widget _buildTypeFields() {
     return switch (selectedType) {
       ActionType.sendImage => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             const Text(
               'Imagem',
               style: TextStyle(
@@ -1212,63 +1212,63 @@ class _ActionEditorForm extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+        const SizedBox(height: 8),
             if (imageBytes != null)
-              Container(
+          Container(
                 height: 140,
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _kBorder),
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _kBorder),
                   image: DecorationImage(
                     image: MemoryImage(imageBytes!),
                     fit: BoxFit.cover,
                   ),
-                ),
-              )
+            ),
+          )
             else if (isEdit && imageBase64 != null)
-              Container(
-                height: 40,
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: _kSuccess.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
+          Container(
+            height: 40,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: _kSuccess.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(8),
                   border:
                       Border.all(color: _kSuccess.withValues(alpha: 0.3)),
-                ),
-                alignment: Alignment.centerLeft,
-                child: const Row(
-                  children: [
+            ),
+            alignment: Alignment.centerLeft,
+            child: const Row(
+              children: [
                     Icon(Icons.check_circle_rounded,
                         color: _kSuccess, size: 14),
-                    SizedBox(width: 8),
+                SizedBox(width: 8),
                     Text(
                       'Imagem já cadastrada',
                       style: TextStyle(color: _kSuccess, fontSize: 12),
                     ),
-                  ],
-                ),
-              ),
-            OutlinedButton.icon(
+              ],
+            ),
+          ),
+        OutlinedButton.icon(
               onPressed: onPickImage,
-              icon: const Icon(Icons.upload_rounded, size: 16),
+          icon: const Icon(Icons.upload_rounded, size: 16),
               label: Text(
                 imageBase64 != null ? 'Trocar imagem' : 'Selecionar imagem',
               ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _kAccent,
-                side: const BorderSide(color: _kBorder),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kAccent,
+            side: const BorderSide(color: _kBorder),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              ),
-            ),
-            const SizedBox(height: 4),
+          ),
+        ),
+        const SizedBox(height: 4),
             const Text(
               'Máx. 1280px — convertida para JPEG pelo servidor',
               style: TextStyle(color: _kSubtle, fontSize: 11),
             ),
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
             _LabeledField(
               label: 'Legenda (opcional)',
               child: _DarkField(
@@ -1280,8 +1280,8 @@ class _ActionEditorForm extends StatelessWidget {
           ],
         ),
       ActionType.sendLink => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             _LabeledField(
               label: 'URL *',
               child: _DarkField(
@@ -1290,7 +1290,7 @@ class _ActionEditorForm extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
             _LabeledField(
               label: 'Título',
               child: _DarkField(
@@ -1299,7 +1299,7 @@ class _ActionEditorForm extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
             _LabeledField(
               label: 'Descrição',
               child: _DarkField(
@@ -1312,14 +1312,14 @@ class _ActionEditorForm extends StatelessWidget {
           ],
         ),
       ActionType.httpRequest => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             LayoutBuilder(
               builder: (context, constraints) {
                 final stacked = constraints.maxWidth < 480;
                 final method = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                     const Text(
                       'Método *',
                       style: TextStyle(
@@ -1328,7 +1328,7 @@ class _ActionEditorForm extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                const SizedBox(height: 6),
                     Container(
                       height: 40,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -1338,11 +1338,11 @@ class _ActionEditorForm extends StatelessWidget {
                         border: Border.all(color: _kBorder),
                       ),
                       child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
+                  child: DropdownButton<String>(
                           value: httpMethod,
                           isExpanded: true,
-                          dropdownColor: _kCard,
-                          style: const TextStyle(color: _kText, fontSize: 13),
+                    dropdownColor: _kCard,
+                    style: const TextStyle(color: _kText, fontSize: 13),
                           items: const [
                             'GET',
                             'POST',
@@ -1356,14 +1356,14 @@ class _ActionEditorForm extends StatelessWidget {
                                   child: Text(m),
                                 ),
                               )
-                              .toList(),
+                        .toList(),
                           onChanged: (v) {
                             if (v != null) onHttpMethodChanged(v);
                           },
                         ),
-                      ),
-                    ),
-                  ],
+                  ),
+                ),
+              ],
                 );
                 final url = _LabeledField(
                   label: 'URL *',
@@ -1384,8 +1384,8 @@ class _ActionEditorForm extends StatelessWidget {
                   );
                 }
                 return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                     SizedBox(width: 120, child: method),
                     const SizedBox(width: 12),
                     Expanded(child: url),
@@ -1404,12 +1404,12 @@ class _ActionEditorForm extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
-            const SizedBox(height: 6),
+        const SizedBox(height: 6),
             const Text(
               'Evite colar tokens reais em ambientes compartilhados. O valor é armazenado no config da ação.',
               style: TextStyle(color: _kSubtle, fontSize: 11, height: 1.4),
             ),
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
             _LabeledField(
               label: 'Body',
               child: _DarkField(
@@ -1423,18 +1423,18 @@ class _ActionEditorForm extends StatelessWidget {
           ],
         ),
       ActionType.delay => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             _LabeledField(
               label: 'Aguardar (segundos) *',
               child: _DarkField(
                 controller: delayCtrl,
-                hint: '2',
-                keyboardType: TextInputType.number,
+            hint: '2',
+            keyboardType: TextInputType.number,
                 onChanged: onChanged,
-              ),
-            ),
-            const SizedBox(height: 6),
+          ),
+        ),
+        const SizedBox(height: 6),
             const Text(
               'O bot aguardará este tempo antes de continuar o fluxo.',
               style: TextStyle(color: _kSubtle, fontSize: 12),
@@ -1442,8 +1442,8 @@ class _ActionEditorForm extends StatelessWidget {
           ],
         ),
       ActionType.sendDocument => Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
             _LabeledField(
               label: 'URL do documento *',
               child: _DarkField(
@@ -1452,7 +1452,7 @@ class _ActionEditorForm extends StatelessWidget {
                 onChanged: onChanged,
               ),
             ),
-            const SizedBox(height: 14),
+        const SizedBox(height: 14),
             _LabeledField(
               label: 'Nome do arquivo',
               child: _DarkField(
@@ -1479,7 +1479,7 @@ class _LabeledField extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        children: [
         Text(
           label,
           style: const TextStyle(
@@ -1561,8 +1561,8 @@ class _ActionsInlineError extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+              mainAxisSize: MainAxisSize.min,
+              children: [
             const Icon(Icons.error_outline_rounded, color: _kDanger, size: 28),
             const SizedBox(height: 10),
             Text(
@@ -1600,7 +1600,7 @@ class _ActionsSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-      ),
+            ),
     );
   }
 }

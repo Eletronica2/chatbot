@@ -99,7 +99,7 @@ class ConversationService:
             tenant_settings = await self.tenant_settings_service.get_or_create(message.tenant_id)
             block_reason = tenant_settings.auto_reply_block_reason(message.phone_number)
             if block_reason:
-                if await self.message_service.was_processed(
+        if await self.message_service.was_processed(
                     tenant_id=message.tenant_id,
                     external_message_id=message.message_id,
                     direction="incoming",
@@ -312,65 +312,65 @@ class ConversationService:
             session = await self._persist_customer_activity(session, ctx)
 
         if ctx.allow_billing and not self._billing_v2_active():
-            allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
-            if not allowance.allowed:
-                handoff_reply = (
-                    "Aguarde um momento — já vamos te responder! 🙋\n"
-                    "Um atendente da casa vai continuar essa conversa com você."
-                )
-                self._append_message(session, role="user", content=message.content)
+        allowance = await self.subscription_service.check_message_allowance(message.tenant_id)
+        if not allowance.allowed:
+            handoff_reply = (
+                "Aguarde um momento — já vamos te responder! 🙋\n"
+                "Um atendente da casa vai continuar essa conversa com você."
+            )
+            self._append_message(session, role="user", content=message.content)
                 await self._persist_message(
                     ctx,
-                    tenant_id=message.tenant_id,
-                    session_id=session.session_id,
-                    direction="incoming",
-                    role="user",
-                    content=message.content,
-                    source="gateway",
+                tenant_id=message.tenant_id,
+                session_id=session.session_id,
+                direction="incoming",
+                role="user",
+                content=message.content,
+                source="gateway",
                     metadata=self._inbound_metadata(message, handoff_reason=allowance.reason),
-                    external_message_id=message.message_id,
-                    phone_number_id=message.phone_number_id,
-                )
+                external_message_id=message.message_id,
+                phone_number_id=message.phone_number_id,
+            )
                 context = self._inbound_queue_context(session.context)
-                context["human_handoff_pending"] = True
-                context["human_handoff_reason"] = allowance.reason
-                context["human_handoff_at"] = datetime.utcnow().isoformat()
+            context["human_handoff_pending"] = True
+            context["human_handoff_reason"] = allowance.reason
+            context["human_handoff_at"] = datetime.utcnow().isoformat()
                 session = await self._persist_session_update(
                     ctx,
-                    session,
-                    context_updates=context,
-                )
-                handoff_metadata = {
-                    "error": allowance.reason,
-                    "human_handoff_pending": True,
-                    "plan": allowance.subscription.plan,
-                    "used_messages": allowance.used_messages,
-                    "monthly_message_limit": allowance.subscription.monthly_message_limit,
-                }
+                session,
+                context_updates=context,
+            )
+            handoff_metadata = {
+                "error": allowance.reason,
+                "human_handoff_pending": True,
+                "plan": allowance.subscription.plan,
+                "used_messages": allowance.used_messages,
+                "monthly_message_limit": allowance.subscription.monthly_message_limit,
+            }
                 if ctx.is_test:
                     handoff_metadata["dry_run"] = True
-                action = ConversationAction(
-                    source="subscription_handoff",
-                    reply_text=handoff_reply,
-                    tenant_id=message.tenant_id,
-                    phone_number=message.phone_number,
-                    metadata=handoff_metadata,
-                    session_state=session.conversation_state,
-                    requires_handoff=True,
-                )
-                await self._log_interaction(
-                    message=message,
-                    session_id=session.session_id,
-                    flow_used=None,
-                    state=None,
-                    user_message=message.content,
-                    bot_response=handoff_reply,
-                    source="subscription_handoff",
-                    started_at=started_at,
-                    detected_intent=None,
+            action = ConversationAction(
+                source="subscription_handoff",
+                reply_text=handoff_reply,
+                tenant_id=message.tenant_id,
+                phone_number=message.phone_number,
+                metadata=handoff_metadata,
+                session_state=session.conversation_state,
+                requires_handoff=True,
+            )
+            await self._log_interaction(
+                message=message,
+                session_id=session.session_id,
+                flow_used=None,
+                state=None,
+                user_message=message.content,
+                bot_response=handoff_reply,
+                source="subscription_handoff",
+                started_at=started_at,
+                detected_intent=None,
                     execution_context=ctx,
-                )
-                return action
+            )
+            return action
 
         if ctx.persist:
             session = await self._ensure_operational_defaults(session)
@@ -388,7 +388,7 @@ class ConversationService:
                 source="gateway",
                 metadata=self._inbound_metadata(message, awaiting_human=True),
                 external_message_id=message.message_id,
-                phone_number_id=message.phone_number_id,
+            phone_number_id=message.phone_number_id,
             )
             context = self._inbound_queue_context(session.context)
             context["last_message"] = message.content
@@ -471,7 +471,7 @@ class ConversationService:
                 if not ai_response.handled:
                     return await self._ai_unavailable_handoff(
                         message, session, ai_response.metadata, ctx, source="ai_fallback", started_at=started_at
-                    )
+                )
                 if ai_response.handled and ai_response.reply_text:
                     if await self._should_suppress_auto_reply(message, ctx):
                         return self._suppressed_late_reply(message, session, source="ai_fallback")

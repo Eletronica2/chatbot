@@ -294,7 +294,7 @@ async def list_conversations(
             ):
                 session.context = hide_from_inbox(context, reason="service_window_expired")
                 await session_service.update_session(session)
-                continue
+            continue
 
         rows.append(
             _serialize_conversation(

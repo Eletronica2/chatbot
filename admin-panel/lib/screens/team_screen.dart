@@ -232,7 +232,7 @@ class _TeamScreenState extends State<TeamScreen> {
                   role: role,
                 );
                 if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
+                Navigator.of(dialogContext).pop();
                 }
                 await _load();
                 if (!mounted) return;
@@ -263,10 +263,10 @@ class _TeamScreenState extends State<TeamScreen> {
               content: SizedBox(
                 width: _dialogWidth(context),
                 child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+                  children: [
                       const Text(
                         'Gera um convite com link/token. A pessoa define a senha ao aceitar.',
                         style: TextStyle(
@@ -276,22 +276,22 @@ class _TeamScreenState extends State<TeamScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      TextField(
-                        controller: nameCtrl,
-                        style: const TextStyle(color: AppColors.text),
-                        decoration: const InputDecoration(labelText: 'Nome'),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: emailCtrl,
+                    TextField(
+                      controller: nameCtrl,
+                      style: const TextStyle(color: AppColors.text),
+                      decoration: const InputDecoration(labelText: 'Nome'),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: emailCtrl,
                         keyboardType: TextInputType.emailAddress,
-                        style: const TextStyle(color: AppColors.text),
-                        decoration: const InputDecoration(labelText: 'E-mail'),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<String>(
-                        value: role,
-                        dropdownColor: AppColors.surface,
+                      style: const TextStyle(color: AppColors.text),
+                      decoration: const InputDecoration(labelText: 'E-mail'),
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: role,
+                      dropdownColor: AppColors.surface,
                         decoration: const InputDecoration(labelText: 'Perfil'),
                         items: [
                           for (final r in _roles)
@@ -306,9 +306,9 @@ class _TeamScreenState extends State<TeamScreen> {
                                 if (value != null) {
                                   setDialogState(() => role = value);
                                 }
-                              },
-                      ),
-                      if (dialogError != null) ...[
+                      },
+                    ),
+                    if (dialogError != null) ...[
                         const SizedBox(height: 12),
                         Text(
                           dialogError!,
@@ -665,16 +665,16 @@ class _TeamScreenState extends State<TeamScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: AppColors.surface,
+        backgroundColor: AppColors.surface,
           insetPadding: _dialogInsets(dialogContext),
           title: Text(title, style: const TextStyle(color: AppColors.text)),
           content: SizedBox(
             width: _dialogWidth(dialogContext, max: 460),
             child: SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
                   Text(
                     description,
                     style: const TextStyle(
@@ -707,7 +707,7 @@ class _TeamScreenState extends State<TeamScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 12),
+            const SizedBox(height: 12),
                   SelectableText(
                     link,
                     style: const TextStyle(
@@ -718,24 +718,24 @@ class _TeamScreenState extends State<TeamScreen> {
                 ],
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: link));
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: link));
                 if (dialogContext.mounted) {
                   Navigator.of(dialogContext).pop();
                 }
-                if (!mounted) return;
+              if (!mounted) return;
                 _snack('Copiado para a área de transferência.');
-              },
-              child: const Text('Copiar'),
-            ),
-            FilledButton(
+            },
+            child: const Text('Copiar'),
+          ),
+          FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Fechar'),
-            ),
-          ],
+            child: const Text('Fechar'),
+          ),
+        ],
         );
       },
     );
@@ -771,12 +771,12 @@ class _TeamScreenState extends State<TeamScreen> {
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
+                children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                      child: Column(
+                    child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
+                      children: [
                           TextField(
                             controller: _searchCtrl,
                             onChanged: (_) => setState(() {}),
@@ -817,17 +817,17 @@ class _TeamScreenState extends State<TeamScreen> {
                                   onTap: () => setState(
                                     () => _statusFilter = status,
                                   ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                        ],
+                  ),
+                  ),
                     const Divider(height: 1, color: AppColors.divider),
                     Expanded(child: _buildBody(filtered, compact)),
-                  ],
-                ),
+                ],
               ),
+            ),
             ),
           ],
         ),
@@ -841,24 +841,24 @@ class _TeamScreenState extends State<TeamScreen> {
     }
     if (_error != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
               Text(
                 _error!,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.danger),
               ),
-              const SizedBox(height: 12),
+                                  const SizedBox(height: 12),
               FilledButton(
                 onPressed: _load,
                 child: const Text('Tentar novamente'),
               ),
-            ],
-          ),
-        ),
+                                ],
+                              ),
+                            ),
       );
     }
     if (_users.isEmpty) {
@@ -869,7 +869,7 @@ class _TeamScreenState extends State<TeamScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               PremiumEmptyPanel(
-                icon: Icons.group_outlined,
+                                icon: Icons.group_outlined,
                 title: 'Nenhum membro listado',
                 description:
                     'Convide a primeira pessoa para acessar o atendimento de '
@@ -900,10 +900,10 @@ class _TeamScreenState extends State<TeamScreen> {
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+                                padding: const EdgeInsets.all(16),
       itemCount: filtered.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
+                                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                                itemBuilder: (context, index) {
         final user = filtered[index];
         return _MemberTile(
           user: user,
@@ -992,17 +992,17 @@ class _TeamHeader extends StatelessWidget {
       ],
     );
 
-    return Container(
+                                  return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+                                    decoration: BoxDecoration(
         color: AppColors.surface.withValues(alpha: 0.92),
         borderRadius: AppRadius.xl,
-        border: Border.all(color: AppColors.border),
-      ),
+                                      border: Border.all(color: AppColors.border),
+                                    ),
       child: compact
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+                                      children: [
                 Row(
                   children: [
                     Expanded(child: intro),
@@ -1059,7 +1059,7 @@ class _StatusFilterChip extends StatelessWidget {
                   : AppColors.border,
             ),
           ),
-          child: Text(
+                                          child: Text(
             label,
             style: TextStyle(
               color: selected ? AppColors.primarySoft : AppColors.textMuted,
@@ -1212,29 +1212,29 @@ class _MemberTileState extends State<_MemberTile> {
     );
 
     final identity = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
         if (widget.compact) ...[
-          Text(
+                                              Text(
             name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.text,
+                                                style: const TextStyle(
+                                                  color: AppColors.text,
               fontWeight: FontWeight.w700,
               fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            user.email,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                user.email,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
-            ),
-          ),
+                                                style: const TextStyle(
+                                                  color: AppColors.textMuted,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
         ] else ...[
           Row(
             children: [
@@ -1272,11 +1272,11 @@ class _MemberTileState extends State<_MemberTile> {
       crossAxisAlignment:
           widget.compact ? CrossAxisAlignment.start : CrossAxisAlignment.end,
       children: [
-        Text(
+                                        Text(
           widget.roleLabel,
-          style: const TextStyle(
-            color: AppColors.textSoft,
-            fontSize: 12,
+                                          style: const TextStyle(
+                                            color: AppColors.textSoft,
+                                            fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1285,10 +1285,10 @@ class _MemberTileState extends State<_MemberTile> {
           widget.lastLoginLabel,
           style: const TextStyle(
             color: AppColors.textSoft,
-            fontSize: 11,
-          ),
-        ),
-      ],
+                                              fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
     );
 
     final body = widget.compact
