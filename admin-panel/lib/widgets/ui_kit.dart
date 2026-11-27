@@ -264,6 +264,7 @@ class AppMetricCard extends StatefulWidget {
     required this.helper,
     required this.icon,
     this.accent = AppColors.primary,
+    this.fullWidth = false,
   });
 
   final String label;
@@ -271,6 +272,7 @@ class AppMetricCard extends StatefulWidget {
   final String helper;
   final IconData icon;
   final Color accent;
+  final bool fullWidth;
 
   @override
   State<AppMetricCard> createState() => _AppMetricCardState();
@@ -289,7 +291,8 @@ class _AppMetricCardState extends State<AppMetricCard> {
         duration: const Duration(milliseconds: 160),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
-          width: 220,
+          width: widget.fullWidth ? double.infinity : 220,
+          height: widget.fullWidth ? double.infinity : null,
           padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
             gradient: _hovered ? AppGradients.glassPanel : null,
@@ -314,7 +317,7 @@ class _AppMetricCardState extends State<AppMetricCard> {
                 ),
                 child: Icon(widget.icon, color: widget.accent, size: 20),
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 widget.label,
                 style: const TextStyle(
@@ -322,6 +325,8 @@ class _AppMetricCardState extends State<AppMetricCard> {
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
@@ -332,15 +337,20 @@ class _AppMetricCardState extends State<AppMetricCard> {
                   color: AppColors.text,
                   height: 1.05,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+              if (widget.fullWidth) const Spacer(),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 widget.helper,
                 style: const TextStyle(
                   color: AppColors.textSoft,
-                  fontSize: 12,
-                  height: 1.4,
+                  fontSize: 11,
+                  height: 1.35,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

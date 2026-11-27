@@ -24,6 +24,7 @@ class CampaignDetailPanel extends StatelessWidget {
     required this.sendReadiness,
     this.onOpenBilling,
     this.canStart = false,
+    this.fullPage = false,
   });
 
   final bool loading;
@@ -40,6 +41,7 @@ class CampaignDetailPanel extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback? onOpenBilling;
   final bool canStart;
+  final bool fullPage;
 
   String _accountLabel() {
     final key = summary.accountKey;
@@ -48,144 +50,190 @@ class CampaignDetailPanel extends StatelessWidget {
     return match?.displayPhoneNumber ?? key;
   }
 
+  Widget _header(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        summary.name,
+                        style: GoogleFonts.manrope(
+                          fontSize: fullPage ? 22 : 18,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ),
+                    CampaignStatusBadge(status: summary.status),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${summary.templateName} · ${_accountLabel()} · ${summary.templateCategory}',
+                  style: const TextStyle(color: AppColors.textSoft, fontSize: 12),
+                ),
+                if (summary.createdAt != null)
+                  Text(
+                    'Criada em ${formatCampaignDate(summary.createdAt)}',
+                    style: const TextStyle(color: AppColors.textSoft, fontSize: 11),
+                  ),
+              ],
+            ),
+          ),
+          if (!fullPage)
+            IconButton(onPressed: onClose, tooltip: 'Fechar', icon: const Icon(Icons.close)),
+        ],
+      ),
+    );
+  }
+
+  Widget _bodySections() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(height: 1, color: AppColors.border),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: CampaignProgressBar(item: summary),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Wrap(
+            spacing: AppSpacing.xs,
+            runSpacing: AppSpacing.xs,
+            children: [
+              _metricChip('Destinatários', summary.totalRecipients),
+              _metricChip('Pendentes', summary.pendingCount),
+              _metricChip('Enviadas', summary.sentCount),
+              _metricChip('Entregues', summary.deliveredCount),
+              _metricChip('Lidas', summary.readCount),
+              _metricChip('Falhas', summary.failedCount),
+              _metricChip('Incertas', summary.uncertainCount),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+          child: Text(
+            'Estimativa Meta: ${formatCampaignMetaEstimate(summary.metaEstimate)}',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        ),
+        if (!sendReadiness.sendsEnabled) ...[
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: CampaignSendBlockBanner(
+              title: 'Envio não autorizado',
+              message: sendReadiness.sendsBlockedReason ?? '',
+              onOpenPlan: onOpenBilling,
+            ),
+          ),
+        ],
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: [
+              OutlinedButton.icon(
+                onPressed: onDownloadTemplate,
+                icon: const Icon(Icons.download, size: 18),
+                label: const Text('Modelo XLSX'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onImport,
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: const Text('Importar'),
+              ),
+              OutlinedButton.icon(
+                onPressed: onDownloadResults,
+                icon: const Icon(Icons.table_view, size: 18),
+                label: const Text('Exportar'),
+              ),
+              if (canStart && onStart != null)
+                FilledButton.icon(
+                  onPressed: onStart,
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('Iniciar'),
+                ),
+              if (summary.status == 'running' && onPause != null)
+                OutlinedButton.icon(
+                  onPressed: onPause,
+                  icon: const Icon(Icons.pause),
+                  label: const Text('Pausar'),
+                ),
+              if (onCancel != null &&
+                  const {'draft', 'validated', 'paused'}.contains(summary.status))
+                TextButton(onPressed: onCancel, child: const Text('Cancelar campanha')),
+            ],
+          ),
+        ),
+        const Divider(height: 1, color: AppColors.border),
+        _RecipientsTable(recipients: recipients, embedded: !fullPage),
+        Padding(
+          padding: const EdgeInsets.all(AppSpacing.sm),
+          child: Text(kCampaignMetaDisclaimer, style: const TextStyle(color: AppColors.textSoft, fontSize: 10)),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Card(
+    if (loading) {
+      return const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()));
+    }
+
+    final inner = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _header(context),
+        _bodySections(),
+      ],
+    );
+
+    final shell = Card(
       color: AppColors.surface,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
-      child: loading
-          ? const Center(child: Padding(padding: EdgeInsets.all(48), child: CircularProgressIndicator()))
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    summary.name,
-                                    style: GoogleFonts.manrope(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.text,
-                                    ),
-                                  ),
-                                ),
-                                CampaignStatusBadge(status: summary.status),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${summary.templateName} · ${_accountLabel()} · ${summary.templateCategory}',
-                              style: const TextStyle(color: AppColors.textSoft, fontSize: 12),
-                            ),
-                            if (summary.createdAt != null)
-                              Text(
-                                'Criada em ${formatCampaignDate(summary.createdAt)}',
-                                style: const TextStyle(color: AppColors.textSoft, fontSize: 11),
-                              ),
-                          ],
-                        ),
-                      ),
-                      IconButton(onPressed: onClose, tooltip: 'Fechar', icon: const Icon(Icons.close)),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.border),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: CampaignProgressBar(item: summary),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: Wrap(
-                    spacing: AppSpacing.xs,
-                    runSpacing: AppSpacing.xs,
-                    children: [
-                      _metricChip('Destinatários', summary.totalRecipients),
-                      _metricChip('Pendentes', summary.pendingCount),
-                      _metricChip('Enviadas', summary.sentCount),
-                      _metricChip('Entregues', summary.deliveredCount),
-                      _metricChip('Lidas', summary.readCount),
-                      _metricChip('Falhas', summary.failedCount),
-                      _metricChip('Incertas', summary.uncertainCount),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-                  child: Text(
-                    'Estimativa Meta: ${formatCampaignMetaEstimate(summary.metaEstimate)}',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
-                ),
-                if (!sendReadiness.sendsEnabled) ...[
-                  Padding(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: CampaignSendBlockBanner(
-                      title: 'Envio não autorizado',
-                      message: sendReadiness.sendsBlockedReason ?? '',
-                      onOpenPlan: onOpenBilling,
-                    ),
-                  ),
-                ],
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Wrap(
-                    spacing: AppSpacing.sm,
-                    runSpacing: AppSpacing.sm,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: onDownloadTemplate,
-                        icon: const Icon(Icons.download, size: 18),
-                        label: const Text('Modelo XLSX'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: onImport,
-                        icon: const Icon(Icons.upload_file, size: 18),
-                        label: const Text('Importar'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: onDownloadResults,
-                        icon: const Icon(Icons.table_view, size: 18),
-                        label: const Text('Exportar'),
-                      ),
-                      if (canStart && onStart != null)
-                        FilledButton.icon(
-                          onPressed: onStart,
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Iniciar'),
-                        ),
-                      if (summary.status == 'running' && onPause != null)
-                        OutlinedButton.icon(
-                          onPressed: onPause,
-                          icon: const Icon(Icons.pause),
-                          label: const Text('Pausar'),
-                        ),
-                      if (onCancel != null &&
-                          const {'draft', 'validated', 'paused'}.contains(summary.status))
-                        TextButton(onPressed: onCancel, child: const Text('Cancelar campanha')),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: AppColors.border),
-                Expanded(child: _RecipientsTable(recipients: recipients)),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.sm),
-                  child: Text(kCampaignMetaDisclaimer, style: const TextStyle(color: AppColors.textSoft, fontSize: 10)),
-                ),
-              ],
+      clipBehavior: Clip.antiAlias,
+      child: inner,
+    );
+
+    if (!fullPage) {
+      return shell;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (fullPage)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: TextButton.icon(
+              onPressed: onClose,
+              icon: const Icon(Icons.arrow_back, size: 20),
+              label: const Text('Voltar para campanhas'),
             ),
+          ),
+        Expanded(
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              child: shell,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -200,8 +248,9 @@ class CampaignDetailPanel extends StatelessWidget {
 }
 
 class _RecipientsTable extends StatefulWidget {
-  const _RecipientsTable({required this.recipients});
+  const _RecipientsTable({required this.recipients, this.embedded = false});
   final List<CampaignRecipientRowModel> recipients;
+  final bool embedded;
 
   @override
   State<_RecipientsTable> createState() => _RecipientsTableState();
@@ -218,7 +267,39 @@ class _RecipientsTableState extends State<_RecipientsTable> {
     if (_query.isNotEmpty) {
       rows = rows.where((r) => r.phone.contains(_query)).toList();
     }
-  return Column(
+
+    final list = rows.isEmpty
+        ? const Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: Text('Nenhum destinatário', style: TextStyle(color: AppColors.textSoft)),
+          )
+        : ListView.separated(
+            shrinkWrap: !widget.embedded,
+            physics: widget.embedded
+                ? const AlwaysScrollableScrollPhysics()
+                : const NeverScrollableScrollPhysics(),
+            itemCount: rows.length,
+            separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+            itemBuilder: (ctx, i) {
+              final r = rows[i];
+              return ListTile(
+                dense: true,
+                title: Text(r.phone, style: const TextStyle(fontSize: 13)),
+                subtitle: Text(
+                  recipientStatusLabel(r.status) +
+                      (r.errorMessage != null ? ' · ${r.errorMessage}' : ''),
+                  style: const TextStyle(fontSize: 11),
+                ),
+                trailing: Text(
+                  formatCampaignDate(r.deliveredAt ?? r.sentAt),
+                  style: const TextStyle(color: AppColors.textSoft, fontSize: 10),
+                ),
+              );
+            },
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
@@ -251,30 +332,13 @@ class _RecipientsTableState extends State<_RecipientsTable> {
             ],
           ),
         ),
-        Expanded(
-          child: rows.isEmpty
-              ? const Center(child: Text('Nenhum destinatário', style: TextStyle(color: AppColors.textSoft)))
-              : ListView.separated(
-                  itemCount: rows.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
-                  itemBuilder: (ctx, i) {
-                    final r = rows[i];
-                    return ListTile(
-                      dense: true,
-                      title: Text(r.phone, style: const TextStyle(fontSize: 13)),
-                      subtitle: Text(
-                        recipientStatusLabel(r.status) +
-                            (r.errorMessage != null ? ' · ${r.errorMessage}' : ''),
-                        style: const TextStyle(fontSize: 11),
-                      ),
-                      trailing: Text(
-                        formatCampaignDate(r.deliveredAt ?? r.sentAt),
-                        style: const TextStyle(color: AppColors.textSoft, fontSize: 10),
-                      ),
-                    );
-                  },
-                ),
-        ),
+        if (widget.embedded)
+          Expanded(child: list)
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 120),
+            child: list,
+          ),
       ],
     );
   }

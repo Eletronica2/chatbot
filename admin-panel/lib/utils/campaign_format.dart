@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 const kCampaignMetaDisclaimer =
     'Mensagens cobradas diretamente pela Meta. Os valores apresentados são estimativas.';
 
-final _brl = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+final NumberFormat _brl = NumberFormat.currency(locale: 'pt_BR', symbol: r'R$');
+final NumberFormat _pctBr = NumberFormat('#,##0.0', 'pt_BR');
 
 String formatCampaignMoney(dynamic raw, {String? currency}) {
   if (raw == null) return '—';
@@ -69,5 +70,14 @@ String recipientStatusLabel(String status) {
 
 String formatCampaignDate(DateTime? dt) {
   if (dt == null) return '—';
-  return DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dt.toLocal());
+  try {
+    return DateFormat('dd/MM/yyyy HH:mm', 'pt_BR').format(dt.toLocal());
+  } catch (_) {
+    return '—';
+  }
+}
+
+String formatCampaignPercent(double? value) {
+  if (value == null || value.isNaN || value.isInfinite) return '—';
+  return '${_pctBr.format(value)}%';
 }

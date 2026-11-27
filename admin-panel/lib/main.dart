@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:admin_panel/screens/dashboard_screen.dart';
 import 'package:admin_panel/screens/landing_screen.dart';
@@ -11,6 +12,7 @@ import 'package:admin_panel/theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('pt_BR');
   if (kIsWeb) {
     SemanticsBinding.instance.ensureSemantics();
   }

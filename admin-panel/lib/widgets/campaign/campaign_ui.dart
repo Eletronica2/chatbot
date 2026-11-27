@@ -75,10 +75,7 @@ class CampaignMetricsStrip extends StatelessWidget {
 
   String _fmtInt(int? v) => v == null ? '—' : '$v';
 
-  String _fmtRate(double? v) {
-    if (v == null) return '—';
-    return '${(v * 100).toStringAsFixed(1)}%';
-  }
+  String _fmtRate(double? v) => formatCampaignPercent(v);
 
   @override
   Widget build(BuildContext context) {
@@ -145,17 +142,34 @@ class CampaignMetricsStrip extends StatelessWidget {
       helper: helper,
       icon: icon,
       accent: accent,
+      fullWidth: true,
     );
   }
 
+  int _columnsFor(double w) {
+    if (w < 420) return 1;
+    if (w < 640) return 2;
+    if (w < 900) return 3;
+    if (w < 1180) return 4;
+    return 5;
+  }
+
   Widget _metricRow(double maxWidth, List<Widget> children) {
-    final compact = maxWidth < AppBreakpoints.compact;
-    final itemWidth = compact ? (maxWidth - AppSpacing.sm) / 2 : (maxWidth - AppSpacing.sm * 4) / 5;
+    final cols = _columnsFor(maxWidth);
+    const cardH = 136.0;
+    final gap = AppSpacing.sm;
+    final cellW = (maxWidth - gap * (cols - 1)) / cols;
     return Wrap(
-      spacing: AppSpacing.sm,
-      runSpacing: AppSpacing.sm,
+      spacing: gap,
+      runSpacing: gap,
       children: children
-          .map((w) => SizedBox(width: itemWidth.clamp(148.0, 280.0), child: w))
+          .map(
+            (w) => SizedBox(
+              width: cellW.clamp(140, maxWidth),
+              height: cardH,
+              child: w,
+            ),
+          )
           .toList(),
     );
   }
@@ -168,7 +182,7 @@ class _SkeletonMetric extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 120,
+      height: 136,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.lg,

@@ -2,8 +2,6 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-
 import '../models/campaign.dart';
 import '../models/whatsapp_account.dart';
 import '../models/whatsapp_template.dart';
@@ -45,13 +43,40 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   String _search = '';
   String? _statusFilter;
   _CampaignSort _sort = _CampaignSort.recent;
+  int _tablePage = 0;
+  static const _pageSize = 12;
+  late final TextEditingController _searchCtrl;
+  final ScrollController _listScroll = ScrollController();
+  double? _listScrollOffset;
 
   String get _tenantId => authService.tenantId ?? '';
 
   @override
   void initState() {
     super.initState();
+    _searchCtrl = TextEditingController(text: _search);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _listScroll.dispose();
+    super.dispose();
+  }
+
+  void _closeDetail() {
+    final offset = _listScrollOffset;
+    setState(() {
+      _selectedId = null;
+      _detail = null;
+    });
+    if (offset != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_listScroll.hasClients) return;
+        _listScroll.jumpTo(offset.clamp(0, _listScroll.position.maxScrollExtent));
+      });
+    }
   }
 
   Future<void> _load({bool keepSelection = true}) async {
@@ -90,6 +115,9 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
   }
 
   Future<void> _openDetail(String id) async {
+    if (_listScroll.hasClients) {
+      _listScrollOffset = _listScroll.offset;
+    }
     setState(() {
       _selectedId = id;
       _detailLoading = true;
@@ -243,59 +271,151 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     return item.totalRecipients > 0 && (item.status == 'validated' || item.status == 'paused');
   }
 
+  Widget _buildDetailPane(CampaignSendReadinessModel? readiness) {
+    if (_selectedId == null) return const SizedBox.shrink();
+    var summary = _detail?.campaign;
+    for (final c in _items) {
+      if (c.id == _selectedId) {
+        summary ??= c;
+        break;
+      }
+    }
+    if (summary == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final item = summary;
+    return CampaignDetailPanel(
+      fullPage: true,
+      loading: _detailLoading,
+      summary: item,
+      recipients: _detail?.recipients ?? const [],
+      accounts: _accounts,
+      sendReadiness: readiness ?? CampaignSendReadinessModel(sendsEnabled: false),
+      canStart: _detail != null && _canStart(_detail!.campaign),
+      onOpenBilling: widget.onOpenBilling,
+      onClose: _closeDetail,
+      onImport: () => _importFor(item),
+      onDownloadTemplate: () async {
+        final id = _detail?.campaign.id ?? _selectedId;
+        if (id == null) return;
+        final bytes = await campaignService.downloadImportTemplate(tenantId: _tenantId, campaignId: id);
+        _saveBytes(bytes, 'campanha-$id.xlsx');
+      },
+      onDownloadResults: () async {
+        final id = _detail?.campaign.id ?? _selectedId;
+        if (id == null) return;
+        final bytes = await campaignService.downloadResults(tenantId: _tenantId, campaignId: id);
+        _saveBytes(bytes, 'resultados-$id.xlsx');
+      },
+      onStart: _detail != null && _canStart(_detail!.campaign)
+          ? () => _startCampaign(_detail!.campaign)
+          : null,
+      onPause: _detail?.campaign.status == 'running'
+          ? () async {
+              await campaignService.pauseCampaign(tenantId: _tenantId, campaignId: _detail!.campaign.id);
+              await _load();
+            }
+          : null,
+      onCancel: _detail != null
+          ? () async {
+              await campaignService.cancelCampaign(tenantId: _tenantId, campaignId: _detail!.campaign.id);
+              await _load();
+            }
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final inset = AppPageInsets.of(context).copyWith(top: AppSpacing.sm, bottom: AppSpacing.sm);
     final metrics = _aggregateMetrics();
-    final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.medium;
     final readiness = _sendReadiness;
 
     if (_loading && _items.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final listPane = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Toolbar(
-          onRefresh: () => _load(),
-          onNew: _templates.isEmpty ? null : () => _openWizard(),
-        ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
-          ),
-        CampaignMetricsStrip(
-          loading: _loading,
-          campaignCount: _items.length,
-          sentTotal: metrics.sent,
-          deliveredTotal: metrics.delivered,
-          deliveryRate: metrics.rate,
-          metaEstimateLabel: metrics.metaSum,
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (readiness != null && !readiness.sendsEnabled)
-          Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: CampaignSendBlockBanner(
-              title: 'Disparos bloqueados pelo plano Atende Ai',
-              message: readiness.sendsBlockedReason ?? '',
-              onOpenPlan: widget.onOpenBilling,
+    if (_selectedId != null) {
+      return Padding(
+        padding: inset,
+        child: _buildDetailPane(readiness),
+      );
+    }
+
+    final visible = _visibleItems;
+    final pageCount = visible.isEmpty ? 1 : (visible.length / _pageSize).ceil();
+    final safePage = _tablePage.clamp(0, pageCount - 1);
+    if (safePage != _tablePage) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _tablePage = safePage);
+      });
+    }
+    final pageItems = visible.skip(safePage * _pageSize).take(_pageSize).toList();
+
+    return Padding(
+      padding: inset,
+      child: Scrollbar(
+        controller: _listScroll,
+        thumbVisibility: true,
+        child: CustomScrollView(
+          controller: _listScroll,
+          slivers: [
+            SliverToBoxAdapter(
+              child: _Toolbar(
+                onRefresh: () => _load(),
+                onNew: _templates.isEmpty ? null : () => _openWizard(),
+              ),
             ),
-          ),
-        _FiltersBar(
-          search: _search,
-          status: _statusFilter,
-          sort: _sort,
-          onSearch: (v) => setState(() => _search = v),
-          onStatus: (v) => setState(() => _statusFilter = v),
-          onSort: (v) => setState(() => _sort = v),
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        Expanded(
-          child: _visibleItems.isEmpty
-              ? AppEmptyState(
+            if (_error != null)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: CampaignMetricsStrip(
+                loading: _loading,
+                campaignCount: _items.length,
+                sentTotal: metrics.sent,
+                deliveredTotal: metrics.delivered,
+                deliveryRate: metrics.rate,
+                metaEstimateLabel: metrics.metaSum,
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.md)),
+            if (readiness != null && !readiness.sendsEnabled)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                  child: CampaignSendBlockBanner(
+                    title: 'Disparos bloqueados pelo plano Atende Ai',
+                    message: readiness.sendsBlockedReason ?? '',
+                    onOpenPlan: widget.onOpenBilling,
+                  ),
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: _FiltersBar(
+                searchCtrl: _searchCtrl,
+                status: _statusFilter,
+                sort: _sort,
+                onSearch: (v) => setState(() {
+                  _search = v;
+                  _tablePage = 0;
+                }),
+                onStatus: (v) => setState(() {
+                  _statusFilter = v;
+                  _tablePage = 0;
+                }),
+                onSort: (v) => setState(() => _sort = v),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.sm)),
+            if (visible.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: AppEmptyState(
                   icon: Icons.campaign_outlined,
                   title: 'Nenhuma campanha',
                   message: 'Crie uma campanha, importe destinatários via XLSX e acompanhe entregas.',
@@ -306,9 +426,12 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                           icon: const Icon(Icons.add),
                           label: const Text('Nova campanha'),
                         ),
-                )
-              : _CampaignTable(
-                  items: _visibleItems,
+                ),
+              )
+            else
+              SliverToBoxAdapter(
+                child: _CampaignTable(
+                  items: pageItems,
                   accounts: _accounts,
                   selectedId: _selectedId,
                   onSelect: _openDetail,
@@ -331,122 +454,32 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
                   onStart: _canStart,
                   onStartTap: _startCampaign,
                 ),
-        ),
-      ],
-    );
-
-    if (!wide) {
-      if (_selectedId != null && _detail != null) {
-        return Padding(
-          padding: inset,
-          child: CampaignDetailPanel(
-            loading: _detailLoading,
-            summary: _detail!.campaign,
-            recipients: _detail!.recipients,
-            accounts: _accounts,
-            sendReadiness: readiness ?? CampaignSendReadinessModel(sendsEnabled: false),
-            canStart: _canStart(_detail!.campaign),
-            onOpenBilling: widget.onOpenBilling,
-            onClose: () => setState(() {
-              _selectedId = null;
-              _detail = null;
-            }),
-            onImport: () => _importFor(_detail!.campaign),
-            onDownloadTemplate: () async {
-              final bytes = await campaignService.downloadImportTemplate(
-                tenantId: _tenantId,
-                campaignId: _detail!.campaign.id,
-              );
-              _saveBytes(bytes, 'campanha-${_detail!.campaign.id}.xlsx');
-            },
-            onDownloadResults: () async {
-              final bytes = await campaignService.downloadResults(
-                tenantId: _tenantId,
-                campaignId: _detail!.campaign.id,
-              );
-              _saveBytes(bytes, 'resultados-${_detail!.campaign.id}.xlsx');
-            },
-            onStart: _canStart(_detail!.campaign) ? () => _startCampaign(_detail!.campaign) : null,
-            onPause: _detail!.campaign.status == 'running'
-                ? () async {
-                    await campaignService.pauseCampaign(tenantId: _tenantId, campaignId: _detail!.campaign.id);
-                    await _load();
-                  }
-                : null,
-            onCancel: () async {
-              await campaignService.cancelCampaign(tenantId: _tenantId, campaignId: _detail!.campaign.id);
-              await _load();
-            },
-          ),
-        );
-      }
-      return Padding(padding: inset, child: listPane);
-    }
-
-    return Padding(
-      padding: inset,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(flex: 3, child: listPane),
-          if (_selectedId != null) ...[
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              flex: 2,
-              child: CampaignDetailPanel(
-                loading: _detailLoading,
-                summary: _detail?.campaign ??
-                    _items.firstWhere((c) => c.id == _selectedId, orElse: () => _items.first),
-                recipients: _detail?.recipients ?? const [],
-                accounts: _accounts,
-                sendReadiness: readiness ?? CampaignSendReadinessModel(sendsEnabled: false),
-                canStart: _detail != null && _canStart(_detail!.campaign),
-                onOpenBilling: widget.onOpenBilling,
-                onClose: () => setState(() {
-                  _selectedId = null;
-                  _detail = null;
-                }),
-                onImport: () {
-                  final c = _detail?.campaign;
-                  if (c != null) _importFor(c);
-                },
-                onDownloadTemplate: () async {
-                  final id = _detail?.campaign.id ?? _selectedId;
-                  if (id == null) return;
-                  final bytes = await campaignService.downloadImportTemplate(tenantId: _tenantId, campaignId: id);
-                  _saveBytes(bytes, 'campanha-$id.xlsx');
-                },
-                onDownloadResults: () async {
-                  final id = _detail?.campaign.id ?? _selectedId;
-                  if (id == null) return;
-                  final bytes = await campaignService.downloadResults(tenantId: _tenantId, campaignId: id);
-                  _saveBytes(bytes, 'resultados-$id.xlsx');
-                },
-                onStart: _detail != null && _canStart(_detail!.campaign)
-                    ? () => _startCampaign(_detail!.campaign)
-                    : null,
-                onPause: _detail?.campaign.status == 'running'
-                    ? () async {
-                        await campaignService.pauseCampaign(
-                          tenantId: _tenantId,
-                          campaignId: _detail!.campaign.id,
-                        );
-                        await _load();
-                      }
-                    : null,
-                onCancel: _detail != null
-                    ? () async {
-                        await campaignService.cancelCampaign(
-                          tenantId: _tenantId,
-                          campaignId: _detail!.campaign.id,
-                        );
-                        await _load();
-                      }
-                    : null,
               ),
-            ),
+            if (visible.length > _pageSize)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      IconButton(
+                        onPressed: safePage > 0 ? () => setState(() => _tablePage = safePage - 1) : null,
+                        icon: const Icon(Icons.chevron_left),
+                      ),
+                      Text('Página ${safePage + 1} de $pageCount', style: const TextStyle(fontSize: 12)),
+                      IconButton(
+                        onPressed: safePage < pageCount - 1
+                            ? () => setState(() => _tablePage = safePage + 1)
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: AppSpacing.lg)),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -480,7 +513,7 @@ class _Toolbar extends StatelessWidget {
 
 class _FiltersBar extends StatelessWidget {
   const _FiltersBar({
-    required this.search,
+    required this.searchCtrl,
     required this.status,
     required this.sort,
     required this.onSearch,
@@ -488,7 +521,7 @@ class _FiltersBar extends StatelessWidget {
     required this.onSort,
   });
 
-  final String search;
+  final TextEditingController searchCtrl;
   final String? status;
   final _CampaignSort sort;
   final ValueChanged<String> onSearch;
@@ -505,6 +538,7 @@ class _FiltersBar extends StatelessWidget {
         SizedBox(
           width: 240,
           child: TextField(
+            controller: searchCtrl,
             decoration: const InputDecoration(
               isDense: true,
               prefixIcon: Icon(Icons.search, size: 18),
@@ -542,7 +576,7 @@ class _FiltersBar extends StatelessWidget {
   }
 }
 
-class _CampaignTable extends StatelessWidget {
+class _CampaignTable extends StatefulWidget {
   const _CampaignTable({
     required this.items,
     required this.accounts,
@@ -567,40 +601,72 @@ class _CampaignTable extends StatelessWidget {
   final bool Function(CampaignSummaryModel) onStart;
   final Future<void> Function(CampaignSummaryModel) onStartTap;
 
+  @override
+  State<_CampaignTable> createState() => _CampaignTableState();
+}
+
+class _CampaignTableState extends State<_CampaignTable> {
+  final ScrollController _hScroll = ScrollController();
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
+
   String _phone(CampaignSummaryModel c) {
     final k = c.accountKey;
     if (k == null) return '—';
-    return accounts.where((a) => a.accountKey == k).map((a) => a.displayPhoneNumber).firstOrNull ?? k;
+    return widget.accounts.where((a) => a.accountKey == k).map((a) => a.displayPhoneNumber).firstOrNull ?? k;
   }
 
   @override
   Widget build(BuildContext context) {
     final compact = AppBreakpoints.isCompact(context);
     if (compact) {
-      return ListView.separated(
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
-        itemBuilder: (ctx, i) => _CampaignCard(
-          item: items[i],
-          phone: _phone(items[i]),
-          selected: items[i].id == selectedId,
-          onTap: () => onSelect(items[i].id),
-          onImport: () => onImport(items[i]),
-          onWizard: () => onWizard(items[i]),
-          onDownloadTemplate: () => onDownloadTemplate(items[i]),
-          onStart: onStart(items[i]) ? () => onStartTap(items[i]) : null,
-        ),
+      return Column(
+        children: List.generate(widget.items.length, (i) {
+          final item = widget.items[i];
+          return Padding(
+            padding: EdgeInsets.only(bottom: i < widget.items.length - 1 ? AppSpacing.sm : 0),
+            child: _CampaignCard(
+              item: item,
+              phone: _phone(item),
+              selected: item.id == widget.selectedId,
+              onTap: () => widget.onSelect(item.id),
+              onImport: () => widget.onImport(item),
+              onWizard: () => widget.onWizard(item),
+              onDownloadTemplate: () => widget.onDownloadTemplate(item),
+              onStart: widget.onStart(item) ? () => widget.onStartTap(item) : null,
+            ),
+          );
+        }),
       );
     }
-    return Card(
-      color: AppColors.surface,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minWidth: MediaQuery.sizeOf(context).width - 48),
-          child: DataTable(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tableWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth.clamp(720.0, double.infinity)
+            : 920.0;
+        return Card(
+          color: AppColors.surface,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.lg),
+          clipBehavior: Clip.antiAlias,
+          child: Scrollbar(
+            controller: _hScroll,
+            thumbVisibility: true,
+            trackVisibility: true,
+            interactive: true,
+            notificationPredicate: (n) => n.depth == 1,
+            child: SingleChildScrollView(
+              controller: _hScroll,
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: tableWidth),
+                child: DataTable(
+                  columnSpacing: 12,
+                  horizontalMargin: 10,
             headingTextStyle: const TextStyle(
               color: AppColors.textMuted,
               fontSize: 11,
@@ -617,11 +683,11 @@ class _CampaignTable extends StatelessWidget {
               DataColumn(label: Text('Progresso')),
               DataColumn(label: Text('Ações')),
             ],
-            rows: items.map((c) {
-              final selected = c.id == selectedId;
+            rows: widget.items.map((c) {
+              final selected = c.id == widget.selectedId;
               return DataRow(
                 selected: selected,
-                onSelectChanged: (_) => onSelect(c.id),
+                onSelectChanged: (_) => widget.onSelect(c.id),
                 cells: [
                   DataCell(Text(c.name, style: const TextStyle(fontWeight: FontWeight.w600))),
                   DataCell(Text(c.templateName)),
@@ -638,24 +704,24 @@ class _CampaignTable extends StatelessWidget {
                         const PopupMenuItem(value: 'import', child: Text('Importar destinatários')),
                         const PopupMenuItem(value: 'model', child: Text('Baixar modelo Excel')),
                         const PopupMenuItem(value: 'wizard', child: Text('Assistente de configuração')),
-                        if (onStart(c))
+                        if (widget.onStart(c))
                           const PopupMenuItem(value: 'start', child: Text('Iniciar campanha')),
                         const PopupMenuItem(value: 'export', child: Text('Exportar resultados')),
                       ],
                       onSelected: (v) async {
                         switch (v) {
                           case 'detail':
-                            onSelect(c.id);
+                            widget.onSelect(c.id);
                           case 'import':
-                            onImport(c);
+                            widget.onImport(c);
                           case 'model':
-                            await onDownloadTemplate(c);
+                            await widget.onDownloadTemplate(c);
                           case 'wizard':
-                            onWizard(c);
+                            widget.onWizard(c);
                           case 'start':
-                            await onStartTap(c);
+                            await widget.onStartTap(c);
                           case 'export':
-                            await onDownloadResults(c);
+                            await widget.onDownloadResults(c);
                         }
                       },
                       child: const Icon(Icons.more_horiz),
@@ -664,9 +730,12 @@ class _CampaignTable extends StatelessWidget {
                 ],
               );
             }).toList(),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
