@@ -511,7 +511,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case _navTemplates:
         return 'Crie modelos oficiais da Meta, acompanhe PENDING/APPROVED e dispare testes.';
       case _navCampaigns:
-        return 'Importe destinatários via XLSX e acompanhe o progresso do disparo em massa.';
+        return 'Gerencie campanhas WhatsApp, acompanhe entregas e analise resultados.';
       case _navWhatsApp:
         return 'Conecte o WhatsApp Business da sua empresa e configure a coexistência.';
       case _navTeam:

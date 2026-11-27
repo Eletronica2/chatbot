@@ -82,67 +82,93 @@ class CampaignMetricsStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cards = <Widget>[
+      _metric(
+        label: 'Campanhas',
+        value: '$campaignCount',
+        helper: 'Cadastradas no tenant',
+        icon: Icons.campaign_outlined,
+        accent: AppColors.primary,
+      ),
+      _metric(
+        label: 'Mensagens enviadas',
+        value: _fmtInt(sentTotal),
+        helper: 'Enviadas ou posterior',
+        icon: Icons.send_outlined,
+        accent: AppColors.accentBlue,
+      ),
+      _metric(
+        label: 'Mensagens entregues',
+        value: _fmtInt(deliveredTotal),
+        helper: 'Entregues ou lidas',
+        icon: Icons.done_all_outlined,
+        accent: AppColors.success,
+      ),
+      _metric(
+        label: 'Taxa de entrega',
+        value: _fmtRate(deliveryRate),
+        helper: 'Sobre resultados conhecidos',
+        icon: Icons.insights_outlined,
+        accent: AppColors.accentSecondary,
+      ),
+      _metric(
+        label: 'Estimativa Meta',
+        value: metaEstimateLabel ?? '—',
+        helper: 'Soma com previsão (est.)',
+        icon: Icons.payments_outlined,
+        accent: AppColors.warning,
+      ),
+    ];
     if (loading) {
-      return Wrap(
-        spacing: AppSpacing.sm,
-        runSpacing: AppSpacing.sm,
-        children: List.generate(
-          4,
-          (_) => _SkeletonMetric(),
-        ),
+      return LayoutBuilder(
+        builder: (ctx, c) => _metricRow(c.maxWidth, List.generate(5, (_) => const _SkeletonMetric())),
       );
     }
+    return LayoutBuilder(
+      builder: (ctx, c) => _metricRow(
+        c.maxWidth,
+        cards,
+      ),
+    );
+  }
+
+  Widget _metric({
+    required String label,
+    required String value,
+    required String helper,
+    required IconData icon,
+    required Color accent,
+  }) {
+    return AppMetricCard(
+      label: label,
+      value: value,
+      helper: helper,
+      icon: icon,
+      accent: accent,
+    );
+  }
+
+  Widget _metricRow(double maxWidth, List<Widget> children) {
+    final compact = maxWidth < AppBreakpoints.compact;
+    final itemWidth = compact ? (maxWidth - AppSpacing.sm) / 2 : (maxWidth - AppSpacing.sm * 4) / 5;
     return Wrap(
       spacing: AppSpacing.sm,
       runSpacing: AppSpacing.sm,
-      children: [
-        AppMetricCard(
-          label: 'Campanhas',
-          value: '$campaignCount',
-          helper: 'Cadastradas no tenant',
-          icon: Icons.campaign_outlined,
-          accent: AppColors.primary,
-        ),
-        AppMetricCard(
-          label: 'Mensagens enviadas',
-          value: _fmtInt(sentTotal),
-          helper: 'Com status enviado ou posterior',
-          icon: Icons.send_outlined,
-          accent: AppColors.accentBlue,
-        ),
-        AppMetricCard(
-          label: 'Mensagens entregues',
-          value: _fmtInt(deliveredTotal),
-          helper: 'Entregues ou lidas',
-          icon: Icons.done_all_outlined,
-          accent: AppColors.success,
-        ),
-        AppMetricCard(
-          label: 'Taxa de entrega',
-          value: _fmtRate(deliveryRate),
-          helper: 'Entregues ÷ com resultado conhecido',
-          icon: Icons.insights_outlined,
-          accent: AppColors.accentSecondary,
-        ),
-        if (metaEstimateLabel != null)
-          AppMetricCard(
-            label: 'Estimativa Meta',
-            value: metaEstimateLabel!,
-            helper: 'Soma das campanhas com previsão',
-            icon: Icons.payments_outlined,
-            accent: AppColors.warning,
-          ),
-      ],
+      children: children
+          .map((w) => SizedBox(width: itemWidth.clamp(148.0, 280.0), child: w))
+          .toList(),
     );
   }
 }
 
 class _SkeletonMetric extends StatelessWidget {
+  const _SkeletonMetric();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 220,
-      height: 132,
+      width: double.infinity,
+      height: 120,
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: AppRadius.lg,

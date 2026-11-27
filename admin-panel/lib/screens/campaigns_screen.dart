@@ -245,7 +245,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final inset = AppPageInsets.of(context);
+    final inset = AppPageInsets.of(context).copyWith(top: AppSpacing.sm, bottom: AppSpacing.sm);
     final metrics = _aggregateMetrics();
     final wide = MediaQuery.sizeOf(context).width >= AppBreakpoints.medium;
     final readiness = _sendReadiness;
@@ -257,7 +257,7 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
     final listPane = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Header(
+        _Toolbar(
           onRefresh: () => _load(),
           onNew: _templates.isEmpty ? null : () => _openWizard(),
         ),
@@ -454,40 +454,19 @@ class _CampaignsScreenState extends State<CampaignsScreen> {
 
 enum _CampaignSort { recent, name, status }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.onRefresh, this.onNew});
+class _Toolbar extends StatelessWidget {
+  const _Toolbar({required this.onRefresh, this.onNew});
   final VoidCallback onRefresh;
   final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Campanhas',
-                  style: GoogleFonts.manrope(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.text,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Gerencie suas campanhas WhatsApp, acompanhe entregas e analise resultados.',
-                  style: TextStyle(color: AppColors.textSoft, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
+          const Spacer(),
           IconButton(onPressed: onRefresh, tooltip: 'Atualizar', icon: const Icon(Icons.refresh)),
-          const SizedBox(width: AppSpacing.xs),
           FilledButton.icon(
             onPressed: onNew,
             icon: const Icon(Icons.add),

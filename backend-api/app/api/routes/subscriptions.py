@@ -1,7 +1,7 @@
 ﻿"""Subscription management endpoints for SaaS tenants."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -26,6 +26,13 @@ class SubscriptionPatchPayload(BaseModel):
     status: Optional[str] = None
     renewal_date: Optional[datetime] = None
     monthly_message_limit: Optional[int] = Field(default=None, ge=0)
+
+
+class HomologGrantPayload(BaseModel):
+    """Liberação temporária para homologação (sem Stripe)."""
+
+    days: int = Field(default=30, ge=1, le=120)
+    reason: str = Field(default="", max_length=500)
 
 
 class SubscriptionResponse(BaseModel):
@@ -104,6 +111,48 @@ async def patch_subscription(
             "status": item.status,
             "monthly_message_limit": item.monthly_message_limit,
             "renewal_date": item.renewal_date.isoformat(),
+        },
+    )
+    usage = await service.get_usage_snapshot(target_tenant_id)
+    return SubscriptionResponse.from_domain(
+        item,
+        used_messages=int(usage["used_messages"]),
+        remaining_messages=int(usage["remaining_messages"]),
+    )
+
+
+@router.post("/{tenant_id}/homolog-grant", response_model=SubscriptionResponse)
+async def grant_homolog(
+    request: Request,
+    tenant_id: str,
+    payload: HomologGrantPayload,
+    user: AuthenticatedUser = Depends(authenticated_user_dependency),
+    service: SubscriptionService = Depends(subscription_service_dependency),
+    audit_service: AdminAuditService = Depends(admin_audit_service_dependency),
+) -> SubscriptionResponse:
+    assert_superadmin(user)
+    target_tenant_id = resolve_tenant_scope(user, request, tenant_id)
+    before = await service.get_or_create(target_tenant_id)
+    until = datetime.utcnow() + timedelta(days=payload.days)
+    item = await service.update(
+        target_tenant_id,
+        plan=before.plan,
+        status="trialing",
+        renewal_date=until,
+        monthly_message_limit=before.monthly_message_limit,
+    )
+    await audit_service.append(
+        tenant_id=target_tenant_id,
+        action="subscription.homolog_grant",
+        entity_type="subscription",
+        entity_key=target_tenant_id,
+        summary=f"Homologação liberada por {payload.days}d",
+        actor=user,
+        metadata={
+            "previous_status": before.status,
+            "until": until.isoformat(),
+            "reason": payload.reason.strip() or None,
+            "stripe_touched": False,
         },
     )
     usage = await service.get_usage_snapshot(target_tenant_id)
